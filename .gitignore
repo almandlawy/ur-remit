@@ -6,9 +6,10 @@ node_modules/
 .pnpm-store/
 dist/
 coverage/
+.next/
+*.tsbuildinfo
 .build/
 DerivedData/
 *.xcuserstate
 xcuserdata/
 backend/.local/
-
