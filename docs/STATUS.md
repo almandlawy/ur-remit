@@ -69,3 +69,15 @@ Verification: strict TypeScript build passed; public API test suite passed 9/9. 
 - Monetary values are accepted as validated decimal strings, never JavaScript floating-point numbers.
 
 Verification: admin and public API suites pass 14/14. Admin login/MFA issuance and the responsive web dashboard remain to be implemented before this phase can be marked complete.
+
+### 2026-09-24 release-preparation increment
+
+- Implemented scrypt password verification, encrypted TOTP secrets, MFA login, failed-attempt lockout, 30-minute fingerprinted sessions, and generic authentication failures.
+- Added a responsive Arabic-first Next.js admin dashboard with a server-side BFF and secure HttpOnly session cookie. The production Next.js build passes.
+- Replaced temporary iOS calculator, tracking, and more tabs with API-connected calculator, transfer tracking, office directory, agent verification, and security center flows.
+- Added an original 1024x1024 UR app icon, Privacy Manifest, App Store copy/review notes, deployment/testing/admin documentation, container definition, and CI workflow.
+- iOS Simulator-target build passed and an unsigned generic iOS archive was created successfully at `.build/URRemit-unsigned.xcarchive`.
+
+Current automated verification: backend 19/19 tests pass, backend TypeScript build passes, admin production build passes, iOS build passes, and unsigned archive passes.
+
+External release blockers: this Mac reports zero valid Apple signing identities and no App Store Connect credentials. CoreSimulatorService is unavailable in the current task environment. Therefore a signed IPA, runtime screenshots/UI-test evidence, production deployment, and confirmed TestFlight upload are not complete and must not be represented as complete.

@@ -7,6 +7,7 @@ const schema = z.object({
   DATABASE_URL: z.string().url(),
   LOOKUP_HASH_KEY: z.string().min(32),
   ADMIN_SESSION_HASH_KEY: z.string().min(32),
+  ADMIN_MFA_ENCRYPTION_KEY: z.string().refine((value) => Buffer.from(value, "base64").length === 32),
   TRUST_PROXY: z.enum(["true", "false"]).default("false").transform((v) => v === "true")
 });
 

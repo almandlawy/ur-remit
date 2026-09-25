@@ -11,6 +11,9 @@ const updateRateSchema = z.object({
   validFrom: z.iso.datetime().optional(), validUntil: z.iso.datetime().nullable().optional(), active: z.boolean().optional()
 }).refine((value) => Object.keys(value).length > 0);
 const idSchema = z.object({ id: z.string().uuid() });
+const loginSchema = z.object({
+  email: z.email().max(254), password: z.string().min(12).max(256), otp: z.string().regex(/^\d{6}$/)
+});
 
 function bearerToken(request: FastifyRequest): string | null {
   const value = request.headers.authorization;
@@ -19,13 +22,22 @@ function bearerToken(request: FastifyRequest): string | null {
   return /^[A-Za-z0-9_-]{32,256}$/.test(token) ? token : null;
 }
 
-export async function registerAdminRoutes(app: FastifyInstance, store: AdminStore, sessionKey: string) {
+export async function registerAdminRoutes(app: FastifyInstance, store: AdminStore, keys: { session: string; mfa: string }) {
   app.addHook("preHandler", async (request, reply) => {
     if (!request.url.startsWith("/api/v1/admin/")) return;
+    if (request.url === "/api/v1/admin/auth/login" && request.method === "POST") return;
     const token = bearerToken(request);
-    const actor = token ? await store.authenticate(sessionFingerprint(token, sessionKey)) : null;
+    const actor = token ? await store.authenticate(sessionFingerprint(token, keys.session)) : null;
     if (!actor) return reply.code(401).send({ requestId: request.id, error: { code: "UNAUTHORIZED", message: "Authentication required" } });
     request.adminActor = actor;
+  });
+
+  app.post("/api/v1/admin/auth/login", { config: { rateLimit: { max: 5, timeWindow: "15 minutes" } } }, async (request, reply) => {
+    const parsed = loginSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ requestId: request.id, error: { code: "INVALID_INPUT", message: "The request is invalid" } });
+    const session = await store.login(parsed.data, keys, { ip: request.ip, userAgent: request.headers["user-agent"] });
+    if (!session) return reply.code(401).send({ requestId: request.id, error: { code: "INVALID_CREDENTIALS", message: "Credentials could not be verified" } });
+    return { requestId: request.id, data: session };
   });
 
   app.get("/api/v1/admin/dashboard", async (request, reply) => {

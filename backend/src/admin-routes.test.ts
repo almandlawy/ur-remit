@@ -8,6 +8,7 @@ const config = {
   DATABASE_URL: "postgres://test:test@127.0.0.1:5432/test",
   LOOKUP_HASH_KEY: "test-key-with-at-least-thirty-two-characters",
   ADMIN_SESSION_HASH_KEY: "independent-admin-session-test-key-32-chars", TRUST_PROXY: false
+  , ADMIN_MFA_ENCRYPTION_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 };
 const token = "A_secure_test_session_token_1234567890";
 
@@ -22,6 +23,7 @@ function publicStore(): PublicStore {
 
 function adminStore(permissions: string[]): AdminStore {
   return {
+    login: async () => null,
     authenticate: async () => ({ id: "c65d937a-e48f-4be1-83e6-1934534dad10", role: "PRICE_MANAGER", permissions }),
     dashboard: async () => ({ activeRoutes: 3 }),
     updateRate: async (_id, update, actor, requestId) => ({ ...update, actorId: actor.id, requestId }),
@@ -30,6 +32,26 @@ function adminStore(permissions: string[]): AdminStore {
 }
 
 describe("admin API", () => {
+  it("issues a session only after the store verifies password and MFA", async () => {
+    const store = adminStore([]);
+    store.login = async () => ({ token: "issued-session", expiresAt: "2026-09-25T01:00:00.000Z" });
+    const app = await buildServer(config, publicStore(), store);
+    const response = await app.inject({ method: "POST", url: "/api/v1/admin/auth/login",
+      payload: { email: "admin@urremit.com", password: "a-secure-password-value", otp: "123456" } });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().data.token).toBe("issued-session");
+    await app.close();
+  });
+
+  it("returns a generic login failure", async () => {
+    const app = await buildServer(config, publicStore(), adminStore([]));
+    const response = await app.inject({ method: "POST", url: "/api/v1/admin/auth/login",
+      payload: { email: "admin@urremit.com", password: "a-secure-password-value", otp: "123456" } });
+    expect(response.statusCode).toBe(401);
+    expect(response.json().error.code).toBe("INVALID_CREDENTIALS");
+    await app.close();
+  });
+
   it("rejects missing session credentials", async () => {
     const store = adminStore(["dashboard.read"]); store.authenticate = async () => null;
     const app = await buildServer(config, publicStore(), store);

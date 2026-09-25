@@ -1,5 +1,6 @@
-import { createHmac } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 import pg from "pg";
+import { decryptMFASecret, verifyPassword, verifyTOTP } from "./admin-auth.js";
 
 export type AdminActor = { id: string; role: string; permissions: string[] };
 export type RateUpdate = {
@@ -9,6 +10,7 @@ export type RateUpdate = {
 };
 
 export interface AdminStore {
+  login(credentials: { email: string; password: string; otp: string }, keys: { session: string; mfa: string }, context: { ip?: string | undefined; userAgent?: string | undefined }): Promise<{ token: string; expiresAt: string } | null>;
   authenticate(tokenHash: string): Promise<AdminActor | null>;
   dashboard(): Promise<Record<string, unknown>>;
   updateRate(rateId: string, update: RateUpdate, actor: AdminActor, requestId: string, ip?: string): Promise<Record<string, unknown> | null>;
@@ -24,6 +26,38 @@ export class PostgresAdminStore implements AdminStore {
   constructor(databaseURL: string) {
     this.pool = new pg.Pool({ connectionString: databaseURL, max: 10, connectionTimeoutMillis: 5_000,
       ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: true } : undefined });
+  }
+
+  async login(credentials: { email: string; password: string; otp: string }, keys: { session: string; mfa: string }, context: { ip?: string | undefined; userAgent?: string | undefined }): Promise<{ token: string; expiresAt: string } | null> {
+    const result = await this.pool.query<{ id: string; password_hash: string; mfa_secret_ciphertext: Buffer; failed_login_count: number }>(`
+      SELECT id, password_hash, mfa_secret_ciphertext, failed_login_count FROM admin_users
+      WHERE lower(email) = lower($1) AND disabled_at IS NULL AND (locked_until IS NULL OR locked_until <= now()) LIMIT 1`, [credentials.email]);
+    const user = result.rows[0];
+    const passwordValid = user ? await verifyPassword(credentials.password, user.password_hash) : false;
+    let otpValid = false;
+    if (user && passwordValid && user.mfa_secret_ciphertext) {
+      try { otpValid = verifyTOTP(decryptMFASecret(user.mfa_secret_ciphertext, keys.mfa), credentials.otp); }
+      catch { otpValid = false; }
+    }
+    if (!user || !passwordValid || !otpValid) {
+      if (user) await this.pool.query(`UPDATE admin_users SET failed_login_count = failed_login_count + 1,
+        locked_until = CASE WHEN failed_login_count + 1 >= 5 THEN now() + interval '15 minutes' ELSE locked_until END WHERE id = $1`, [user.id]);
+      return null;
+    }
+    const token = randomBytes(32).toString("base64url");
+    const tokenHash = sessionFingerprint(token, keys.session); const expiresAt = new Date(Date.now() + 30 * 60_000).toISOString();
+    const client = await this.pool.connect();
+    await client.query("BEGIN");
+    try {
+      await client.query(`INSERT INTO admin_sessions(admin_user_id, token_hash, mfa_verified_at, expires_at, ip_fingerprint, user_agent_fingerprint)
+        VALUES ($1,$2,now(),$3,$4,$5)`, [user.id, tokenHash, expiresAt,
+        context.ip ? sessionFingerprint(context.ip, keys.session) : null,
+        context.userAgent ? sessionFingerprint(context.userAgent, keys.session) : null]);
+      await client.query("UPDATE admin_users SET failed_login_count = 0, locked_until = NULL, last_login_at = now() WHERE id = $1", [user.id]);
+      await client.query("COMMIT");
+    } catch (error) { await client.query("ROLLBACK"); throw error; }
+    finally { client.release(); }
+    return { token, expiresAt };
   }
 
   async authenticate(tokenHash: string): Promise<AdminActor | null> {
