@@ -10,7 +10,7 @@ struct APIConfiguration: Sendable {
         #if DEBUG
         APIConfiguration(baseURL: URL(string: "http://127.0.0.1:8080/api/v1/mobile/")!, timeout: .seconds(15))
         #else
-        APIConfiguration(baseURL: URL(string: "https://api.urremit.com/api/v1/mobile/")!, timeout: .seconds(15))
+        APIConfiguration(baseURL: URL(string: "https://yqvcoomjunwokyxwofvt.supabase.co/functions/v1/mobile-api/")!, timeout: .seconds(15))
         #endif
     }
 }

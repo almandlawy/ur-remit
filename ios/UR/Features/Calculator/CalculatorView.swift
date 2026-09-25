@@ -31,6 +31,6 @@ struct CalculatorView: View {
             if !loading && rates.isEmpty { ContentUnavailableView("لا توجد أسعار للحساب", systemImage: "function") }
         }
         .navigationTitle("calculator")
-        .task { defer { loading = false }; rates = (try? await repository.loadRates())?.rates ?? [] }
+        .task { defer { loading = false }; rates = ((try? await repository.loadRates())?.rates ?? []).filter { $0.buy != nil || $0.sell != nil } }
     }
 }

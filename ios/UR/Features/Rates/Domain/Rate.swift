@@ -8,6 +8,8 @@ struct Rate: Codable, Identifiable, Hashable, Sendable {
     let destinationCurrency: String
     let buy: Decimal?
     let sell: Decimal?
+    let feeFixed: Decimal?
+    let feePercent: Decimal?
     let updatedAt: Date
     let sourceTimestamp: Date
     let version: Int
@@ -17,4 +19,3 @@ struct Rate: Codable, Identifiable, Hashable, Sendable {
         locale.language.languageCode?.identifier == "ar" ? routeNameArabic : routeNameEnglish
     }
 }
-

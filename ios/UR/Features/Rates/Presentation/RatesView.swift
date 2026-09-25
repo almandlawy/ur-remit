@@ -28,6 +28,9 @@ struct RatesView: View {
                             Text("\(rate.sourceCurrency) / \(rate.destinationCurrency)").font(.caption).foregroundStyle(.secondary)
                             if let buy = rate.buy { LabeledContent("شراء", value: buy.formatted()) }
                             if let sell = rate.sell { LabeledContent("بيع", value: sell.formatted()) }
+                            if let fee = rate.feeFixed {
+                                LabeledContent("الفارق / العمولة", value: "\(fee >= 0 ? "+" : "")\(fee.formatted()) USD")
+                            }
                         }.listRowSeparator(.hidden)
                     }
                 }.listStyle(.plain).refreshable { await model.load() }
