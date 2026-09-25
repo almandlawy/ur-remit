@@ -15,8 +15,10 @@ targets:
     platform: iOS
     sources:
       - path: UR
-    resources:
       - path: Resources
+        excludes:
+          - Info.plist
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.urremit.mobile

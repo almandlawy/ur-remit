@@ -10,7 +10,9 @@
 		1B9E5653E2F5342B40FCB34E /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37EFB72B68736CCF1D021589 /* APIClient.swift */; };
 		2A37E0F76CB93A624C20245C /* CalculatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86D9A82CE56351874727A791 /* CalculatorView.swift */; };
 		2BACBAA03445AA05C8CDBE09 /* RatesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44458181F01A4278D6DAB85B /* RatesViewModel.swift */; };
+		3F6CA866941267A8DB2919F8 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = AF7C8E9D12D5043E7598CBDF /* Localizable.strings */; };
 		4B5E17F9B719C78B1A14F93C /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10AE76AC5E559DA98159CD24 /* MoreView.swift */; };
+		571506A680F6DDA3883926F0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 673C0DF216A55E9EC898CAB5 /* Assets.xcassets */; };
 		5765518353D6A2C880AC76E7 /* TrackingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 935E7FDFC28A0D554F80AE53 /* TrackingView.swift */; };
 		60ABE0B91A8366A26FDDEF27 /* PublicModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74CC08056F06B058D31A3953 /* PublicModels.swift */; };
 		7D932515278C41107C786D9C /* RatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90FF8E23FCEFFE761B6BBDF7 /* RatesView.swift */; };
@@ -18,6 +20,7 @@
 		8F492CBE0DF02021DCC1559E /* FileRatesCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBD6D7FF0233D61CA3D001B5 /* FileRatesCache.swift */; };
 		AE69A7F42100D8670786DB56 /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 280667B7F029B5EFE2484D3E /* AppContainer.swift */; };
 		B95F008D6F5138A408D43586 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92361D0BABF7531EF45E4CA5 /* HomeView.swift */; };
+		BC1D49AA513859D2303AA8D7 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 982003CA002FFAFC6640E6CA /* PrivacyInfo.xcprivacy */; };
 		C17165212B6272A332F6C2BF /* Rate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98A47F3F61803B8D2F2B7BC6 /* Rate.swift */; };
 		C76146AB0A3917B9B6F2D977 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D68719E48D78EA257F78893B /* RootView.swift */; };
 		D829F09FEB7BAAEADDCF982A /* RatesRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1E6D4F7A7F9D87256F187C /* RatesRepository.swift */; };
@@ -41,17 +44,21 @@
 		280667B7F029B5EFE2484D3E /* AppContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContainer.swift; sourceTree = "<group>"; };
 		37EFB72B68736CCF1D021589 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		44458181F01A4278D6DAB85B /* RatesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatesViewModel.swift; sourceTree = "<group>"; };
+		673C0DF216A55E9EC898CAB5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		69977AFBB6CCADE019FA80EB /* URRemitApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URRemitApp.swift; sourceTree = "<group>"; };
 		74CC08056F06B058D31A3953 /* PublicModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublicModels.swift; sourceTree = "<group>"; };
 		86D9A82CE56351874727A791 /* CalculatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalculatorView.swift; sourceTree = "<group>"; };
 		90FF8E23FCEFFE761B6BBDF7 /* RatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatesView.swift; sourceTree = "<group>"; };
 		92361D0BABF7531EF45E4CA5 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		935E7FDFC28A0D554F80AE53 /* TrackingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackingView.swift; sourceTree = "<group>"; };
+		95B4792C0B4BFB4638DF1AC0 /* ar */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ar; path = ar.lproj/Localizable.strings; sourceTree = "<group>"; };
+		982003CA002FFAFC6640E6CA /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		98A47F3F61803B8D2F2B7BC6 /* Rate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rate.swift; sourceTree = "<group>"; };
 		A47C464A4E5B6AE18337C874 /* RateCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateCacheTests.swift; sourceTree = "<group>"; };
 		AC1E6D4F7A7F9D87256F187C /* RatesRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatesRepository.swift; sourceTree = "<group>"; };
 		B4CEC5F540A617AA9F5BE0FF /* URRemitTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = URRemitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BBD6D7FF0233D61CA3D001B5 /* FileRatesCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileRatesCache.swift; sourceTree = "<group>"; };
+		CF235AA22A2234FB50546305 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		D68719E48D78EA257F78893B /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		E7D97FEB1BF2F19BD085A93B /* URTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URTheme.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -79,6 +86,16 @@
 				86D9A82CE56351874727A791 /* CalculatorView.swift */,
 			);
 			path = Calculator;
+			sourceTree = "<group>";
+		};
+		2CF7A185E5E89ABE36E97569 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				673C0DF216A55E9EC898CAB5 /* Assets.xcassets */,
+				982003CA002FFAFC6640E6CA /* PrivacyInfo.xcprivacy */,
+				AF7C8E9D12D5043E7598CBDF /* Localizable.strings */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 		2DCAF42742E7658334473F59 /* Data */ = {
@@ -175,6 +192,7 @@
 		AE2B69B9B88665EC1AFAA015 = {
 			isa = PBXGroup;
 			children = (
+				2CF7A185E5E89ABE36E97569 /* Resources */,
 				812B2896AB2829A39EAD4652 /* Tests */,
 				D411E299587788D35A8114D0 /* UR */,
 				2EE485F612DD2509A6CAC7A1 /* Products */,
@@ -225,6 +243,7 @@
 			buildConfigurationList = 7E525E98DFDB47D1FFD2C1F7 /* Build configuration list for PBXNativeTarget "URRemit" */;
 			buildPhases = (
 				2A425BDAE2CB4A040FDE7208 /* Sources */,
+				989E7E5ADE3CD800D9D50CD4 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -278,6 +297,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				Base,
+				ar,
 				en,
 			);
 			mainGroup = AE2B69B9B88665EC1AFAA015;
@@ -292,6 +312,19 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		989E7E5ADE3CD800D9D50CD4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				571506A680F6DDA3883926F0 /* Assets.xcassets in Resources */,
+				3F6CA866941267A8DB2919F8 /* Localizable.strings in Resources */,
+				BC1D49AA513859D2303AA8D7 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		2A425BDAE2CB4A040FDE7208 /* Sources */ = {
@@ -333,6 +366,18 @@
 			targetProxy = CD005D18D4A44360D4532A14 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		AF7C8E9D12D5043E7598CBDF /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				95B4792C0B4BFB4638DF1AC0 /* ar */,
+				CF235AA22A2234FB50546305 /* en */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		6AE9983B326F8A053AF3127E /* Release */ = {
@@ -408,7 +453,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.urremit.mobile;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -492,7 +537,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.urremit.mobile;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
