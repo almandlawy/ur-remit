@@ -1,0 +1,13 @@
+"app_name" = "UR Global Remittances";
+"home" = "Home";
+"rates" = "Rates";
+"calculator" = "Calculator";
+"tracking" = "Tracking";
+"more" = "More";
+"information_only_title" = "Information and tracking only";
+"information_only_body" = "This app does not initiate transfers or process payments or payouts. Transactions take place outside the app through authorized UR channels.";
+"retry" = "Try again";
+"last_updated" = "Last updated";
+"offline_notice" = "You are viewing the last saved data";
+"no_rates" = "No rates are currently available";
+
