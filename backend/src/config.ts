@@ -6,6 +6,7 @@ const schema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(8080),
   DATABASE_URL: z.string().url(),
   LOOKUP_HASH_KEY: z.string().min(32),
+  ADMIN_SESSION_HASH_KEY: z.string().min(32),
   TRUST_PROXY: z.enum(["true", "false"]).default("false").transform((v) => v === "true")
 });
 

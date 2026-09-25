@@ -54,3 +54,18 @@ The first migration, safe configuration parser, security middleware, versioned h
 - No seed rates, offices, agents, or transfers were introduced.
 
 Verification: strict TypeScript build passed; public API test suite passed 9/9. A live PostgreSQL integration test remains pending because no database service or production credentials are present in this workspace.
+
+## Phase 4 — administration
+
+**IN PROGRESS**
+
+### 2026-09-24 admin API foundation
+
+- Added a separate `/api/v1/admin` route boundary.
+- Added short-lived server-side admin session records; only keyed token fingerprints are stored, and sessions must record completed MFA.
+- Added permission enforcement for dashboard reads and rate writes.
+- Added database dashboard metrics.
+- Rate changes run in one PostgreSQL transaction: lock current rate, preserve it, insert a new immutable version, append rate history, and append an audit event.
+- Monetary values are accepted as validated decimal strings, never JavaScript floating-point numbers.
+
+Verification: admin and public API suites pass 14/14. Admin login/MFA issuance and the responsive web dashboard remain to be implemented before this phase can be marked complete.

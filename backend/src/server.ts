@@ -4,9 +4,12 @@ import rateLimit from "@fastify/rate-limit";
 import { loadConfig, type AppConfig } from "./config.js";
 import { registerPublicRoutes } from "./public-routes.js";
 import { PostgresPublicStore, type PublicStore } from "./store.js";
+import { registerAdminRoutes } from "./admin-routes.js";
+import { PostgresAdminStore, type AdminStore } from "./admin-store.js";
 
-export async function buildServer(config: AppConfig, suppliedStore?: PublicStore) {
+export async function buildServer(config: AppConfig, suppliedStore?: PublicStore, suppliedAdminStore?: AdminStore) {
   const store = suppliedStore ?? new PostgresPublicStore(config.DATABASE_URL);
+  const adminStore = suppliedAdminStore ?? new PostgresAdminStore(config.DATABASE_URL);
   const app = Fastify({
     logger: {
       level: config.NODE_ENV === "production" ? "info" : "debug",
@@ -30,7 +33,9 @@ export async function buildServer(config: AppConfig, suppliedStore?: PublicStore
   });
 
   await registerPublicRoutes(app, store, config.LOOKUP_HASH_KEY);
+  await registerAdminRoutes(app, adminStore, config.ADMIN_SESSION_HASH_KEY);
   app.addHook("onClose", async () => store.close());
+  app.addHook("onClose", async () => adminStore.close());
 
   app.setNotFoundHandler((request, reply) => reply.code(404).send({
     requestId: request.id,
