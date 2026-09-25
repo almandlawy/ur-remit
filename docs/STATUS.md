@@ -26,5 +26,21 @@ Do not scrape the website or pretend existing pages are a mobile API. Introduce 
 
 ## Phase 2 — architecture
 
-In progress. See `ARCHITECTURE.md` and `API.md`.
+**DONE — 2026-09-24**
 
+- System boundaries, environment isolation, public/admin API separation, Clean Architecture mobile layers, security posture, and canonical API contract are documented in `ARCHITECTURE.md`, `API.md`, and `SECURITY.md`.
+- Native iOS project generated with bundle identifier `com.urremit.mobile`, iOS 17 deployment target, Arabic-first localization, English localization, dependency injection, async network client, repository boundary, and protected offline rate cache.
+- PostgreSQL initial migration defines rates, routes, countries, cities, offices, agents, public transfer status, announcements, remote config, push tokens, RBAC, audit logs, and security events.
+
+### Verification
+
+- iOS unsigned Simulator-target compile: **passed** (`BUILD SUCCEEDED`).
+- Backend unit/API tests: **2 passed**.
+- Backend strict TypeScript build: **passed**.
+- Simulator runtime/UI execution: not yet verified because CoreSimulatorService is unavailable to this sandboxed task.
+
+## Phase 3 — database and API
+
+**IN PROGRESS**
+
+The first migration, safe configuration parser, security middleware, versioned health endpoint, remote app-config endpoint, stable 404 envelope, redacted logs, and API tests exist. Database-backed rates/offices/agents/tracking endpoints and deployment are not yet complete.
