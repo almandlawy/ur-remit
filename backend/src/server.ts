@@ -2,8 +2,11 @@ import Fastify from "fastify";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import { loadConfig, type AppConfig } from "./config.js";
+import { registerPublicRoutes } from "./public-routes.js";
+import { PostgresPublicStore, type PublicStore } from "./store.js";
 
-export async function buildServer(config: AppConfig) {
+export async function buildServer(config: AppConfig, suppliedStore?: PublicStore) {
+  const store = suppliedStore ?? new PostgresPublicStore(config.DATABASE_URL);
   const app = Fastify({
     logger: {
       level: config.NODE_ENV === "production" ? "info" : "debug",
@@ -16,29 +19,18 @@ export async function buildServer(config: AppConfig) {
   await app.register(helmet, { global: true });
   await app.register(rateLimit, { max: 120, timeWindow: "1 minute" });
 
-  app.get("/api/v1/health", async (request) => ({
-    status: "ok",
-    service: "ur-public-api",
-    version: "0.1.0",
-    requestId: request.id,
-    timestamp: new Date().toISOString()
-  }));
+  app.get("/api/v1/health", async (request, reply) => {
+    const database = await store.health().catch(() => false);
+    if (!database) reply.code(503);
+    return {
+      status: database ? "ok" : "degraded", service: "ur-public-api", version: "0.1.0",
+      requestId: request.id, timestamp: new Date().toISOString(),
+      dependencies: { database: database ? "ok" : "unavailable" }
+    };
+  });
 
-  app.get("/api/v1/mobile/app-config", async (request) => ({
-    requestId: request.id,
-    data: {
-      maintenanceMode: false,
-      minimumSupportedVersion: "1.0.0",
-      latestVersion: "1.0.0",
-      featureFlags: {
-        priceAlerts: false,
-        officeQR: false,
-        map: true,
-        tracking: true,
-        calculator: true
-      }
-    }
-  }));
+  await registerPublicRoutes(app, store, config.LOOKUP_HASH_KEY);
+  app.addHook("onClose", async () => store.close());
 
   app.setNotFoundHandler((request, reply) => reply.code(404).send({
     requestId: request.id,
@@ -61,4 +53,3 @@ if (process.env.NODE_ENV !== "test") {
   const app = await buildServer(config);
   await app.listen({ host: config.HOST, port: config.PORT });
 }
-

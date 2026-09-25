@@ -44,3 +44,13 @@ Do not scrape the website or pretend existing pages are a mobile API. Introduce 
 **IN PROGRESS**
 
 The first migration, safe configuration parser, security middleware, versioned health endpoint, remote app-config endpoint, stable 404 envelope, redacted logs, and API tests exist. Database-backed rates/offices/agents/tracking endpoints and deployment are not yet complete.
+
+### 2026-09-24 implementation increment
+
+- Added a pooled PostgreSQL data store with bounded connection settings and TLS verification in production.
+- Added database-backed rates, rate detail/history, countries, cities, routes, verified offices, public app config, and published notices.
+- Added privacy-minimized agent verification and transfer tracking. Lookups use keyed HMAC blind indexes so raw agent codes, phones, and references are not stored as searchable plaintext.
+- Added strict input validation, endpoint-specific throttles, generic tracking misses, and database-aware degraded health responses.
+- No seed rates, offices, agents, or transfers were introduced.
+
+Verification: strict TypeScript build passed; public API test suite passed 9/9. A live PostgreSQL integration test remains pending because no database service or production credentials are present in this workspace.
