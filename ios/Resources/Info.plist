@@ -23,6 +23,7 @@
     <string>UIInterfaceOrientationLandscapeRight</string>
   </array>
   <key>NSAppTransportSecurity</key><dict><key>NSAllowsArbitraryLoads</key><false/></dict>
+  <key>ITSAppUsesNonExemptEncryption</key><false/>
   <key>CFBundleURLTypes</key><array><dict><key>CFBundleURLSchemes</key><array><string>urremit</string></array></dict></array>
 </dict>
 </plist>
