@@ -24,6 +24,8 @@
   </array>
   <key>NSAppTransportSecurity</key><dict><key>NSAllowsArbitraryLoads</key><false/></dict>
   <key>ITSAppUsesNonExemptEncryption</key><false/>
+  <key>SUPABASE_URL</key><string>https://yqvcoomjunwokyxwofvt.supabase.co</string>
+  <key>SUPABASE_PUBLISHABLE_KEY</key><string>sb_publishable_VncbkulRxDxb1bPfGUDxAg_941D7He-</string>
   <key>CFBundleURLTypes</key><array><dict><key>CFBundleURLSchemes</key><array><string>urremit</string></array></dict></array>
 </dict>
 </plist>

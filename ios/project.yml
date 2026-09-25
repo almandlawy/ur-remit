@@ -18,12 +18,14 @@ targets:
       - path: Resources
         excludes:
           - Info.plist
+          - URRemit.entitlements
         buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.urremit.mobile
         TARGETED_DEVICE_FAMILY: "1"
         INFOPLIST_FILE: Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Resources/URRemit.entitlements
         CODE_SIGN_STYLE: Automatic
         GENERATE_INFOPLIST_FILE: false
     scheme:
@@ -39,3 +41,4 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.urremit.mobile.tests
+        GENERATE_INFOPLIST_FILE: true

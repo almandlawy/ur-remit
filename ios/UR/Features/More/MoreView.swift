@@ -2,8 +2,16 @@ import SwiftUI
 
 struct MoreView: View {
     let api: any APIClient
+    @EnvironmentObject private var auth: URAuthService
     var body: some View {
         List {
+            Section {
+                NavigationLink { AccountView() } label: {
+                    Label(auth.isAuthenticated ? "حسابي" : "تسجيل الدخول الاختياري", systemImage: "person.crop.circle")
+                }
+            } footer: {
+                Text("لا تحتاج إلى حساب لاستخدام الأسعار أو الحاسبة أو التتبع أو المكاتب.")
+            }
             Section {
                 NavigationLink { OfficesView(api: api) } label: { Label("المكاتب", systemImage: "building.2") }
                 NavigationLink { AgentVerificationView(api: api) } label: { Label("تحقق من وكيل", systemImage: "checkmark.shield") }
