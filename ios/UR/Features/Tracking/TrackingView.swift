@@ -7,29 +7,78 @@ struct TrackingView: View {
 
     var body: some View {
         Form {
-            Section("رقم الحوالة") {
-                TextField("UR-XXXXXXXX", text: $reference).textInputAutocapitalization(.characters).autocorrectionDisabled()
-                Button(loading ? "جارٍ التحقق…" : "تتبع الحوالة") { Task { await track() } }.disabled(loading || !validReference)
-            }
-            if let result {
-                Section("الحالة") {
-                    Label(statusLabel(result.status), systemImage: statusSymbol(result.status)).font(.headline)
-                    LabeledContent("من", value: result.origin); LabeledContent("إلى", value: result.destination)
-                    LabeledContent("آخر تحديث", value: result.lastUpdate.formatted(date: .abbreviated, time: .shortened))
-                    if result.status == "HELD" { Text("الحوالة قيد المراجعة. يرجى التواصل مع الدعم إذا استمرت الحالة.") }
+            Section("transfer_reference") {
+                TextField("reference_placeholder", text: $reference)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .accessibilityLabel(Text("transfer_reference"))
+                Button {
+                    Task { await track() }
+                } label: {
+                    if loading {
+                        ProgressView("checking_transfer")
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Text("track_transfer")
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .disabled(loading || !validReference)
+                if !reference.isEmpty && !validReference {
+                    Text("invalid_reference")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
             }
-            if !message.isEmpty { Text(message).foregroundStyle(.secondary).accessibilityLabel(message) }
-            Section { Text("لا تشارك رقم التتبع أو رمز الاستلام مع أي شخص غير مخول.").font(.footnote) }
+            if let result {
+                Section("transfer_status") {
+                    Label {
+                        statusLabel(result.status).font(.headline)
+                    } icon: {
+                        Image(systemName: statusSymbol(result.status))
+                    }
+                    LabeledContent("origin", value: result.origin)
+                    LabeledContent("destination", value: result.destination)
+                    LabeledContent("last_updated", value: result.lastUpdate.formatted(date: .abbreviated, time: .shortened))
+                    if let estimatedCompletion = result.estimatedCompletion {
+                        LabeledContent("estimated_completion", value: estimatedCompletion.formatted(date: .abbreviated, time: .shortened))
+                    }
+                    if result.status == "HELD" {
+                        Text("transfer_held_notice")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            if !message.isEmpty {
+                Section { Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(.secondary) }
+            }
+            Section { Text("tracking_security_notice").font(.footnote) }
         }.navigationTitle("tracking")
     }
 
-    private var validReference: Bool { reference.uppercased().range(of: #"^UR-[A-Z0-9]{8}$"#, options: .regularExpression) != nil }
+    private var normalizedReference: String { reference.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
+    private var validReference: Bool { normalizedReference.range(of: #"^UR-[A-Z0-9]{8}$"#, options: .regularExpression) != nil }
+
     private func track() async {
         loading = true; message = ""; result = nil; defer { loading = false }
-        do { result = try await api.track(reference: reference.uppercased()) }
-        catch { message = "تعذر العثور على معلومات التتبع أو الاتصال بالخدمة." }
+        do { result = try await api.track(reference: normalizedReference) }
+        catch is CancellationError { return }
+        catch { message = String(localized: "tracking_lookup_failed") }
     }
-    private func statusLabel(_ value: String) -> String { ["ISSUED":"تم الإصدار","ASSIGNED":"تم التعيين","READY_FOR_PICKUP":"جاهزة للاستلام","COMPLETED":"مكتملة","CANCELLED":"ملغاة","REFUNDED":"مستردة","HELD":"قيد المراجعة"][value] ?? value }
+
+    private func statusLabel(_ value: String) -> Text {
+        switch value {
+        case "ISSUED": Text("status_issued")
+        case "ASSIGNED": Text("status_assigned")
+        case "READY_FOR_PICKUP": Text("status_ready")
+        case "COMPLETED": Text("status_completed")
+        case "CANCELLED": Text("status_cancelled")
+        case "REFUNDED": Text("status_refunded")
+        case "HELD": Text("status_held")
+        default: Text(value)
+        }
+    }
+
     private func statusSymbol(_ value: String) -> String { value == "COMPLETED" ? "checkmark.seal.fill" : value == "HELD" ? "exclamationmark.shield.fill" : "clock.badge.checkmark" }
 }

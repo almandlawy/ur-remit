@@ -7,13 +7,49 @@ import UIKit
 private struct URAuthSession: Codable {
     let accessToken: String
     let refreshToken: String
+    let expiresAt: TimeInterval?
+
+    init(accessToken: String, refreshToken: String, expiresAt: TimeInterval? = nil) {
+        self.accessToken = accessToken
+        self.refreshToken = refreshToken
+        self.expiresAt = expiresAt
+    }
+
     enum CodingKeys: String, CodingKey {
         case accessToken = "access_token"
         case refreshToken = "refresh_token"
+        case expiresAt = "expires_at"
     }
 }
 
 private struct URAuthUser: Decodable { let email: String? }
+
+struct SupabaseOAuthCallback {
+    let code: String?
+    let accessToken: String?
+    let refreshToken: String?
+    let hasError: Bool
+
+    static func parse(_ url: URL) -> SupabaseOAuthCallback? {
+        guard url.scheme?.lowercased() == "urremit",
+              url.host?.lowercased() == "auth",
+              url.path == "/callback",
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
+
+        let items = (components.queryItems ?? [])
+            + (URLComponents(string: "?" + (components.fragment ?? ""))?.queryItems ?? [])
+        func value(for name: String) -> String? {
+            items.first(where: { $0.name == name })?.value.flatMap { $0.isEmpty ? nil : $0 }
+        }
+
+        return SupabaseOAuthCallback(
+            code: value(for: "code"),
+            accessToken: value(for: "access_token"),
+            refreshToken: value(for: "refresh_token"),
+            hasError: value(for: "error") != nil || value(for: "error_description") != nil
+        )
+    }
+}
 
 @MainActor
 final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresentationContextProviding {
@@ -21,7 +57,7 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
 
     @Published private(set) var isAuthenticated = false
     @Published private(set) var email: String?
-    @Published private(set) var isLoading = false
+    @Published private(set) var isLoading = true
     @Published var message: String?
 
     private let projectURL: URL
@@ -49,7 +85,7 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
         guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
               let tokenData = credential.identityToken,
               let token = String(data: tokenData, encoding: .utf8) else {
-            message = "تعذر قراءة بيانات Apple. حاول مرة أخرى."
+            message = String(localized: "apple_token_read_failed")
             return
         }
         await perform {
@@ -63,29 +99,67 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
     }
 
     func signInWithGoogle() async {
-        guard var components = URLComponents(url: projectURL.appending(path: "auth/v1/authorize"), resolvingAgainstBaseURL: false) else { return }
-        components.queryItems = [.init(name: "provider", value: "google"), .init(name: "redirect_to", value: "urremit://auth/callback")]
-        guard let url = components.url else { return }
-
         isLoading = true
         message = nil
-        let result = await withCheckedContinuation { continuation in
-            webSession = ASWebAuthenticationSession(url: url, callbackURLScheme: "urremit") { callback, error in
-                continuation.resume(returning: (callback, error))
-            }
-            webSession?.presentationContextProvider = self
-            webSession?.prefersEphemeralWebBrowserSession = true
-            webSession?.start()
-        }
         defer { isLoading = false; webSession = nil }
-        guard result.1 == nil, let callback = result.0, let authSession = Self.session(from: callback) else {
-            if (result.1 as? ASWebAuthenticationSessionError)?.code != .canceledLogin { message = "لم يكتمل تسجيل الدخول بواسطة Google." }
+
+        let verifier = Self.randomNonce(length: 64)
+        guard var components = URLComponents(url: projectURL.appending(path: "auth/v1/authorize"), resolvingAgainstBaseURL: false) else {
+            message = String(localized: "google_sign_in_start_failed")
             return
         }
+        components.queryItems = [
+            .init(name: "provider", value: "google"),
+            .init(name: "redirect_to", value: "urremit://auth/callback"),
+            .init(name: "code_challenge", value: Self.pkceChallenge(verifier)),
+            .init(name: "code_challenge_method", value: "S256")
+        ]
+        guard let url = components.url else {
+            message = String(localized: "google_sign_in_start_failed")
+            return
+        }
+
         do {
+            let callback = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<URL, Error>) in
+                let session = ASWebAuthenticationSession(url: url, callbackURLScheme: "urremit") { callback, error in
+                    if let error {
+                        continuation.resume(throwing: error)
+                    } else if let callback {
+                        continuation.resume(returning: callback)
+                    } else {
+                        continuation.resume(throwing: URAuthError.invalidCallback)
+                    }
+                }
+                webSession = session
+                session.presentationContextProvider = self
+                session.prefersEphemeralWebBrowserSession = true
+                guard session.start() else {
+                    continuation.resume(throwing: URAuthError.authenticationUnavailable)
+                    return
+                }
+            }
+
+            guard let parsed = SupabaseOAuthCallback.parse(callback), !parsed.hasError else {
+                throw URAuthError.invalidCallback
+            }
+            let authSession: URAuthSession
+            if let code = parsed.code {
+                let endpoint = projectURL.appending(path: "auth/v1/token")
+                    .appending(queryItems: [.init(name: "grant_type", value: "pkce")])
+                let body = try JSONSerialization.data(withJSONObject: ["auth_code": code, "code_verifier": verifier])
+                authSession = try await request(endpoint, method: "POST", body: body)
+            } else if let accessToken = parsed.accessToken, let refreshToken = parsed.refreshToken {
+                authSession = URAuthSession(accessToken: accessToken, refreshToken: refreshToken)
+            } else {
+                throw URAuthError.invalidCallback
+            }
             try save(authSession)
             try await loadUser(using: authSession)
-        } catch { message = "تعذر حفظ جلسة الدخول بأمان." }
+        } catch {
+            if (error as? ASWebAuthenticationSessionError)?.code != .canceledLogin {
+                message = String(localized: "google_sign_in_failed")
+            }
+        }
     }
 
     func signOut() async {
@@ -102,11 +176,15 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
     }
 
     func handle(url: URL) {
-        guard let authSession = Self.session(from: url) else { return }
+        guard let callback = SupabaseOAuthCallback.parse(url),
+              let accessToken = callback.accessToken,
+              let refreshToken = callback.refreshToken,
+              !callback.hasError else { return }
+        let authSession = URAuthSession(accessToken: accessToken, refreshToken: refreshToken)
         do {
             try save(authSession)
             Task { try? await loadUser(using: authSession) }
-        } catch { message = "تعذر حفظ جلسة الدخول بأمان." }
+        } catch { message = String(localized: "secure_session_save_failed") }
     }
 
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
@@ -115,15 +193,52 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
     }
 
     private func restoreSession() async {
+        defer { isLoading = false }
         guard let authSession = try? load() else { return }
-        do { try await loadUser(using: authSession) } catch { deleteSession() }
+        do {
+            try await loadUser(using: authSession)
+        } catch URAuthError.unauthorized {
+            deleteSession()
+        } catch {
+            message = String(localized: "session_restore_failed")
+        }
     }
 
     private func loadUser(using authSession: URAuthSession) async throws {
-        let user: URAuthUser = try await request(projectURL.appending(path: "auth/v1/user"), bearer: authSession.accessToken)
+        var activeSession = try await sessionWithValidAccessToken(authSession)
+        let user: URAuthUser
+        do {
+            user = try await request(projectURL.appending(path: "auth/v1/user"), bearer: activeSession.accessToken)
+        } catch let error as URAuthError {
+            guard case .httpStatus(401) = error else { throw error }
+            activeSession = try await refreshSession(authSession)
+            user = try await request(projectURL.appending(path: "auth/v1/user"), bearer: activeSession.accessToken)
+        }
         isAuthenticated = true
         email = user.email
         message = nil
+    }
+
+    private func sessionWithValidAccessToken(_ authSession: URAuthSession) async throws -> URAuthSession {
+        guard let expiresAt = authSession.expiresAt,
+              expiresAt <= Date().addingTimeInterval(30).timeIntervalSince1970 else { return authSession }
+        return try await refreshSession(authSession)
+    }
+
+    private func refreshSession(_ authSession: URAuthSession) async throws -> URAuthSession {
+        let endpoint = projectURL.appending(path: "auth/v1/token")
+            .appending(queryItems: [.init(name: "grant_type", value: "refresh_token")])
+        let body = try JSONSerialization.data(withJSONObject: ["refresh_token": authSession.refreshToken])
+        let refreshed: URAuthSession
+        do {
+            refreshed = try await request(endpoint, method: "POST", body: body)
+        } catch let error as URAuthError {
+            if case .httpStatus(400) = error { throw URAuthError.unauthorized }
+            if case .httpStatus(401) = error { throw URAuthError.unauthorized }
+            throw error
+        }
+        try save(refreshed)
+        return refreshed
     }
 
     private func request<T: Decodable>(_ url: URL, method: String = "GET", body: Data? = nil, bearer: String? = nil) async throws -> T {
@@ -135,7 +250,8 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let bearer { urlRequest.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization") }
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
-        guard let http = response as? HTTPURLResponse, 200..<300 ~= http.statusCode else { throw URAuthError.requestFailed }
+        guard let http = response as? HTTPURLResponse else { throw URAuthError.requestFailed }
+        guard 200..<300 ~= http.statusCode else { throw URAuthError.httpStatus(http.statusCode) }
         return try JSONDecoder().decode(T.self, from: data)
     }
 
@@ -143,7 +259,7 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
         isLoading = true
         message = nil
         defer { isLoading = false }
-        do { try await operation() } catch { message = "تعذر إكمال تسجيل الدخول الآن. حاول لاحقاً." }
+        do { try await operation() } catch { message = String(localized: "sign_in_failed") }
     }
 
     private func save(_ value: URAuthSession) throws {
@@ -174,12 +290,13 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
         SHA256.hash(data: Data(input.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
-    private static func session(from url: URL) -> URAuthSession? {
-        guard let fragment = URLComponents(string: "?" + (url.fragment ?? "")) else { return nil }
-        let values = Dictionary(uniqueKeysWithValues: (fragment.queryItems ?? []).compactMap { item in item.value.map { (item.name, $0) } })
-        guard let access = values["access_token"], let refresh = values["refresh_token"] else { return nil }
-        return URAuthSession(accessToken: access, refreshToken: refresh)
+    private static func pkceChallenge(_ verifier: String) -> String {
+        Data(SHA256.hash(data: Data(verifier.utf8)))
+            .base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
     }
 }
 
-private enum URAuthError: Error { case requestFailed, keychain }
+private enum URAuthError: Error { case requestFailed, unauthorized, httpStatus(Int), keychain, invalidCallback, authenticationUnavailable }

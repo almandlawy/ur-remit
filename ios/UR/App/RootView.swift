@@ -49,7 +49,7 @@ private struct URBottomNavigation: View {
                         Image(systemName: tab.symbol)
                             .font(.system(size: 18, weight: .semibold))
                         Text(tab.title)
-                            .font(.caption2.weight(.semibold))
+                            .font(.caption.weight(.semibold))
                             .lineLimit(1)
                     }
                     .foregroundStyle(selection == tab ? URColor.royalBlue : .secondary)
@@ -57,6 +57,7 @@ private struct URBottomNavigation: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(tab.title)
                 .accessibilityAddTraits(selection == tab ? .isSelected : [])
             }
         }

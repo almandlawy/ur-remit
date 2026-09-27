@@ -17,6 +17,7 @@ struct APIConfiguration: Sendable {
 
 enum NetworkError: Error, Equatable {
     case invalidResponse
+    case invalidInput
     case httpStatus(Int)
     case decoding
     case transport
@@ -48,7 +49,11 @@ actor URLSessionAPIClient: APIClient {
     func offices() async throws -> [Office] { try await get("offices", as: [Office].self) }
 
     func track(reference: String) async throws -> TransferTracking {
-        try await get("transfers/\(reference)/status", as: TransferTracking.self)
+        let normalizedReference = reference.uppercased()
+        guard normalizedReference.range(of: #"^UR-[A-Z0-9]{8}$"#, options: .regularExpression) != nil else {
+            throw NetworkError.invalidInput
+        }
+        return try await get("transfers/\(normalizedReference)/status", as: TransferTracking.self)
     }
 
     func verifyAgent(code: String) async throws -> AgentVerification {

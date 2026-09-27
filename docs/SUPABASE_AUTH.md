@@ -26,7 +26,7 @@ The app sends an SHA-256 nonce with the native Apple request and exchanges the r
 3. Add `urremit.com` and the Supabase project domain as authorized domains where required.
 4. Enter the Google client ID and client secret in Supabase Authentication > Providers > Google, then enable it.
 
-The iOS callback returns to `urremit://auth/callback` and the resulting session is stored in the iOS Keychain.
+The iOS callback returns to `urremit://auth/callback`. The app uses the PKCE authorization-code flow, exchanges the one-time code with its in-memory verifier, and stores the resulting session in the iOS Keychain. Refreshable sessions are renewed when needed.
 
 ## Release gate
 
