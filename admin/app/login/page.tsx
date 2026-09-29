@@ -4,63 +4,68 @@ import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter(); const [error, setError] = useState(""); const [pending, startTransition] = useTransition();
-  const [mode, setMode] = useState<"login" | "recover">("login");
-  const [recoverMessage, setRecoverMessage] = useState("");
+  const [mode, setMode] = useState<"login" | "forgot" | "sent">("login");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(""); const data = new FormData(event.currentTarget);
-    const response = await fetch("/api/session", { method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: data.get("email"), password: data.get("password") }) });
-    if (response.status === 503) {
-      setError("تعذر الوصول إلى Supabase حالياً. تحقّق من إعداد SUPABASE_URL و SUPABASE_PUBLISHABLE_KEY على الخادم، أو من اتصال الإنترنت.");
-      return;
+    try {
+      const response = await fetch("/api/session", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: data.get("email"), password: data.get("password") }) });
+      if (!response.ok) { setError(response.status === 401 ? "البريد الإلكتروني أو كلمة المرور غير صحيحة." : "تعذّر تسجيل الدخول."); return; }
+      startTransition(() => { router.replace("/dashboard"); router.refresh(); });
+    } catch {
+      setError("تعذّر الاتصال بالخدمة. حاول مجدداً.");
     }
-    if (response.status === 403) { setError("هذا الحساب غير مُدرَج كمسؤول (admin) في قاعدة البيانات."); return; }
-    if (response.status === 401) { setError("البريد أو كلمة المرور غير صحيحة."); return; }
-    if (!response.ok) { setError("تعذر تسجيل الدخول. تأكد من صحة البيانات المدخلة."); return; }
-    startTransition(() => { router.replace("/dashboard"); router.refresh(); });
   }
 
-  async function submitRecover(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setError(""); setRecoverMessage(""); const data = new FormData(event.currentTarget);
-    const response = await fetch("/api/session/recover", { method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: data.get("email") }) });
-    if (response.status === 503) {
-      setError("تعذر الوصول إلى Supabase حالياً. حاول لاحقاً أو تواصل مع فريق التقنية.");
-      return;
+  async function submitForgot(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setError(""); const data = new FormData(event.currentTarget);
+    try {
+      await fetch("/api/auth/forgot-password", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: data.get("email") }) });
+      // Always show the same confirmation, whether or not the address exists.
+      setMode("sent");
+    } catch {
+      setError("تعذّر الاتصال بالخدمة. حاول مجدداً.");
     }
-    if (!response.ok) { setError("تعذر إرسال رابط إعادة التعيين. تحقق من صحة البريد."); return; }
-    // Intentionally the same message whether the account exists or not — avoids revealing which
-    // emails are registered admins.
-    setRecoverMessage("إذا كان هذا البريد مرتبطاً بحساب إداري، فستصلك رسالة لإعادة تعيين كلمة المرور خلال دقائق.");
+  }
+
+  if (mode !== "login") {
+    return <main className="loginShell">
+      <section className="loginCard" aria-labelledby="login-title">
+        <div className="brandMark" aria-hidden="true">UR</div><p className="eyebrow">بوابة الإدارة الآمنة</p>
+        <h1 id="login-title">استعادة كلمة المرور</h1>
+        {mode === "sent" ? (
+          <>
+            <p className="muted">إذا كان البريد مسجّلاً كحساب إدارة، وصلته رسالة فيها رابط لتعيين كلمة مرور جديدة. افتح الرابط من بريدك على نفس الجهاز.</p>
+            <button className="secondaryButton" onClick={() => setMode("login")}>الرجوع لتسجيل الدخول</button>
+          </>
+        ) : (
+          <>
+            <p className="muted">اكتب بريدك الإلكتروني وسنرسل لك رابط تعيين كلمة مرور جديدة.</p>
+            <form onSubmit={submitForgot} className="formStack">
+              <label>البريد الإلكتروني<input name="email" type="email" autoComplete="username" required /></label>
+              {error ? <p className="error" role="alert">{error}</p> : null}
+              <button className="primaryButton" disabled={pending}>إرسال رابط الاستعادة</button>
+              <button type="button" className="secondaryButton" onClick={() => setMode("login")}>إلغاء</button>
+            </form>
+          </>
+        )}
+      </section>
+    </main>;
   }
 
   return <main className="loginShell">
     <section className="loginCard" aria-labelledby="login-title">
       <div className="brandMark" aria-hidden="true">UR</div><p className="eyebrow">بوابة الإدارة الآمنة</p>
-      <h1 id="login-title">إدارة عمليات أور</h1>
-      <p className="muted">{mode === "login" ? "دخول للمستخدمين المخولين." : "أدخل بريدك الإداري لإعادة تعيين كلمة المرور."}</p>
-      {mode === "login" ? (
-        <form onSubmit={submit} className="formStack">
-          <label>البريد الإداري<input name="email" type="email" autoComplete="username" required /></label>
-          <label>كلمة المرور<input name="password" type="password" autoComplete="current-password" required /></label>
-          {error ? <p className="error" role="alert">{error}</p> : null}
-          <button className="primaryButton" disabled={pending}>{pending ? "جارٍ الدخول…" : "دخول آمن"}</button>
-          <button type="button" className="linkButton" onClick={() => { setMode("recover"); setError(""); }}>
-            نسيت كلمة المرور؟
-          </button>
-        </form>
-      ) : (
-        <form onSubmit={submitRecover} className="formStack">
-          <label>البريد الإداري<input name="email" type="email" autoComplete="username" required /></label>
-          {error ? <p className="error" role="alert">{error}</p> : null}
-          {recoverMessage ? <p className="inlineMessage" role="status" aria-live="polite">{recoverMessage}</p> : null}
-          <button className="primaryButton" disabled={pending}>إرسال رابط إعادة التعيين</button>
-          <button type="button" className="linkButton" onClick={() => { setMode("login"); setError(""); setRecoverMessage(""); }}>
-            العودة لتسجيل الدخول
-          </button>
-        </form>
-      )}
+      <h1 id="login-title">إدارة عمليات أور</h1><p className="muted">غيّر أسعار الصرف وعمولة كل 10,000 دولار من مكان واحد.</p>
+      <form onSubmit={submit} className="formStack">
+        <label>البريد الإلكتروني<input name="email" type="email" autoComplete="username" required /></label>
+        <label>كلمة المرور<input name="password" type="password" minLength={8} autoComplete="current-password" required /></label>
+        {error ? <p className="error" role="alert">{error}</p> : null}
+        <button className="primaryButton" disabled={pending}>{pending ? "جارٍ الدخول…" : "دخول آمن"}</button>
+        <button type="button" className="secondaryButton" onClick={() => setMode("forgot")}>نسيت كلمة المرور؟</button>
+      </form>
     </section>
   </main>;
 }

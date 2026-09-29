@@ -7,14 +7,20 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		016F960F53B750A61BFD4F90 /* PriceAlertManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76A2DD1791B54C69970B13C5 /* PriceAlertManager.swift */; };
 		04E71357797BB3AC2B1CF4DA /* SupabaseRealtimeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FB979C9A9AF54DAEF2DBD10 /* SupabaseRealtimeClient.swift */; };
 		05FEA299372D9CD614FECBD9 /* AdminAPIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E40BF73DAA0A29AEDC4E8EF9 /* AdminAPIClientTests.swift */; };
 		066BED30C45AED73E67DCFEA /* AdminModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 781079947A4BC81173F265AA /* AdminModels.swift */; };
+		1B2519125497F8A87C40B686 /* PriceAlertSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 476D9E753B47FDEEB12CC41E /* PriceAlertSheet.swift */; };
 		1B9E5653E2F5342B40FCB34E /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37EFB72B68736CCF1D021589 /* APIClient.swift */; };
 		2A37E0F76CB93A624C20245C /* CalculatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86D9A82CE56351874727A791 /* CalculatorView.swift */; };
+		2AEA6DE3256625C79A161EAC /* URComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 704D324C198B290A60B8F477 /* URComponents.swift */; };
 		2BACBAA03445AA05C8CDBE09 /* RatesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44458181F01A4278D6DAB85B /* RatesViewModel.swift */; };
+		379722BFA41CE7343D16261B /* DeleteAccountService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F1741163941B6EA342E7CB8 /* DeleteAccountService.swift */; };
+		3F11072E813176731FD3FD6B /* DeleteAccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 950AD5AAE2F5A1DEAE6AF726 /* DeleteAccountView.swift */; };
 		3F6CA866941267A8DB2919F8 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = AF7C8E9D12D5043E7598CBDF /* Localizable.strings */; };
 		4B5E17F9B719C78B1A14F93C /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10AE76AC5E559DA98159CD24 /* MoreView.swift */; };
+		4C9BE3C9CA19020AEECDC183 /* DailyReminderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35624C555087CBCE877CF95F /* DailyReminderView.swift */; };
 		5344237CA07FBA12D349817E /* AdminRatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11093E3B385DF5F1B130CAE /* AdminRatesView.swift */; };
 		571506A680F6DDA3883926F0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 673C0DF216A55E9EC898CAB5 /* Assets.xcassets */; };
 		5765518353D6A2C880AC76E7 /* TrackingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 935E7FDFC28A0D554F80AE53 /* TrackingView.swift */; };
@@ -30,10 +36,14 @@
 		B95F008D6F5138A408D43586 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92361D0BABF7531EF45E4CA5 /* HomeView.swift */; };
 		BC1D49AA513859D2303AA8D7 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 982003CA002FFAFC6640E6CA /* PrivacyInfo.xcprivacy */; };
 		C17165212B6272A332F6C2BF /* Rate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98A47F3F61803B8D2F2B7BC6 /* Rate.swift */; };
+		C1D0AE2C92F7AB8A32E53339 /* FavoritesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFA7CFA2F9BD54B831219301 /* FavoritesStore.swift */; };
 		C76146AB0A3917B9B6F2D977 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D68719E48D78EA257F78893B /* RootView.swift */; };
+		C8522921A79CAF04A2903799 /* DailyReminderManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2C7482F2FE8AB6DA4D9E3B3 /* DailyReminderManager.swift */; };
+		CE016FFE6282B375D68BE595 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22C8CF57EE2FAC5623F682F5 /* SplashView.swift */; };
 		D829F09FEB7BAAEADDCF982A /* RatesRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1E6D4F7A7F9D87256F187C /* RatesRepository.swift */; };
 		DA91AD9D8D85A442E4CF1E2C /* RateCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A47C464A4E5B6AE18337C874 /* RateCacheTests.swift */; };
 		DE35DAD0F74C7BBBAD3E6E79 /* URAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6623AA122B1508E97E4AE8E1 /* URAuthService.swift */; };
+		E3FD25BBFB09DC13290AFF60 /* AdminModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18743967701B8304E5C7F616 /* AdminModule.swift */; };
 		EDC2703267573881CCD270CD /* URRemitApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69977AFBB6CCADE019FA80EB /* URRemitApp.swift */; };
 		FBA26D3514DA613DCAC50BE0 /* AdminSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFFAB666F972E30FEFC84844 /* AdminSessionStore.swift */; };
 /* End PBXBuildFile section */
@@ -52,20 +62,28 @@
 		0004C43C0A31A6A8E69F12C5 /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
 		0C8D40B3DBD54C5596D36304 /* URRemit.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = URRemit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		10AE76AC5E559DA98159CD24 /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
+		18743967701B8304E5C7F616 /* AdminModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminModule.swift; sourceTree = "<group>"; };
+		22C8CF57EE2FAC5623F682F5 /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
 		280667B7F029B5EFE2484D3E /* AppContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContainer.swift; sourceTree = "<group>"; };
+		35624C555087CBCE877CF95F /* DailyReminderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyReminderView.swift; sourceTree = "<group>"; };
 		37EFB72B68736CCF1D021589 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		3F1741163941B6EA342E7CB8 /* DeleteAccountService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteAccountService.swift; sourceTree = "<group>"; };
 		44458181F01A4278D6DAB85B /* RatesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatesViewModel.swift; sourceTree = "<group>"; };
+		476D9E753B47FDEEB12CC41E /* PriceAlertSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceAlertSheet.swift; sourceTree = "<group>"; };
 		4C0B7F1AF98B3D103C05081B /* AdminLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminLoginView.swift; sourceTree = "<group>"; };
 		4FB979C9A9AF54DAEF2DBD10 /* SupabaseRealtimeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseRealtimeClient.swift; sourceTree = "<group>"; };
 		6623AA122B1508E97E4AE8E1 /* URAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URAuthService.swift; sourceTree = "<group>"; };
 		673C0DF216A55E9EC898CAB5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		69977AFBB6CCADE019FA80EB /* URRemitApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URRemitApp.swift; sourceTree = "<group>"; };
+		704D324C198B290A60B8F477 /* URComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URComponents.swift; sourceTree = "<group>"; };
 		74CC08056F06B058D31A3953 /* PublicModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublicModels.swift; sourceTree = "<group>"; };
+		76A2DD1791B54C69970B13C5 /* PriceAlertManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceAlertManager.swift; sourceTree = "<group>"; };
 		781079947A4BC81173F265AA /* AdminModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminModels.swift; sourceTree = "<group>"; };
 		86D9A82CE56351874727A791 /* CalculatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalculatorView.swift; sourceTree = "<group>"; };
 		90FF8E23FCEFFE761B6BBDF7 /* RatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatesView.swift; sourceTree = "<group>"; };
 		92361D0BABF7531EF45E4CA5 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		935E7FDFC28A0D554F80AE53 /* TrackingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackingView.swift; sourceTree = "<group>"; };
+		950AD5AAE2F5A1DEAE6AF726 /* DeleteAccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteAccountView.swift; sourceTree = "<group>"; };
 		95B4792C0B4BFB4638DF1AC0 /* ar */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ar; path = ar.lproj/Localizable.strings; sourceTree = "<group>"; };
 		982003CA002FFAFC6640E6CA /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		98A47F3F61803B8D2F2B7BC6 /* Rate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rate.swift; sourceTree = "<group>"; };
@@ -78,8 +96,10 @@
 		CF235AA22A2234FB50546305 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		D11093E3B385DF5F1B130CAE /* AdminRatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminRatesView.swift; sourceTree = "<group>"; };
 		D68719E48D78EA257F78893B /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		E2C7482F2FE8AB6DA4D9E3B3 /* DailyReminderManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyReminderManager.swift; sourceTree = "<group>"; };
 		E40BF73DAA0A29AEDC4E8EF9 /* AdminAPIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminAPIClientTests.swift; sourceTree = "<group>"; };
 		E7D97FEB1BF2F19BD085A93B /* URTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URTheme.swift; sourceTree = "<group>"; };
+		EFA7CFA2F9BD54B831219301 /* FavoritesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesStore.swift; sourceTree = "<group>"; };
 		EFFAB666F972E30FEFC84844 /* AdminSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminSessionStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -183,6 +203,7 @@
 		83019E050D41E35459B847A0 /* Auth */ = {
 			isa = PBXGroup;
 			children = (
+				3F1741163941B6EA342E7CB8 /* DeleteAccountService.swift */,
 				6623AA122B1508E97E4AE8E1 /* URAuthService.swift */,
 			);
 			path = Auth;
@@ -216,7 +237,14 @@
 			isa = PBXGroup;
 			children = (
 				280667B7F029B5EFE2484D3E /* AppContainer.swift */,
+				E2C7482F2FE8AB6DA4D9E3B3 /* DailyReminderManager.swift */,
+				35624C555087CBCE877CF95F /* DailyReminderView.swift */,
+				EFA7CFA2F9BD54B831219301 /* FavoritesStore.swift */,
+				76A2DD1791B54C69970B13C5 /* PriceAlertManager.swift */,
+				476D9E753B47FDEEB12CC41E /* PriceAlertSheet.swift */,
 				D68719E48D78EA257F78893B /* RootView.swift */,
+				22C8CF57EE2FAC5623F682F5 /* SplashView.swift */,
+				704D324C198B290A60B8F477 /* URComponents.swift */,
 				69977AFBB6CCADE019FA80EB /* URRemitApp.swift */,
 			);
 			path = App;
@@ -275,6 +303,7 @@
 				CC89FA19E43C2B7530D6DE96 /* AdminAPIClient.swift */,
 				4C0B7F1AF98B3D103C05081B /* AdminLoginView.swift */,
 				781079947A4BC81173F265AA /* AdminModels.swift */,
+				18743967701B8304E5C7F616 /* AdminModule.swift */,
 				D11093E3B385DF5F1B130CAE /* AdminRatesView.swift */,
 				EFFAB666F972E30FEFC84844 /* AdminSessionStore.swift */,
 			);
@@ -285,6 +314,7 @@
 			isa = PBXGroup;
 			children = (
 				0004C43C0A31A6A8E69F12C5 /* AccountView.swift */,
+				950AD5AAE2F5A1DEAE6AF726 /* DeleteAccountView.swift */,
 			);
 			path = Account;
 			sourceTree = "<group>";
@@ -390,22 +420,32 @@
 				5C5F9DFA881A02E66795A339 /* AdminAPIClient.swift in Sources */,
 				903617FFA4041C817043C3F0 /* AdminLoginView.swift in Sources */,
 				066BED30C45AED73E67DCFEA /* AdminModels.swift in Sources */,
+				E3FD25BBFB09DC13290AFF60 /* AdminModule.swift in Sources */,
 				5344237CA07FBA12D349817E /* AdminRatesView.swift in Sources */,
 				FBA26D3514DA613DCAC50BE0 /* AdminSessionStore.swift in Sources */,
 				AE69A7F42100D8670786DB56 /* AppContainer.swift in Sources */,
 				2A37E0F76CB93A624C20245C /* CalculatorView.swift in Sources */,
+				C8522921A79CAF04A2903799 /* DailyReminderManager.swift in Sources */,
+				4C9BE3C9CA19020AEECDC183 /* DailyReminderView.swift in Sources */,
+				379722BFA41CE7343D16261B /* DeleteAccountService.swift in Sources */,
+				3F11072E813176731FD3FD6B /* DeleteAccountView.swift in Sources */,
+				C1D0AE2C92F7AB8A32E53339 /* FavoritesStore.swift in Sources */,
 				8F492CBE0DF02021DCC1559E /* FileRatesCache.swift in Sources */,
 				B95F008D6F5138A408D43586 /* HomeView.swift in Sources */,
 				4B5E17F9B719C78B1A14F93C /* MoreView.swift in Sources */,
+				016F960F53B750A61BFD4F90 /* PriceAlertManager.swift in Sources */,
+				1B2519125497F8A87C40B686 /* PriceAlertSheet.swift in Sources */,
 				60ABE0B91A8366A26FDDEF27 /* PublicModels.swift in Sources */,
 				C17165212B6272A332F6C2BF /* Rate.swift in Sources */,
 				D829F09FEB7BAAEADDCF982A /* RatesRepository.swift in Sources */,
 				7D932515278C41107C786D9C /* RatesView.swift in Sources */,
 				2BACBAA03445AA05C8CDBE09 /* RatesViewModel.swift in Sources */,
 				C76146AB0A3917B9B6F2D977 /* RootView.swift in Sources */,
+				CE016FFE6282B375D68BE595 /* SplashView.swift in Sources */,
 				04E71357797BB3AC2B1CF4DA /* SupabaseRealtimeClient.swift in Sources */,
 				5765518353D6A2C880AC76E7 /* TrackingView.swift in Sources */,
 				DE35DAD0F74C7BBBAD3E6E79 /* URAuthService.swift in Sources */,
+				2AEA6DE3256625C79A161EAC /* URComponents.swift in Sources */,
 				EDC2703267573881CCD270CD /* URRemitApp.swift in Sources */,
 				854654D527F5521E7AFB2937 /* URTheme.swift in Sources */,
 			);
@@ -478,7 +518,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 10;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = H7LT4CJA73;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -556,7 +596,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 10;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = H7LT4CJA73;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;

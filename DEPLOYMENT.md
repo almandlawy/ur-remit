@@ -11,7 +11,10 @@ Required backend secrets:
 
 The production API origin is `https://api.urremit.com`; staging is `https://api-staging.urremit.com`. TLS termination, HSTS, DDoS/WAF controls, database backups, metrics, alerts, and secret rotation are infrastructure requirements.
 
-TestFlight upload requires an Apple Distribution identity, provisioning for `com.urremit.mobile`, and App Store Connect API credentials with the minimum required role. None are committed to this repository.
+For the current Netlify admin + Railway backend deployment, follow
+[`admin/README.md`](admin/README.md#netlify--railway-deployment). Set
+`UR_BACKEND_URL` in Netlify to the Railway HTTPS origin; do not point it at the
+Supabase mobile Edge Function or `127.0.0.1`.
 
 ## ربط لوحة الإدارة بدومين حقيقي (خطوات يدوية مطلوبة منك)
 
@@ -27,3 +30,4 @@ TestFlight upload requires an Apple Distribution identity, provisioning for `com
 
 ⚠️ لا تشارك أي مفتاح API أو `DATABASE_URL` أو كلمة مرور بالمحادثة — أدخلها فقط داخل لوحة تحكم المنصة نفسها.
 
+TestFlight upload requires an Apple Distribution identity, provisioning for `com.urremit.mobile`, and App Store Connect API credentials with the minimum required role. None are committed to this repository.

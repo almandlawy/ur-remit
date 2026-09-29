@@ -28,4 +28,3 @@ COPY --from=build --chown=node:node /deploy/package.json ./package.json
 # fix entirely.
 COPY --from=build --chown=node:node /deploy/certs ./certs
 CMD ["node", "dist/server.js"]
-

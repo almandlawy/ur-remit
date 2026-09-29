@@ -6,6 +6,14 @@ struct APIConfiguration: Sendable {
     let baseURL: URL
     let timeout: Duration
 
+    var adminBaseURL: URL {
+        #if DEBUG
+        URL(string: "http://127.0.0.1:8080/api/v1/admin/")!
+        #else
+        URL(string: "https://yqvcoomjunwokyxwofvt.supabase.co/functions/v1/mobile-api/admin/")!
+        #endif
+    }
+
     static var current: APIConfiguration {
         #if DEBUG
         APIConfiguration(baseURL: debugBaseURL, timeout: .seconds(15))
@@ -75,7 +83,16 @@ actor URLSessionAPIClient: APIClient {
         self.configuration = configuration
         self.session = session
         self.decoder = JSONDecoder()
-        self.decoder.dateDecodingStrategy = .iso8601
+        self.decoder.dateDecodingStrategy = .custom { decoder in
+            let value = try decoder.singleValueContainer().decode(String.self)
+            guard let date = ISO8601DateParser.date(from: value) else {
+                throw DecodingError.dataCorruptedError(
+                    in: try decoder.singleValueContainer(),
+                    debugDescription: "Invalid ISO-8601 date: \(value)"
+                )
+            }
+            return date
+        }
     }
 
     func rates() async throws -> [Rate] {
@@ -115,6 +132,18 @@ actor URLSessionAPIClient: APIClient {
             catch { throw NetworkError.decoding }
         } catch let error as NetworkError { throw error }
         catch { throw NetworkError.transport }
+    }
+}
+
+enum ISO8601DateParser {
+    static func date(from value: String) -> Date? {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: value) { return date }
+
+        let standard = ISO8601DateFormatter()
+        standard.formatOptions = [.withInternetDateTime]
+        return standard.date(from: value)
     }
 }
 

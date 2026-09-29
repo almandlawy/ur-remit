@@ -175,6 +175,19 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
         email = nil
     }
 
+    func deleteAccount() async throws {
+        isLoading = true
+        message = nil
+        defer { isLoading = false }
+
+        do {
+            try await DeleteAccountService.shared.deleteAccount()
+        } catch {
+            message = error.localizedDescription
+            throw error
+        }
+    }
+
     func handle(url: URL) {
         guard let callback = SupabaseOAuthCallback.parse(url),
               let accessToken = callback.accessToken,

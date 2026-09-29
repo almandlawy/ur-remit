@@ -28,73 +28,59 @@ enum TrackingLookupFailure: Equatable {
 
 struct TrackingView: View {
     let api: any APIClient
-    @State private var reference = ""; @State private var result: TransferTracking?
-    @State private var message = ""; @State private var canRetry = false; @State private var loading = false
+    @State private var reference = ""
+    @State private var result: TransferTracking?
+    @State private var message = ""
+    @State private var canRetry = false
+    @State private var loading = false
 
     var body: some View {
-        Form {
-            Section("transfer_reference") {
-                TextField("reference_placeholder", text: $reference)
-                    .textInputAutocapitalization(.characters)
-                    .autocorrectionDisabled()
-                    .accessibilityLabel(Text("transfer_reference"))
-                Button {
-                    Task { await track() }
-                } label: {
-                    if loading {
-                        ProgressView("checking_transfer")
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        Text("track_transfer")
-                            .frame(maxWidth: .infinity)
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 16) {
+                URPageTitle(title: "تتبع الحوالة", subtitle: "تابع حالة حوالتك بأمان", symbol: "shippingbox.fill")
+                VStack(spacing: 14) {
+                    Image(systemName: "location.magnifyingglass").font(.system(size: 38, weight: .bold)).foregroundStyle(URColor.premiumGold)
+                    Text("أدخل رقم الحوالة").font(.title3.weight(.black)).foregroundStyle(URColor.deepNavy)
+                    Text("ستجده في إيصال UR ويبدأ عادةً بـ UR-").font(.caption).foregroundStyle(.secondary)
+                    TextField("UR-XXXXXXXX", text: $reference)
+                        .textInputAutocapitalization(.characters).autocorrectionDisabled().multilineTextAlignment(.center)
+                        .font(.title3.weight(.bold)).padding().background(URColor.ivory, in: RoundedRectangle(cornerRadius: 13)).overlay(RoundedRectangle(cornerRadius: 13).stroke(URColor.hairline))
+                        .accessibilityLabel(Text("transfer_reference"))
+                    Button(loading ? "جارٍ التحقق…" : "تتبع الحوالة") { Task { await track() } }.buttonStyle(URPrimaryButtonStyle()).disabled(loading || !validReference)
+                }
+                .padding(18).background(.white.opacity(0.84), in: RoundedRectangle(cornerRadius: 18)).overlay(RoundedRectangle(cornerRadius: 18).stroke(URColor.hairline))
+
+                if let result {
+                    URCard {
+                        VStack(alignment: .trailing, spacing: 12) {
+                            Label(statusLabel(result.status), systemImage: statusSymbol(result.status)).font(.headline.weight(.black)).foregroundStyle(result.status == "COMPLETED" ? URColor.success : URColor.royalBlue)
+                            Divider()
+                            detail("من", result.origin); detail("إلى", result.destination)
+                            detail("آخر تحديث", result.lastUpdate.formatted(date: .abbreviated, time: .shortened))
+                        }
                     }
                 }
-                .disabled(loading || !validReference)
-                if !reference.isEmpty && !validReference {
-                    Text("invalid_reference")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                if !message.isEmpty {
+                    VStack(spacing: 8) {
+                        Label(message, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.secondary)
+                        if canRetry {
+                            Button("retry") { Task { await track() } }.buttonStyle(URPrimaryButtonStyle())
+                        }
+                    }.padding()
                 }
-            }
-            if let result {
-                Section("transfer_status") {
-                    Label {
-                        statusLabel(result.status).font(.headline)
-                    } icon: {
-                        Image(systemName: statusSymbol(result.status))
-                    }
-                    LabeledContent("origin", value: result.origin)
-                    LabeledContent("destination", value: result.destination)
-                    LabeledContent("last_updated", value: result.lastUpdate.formatted(date: .abbreviated, time: .shortened))
-                    if let estimatedCompletion = result.estimatedCompletion {
-                        LabeledContent("estimated_completion", value: estimatedCompletion.formatted(date: .abbreviated, time: .shortened))
-                    }
-                    if result.status == "HELD" {
-                        Text("transfer_held_notice")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-            if !message.isEmpty {
-                Section {
-                    Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(.secondary)
-                    if canRetry {
-                        Button("retry") { Task { await track() } }
-                    }
-                }
-            }
-            Section { Text("tracking_security_notice").font(.footnote) }
-        }.navigationTitle("tracking")
+                Label("لا تشارك رقم التتبع أو رمز الاستلام إلا مع الشخص المخوّل.", systemImage: "lock.shield.fill").font(.caption).foregroundStyle(URColor.deepNavy.opacity(0.66)).padding(14)
+            }.padding(14)
+        }
+        .background(URColor.ivory.ignoresSafeArea()).navigationBarTitleDisplayMode(.inline)
     }
 
-    private var normalizedReference: String { reference.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
-    private var validReference: Bool { normalizedReference.range(of: #"^UR-[A-Z0-9]{8}$"#, options: .regularExpression) != nil }
+    private func detail(_ label: String, _ value: String) -> some View { HStack { Text(value).foregroundStyle(URColor.deepNavy); Spacer(); Text(label).foregroundStyle(.secondary) }.font(.subheadline) }
+    private var validReference: Bool { reference.uppercased().range(of: #"^UR-[A-Z0-9]{8}$"#, options: .regularExpression) != nil }
 
     private func track() async {
         loading = true; message = ""; canRetry = false; result = nil; defer { loading = false }
         do {
-            result = try await api.track(reference: normalizedReference)
+            result = try await api.track(reference: reference.uppercased())
         } catch is CancellationError {
             return
         } catch {
@@ -104,18 +90,6 @@ struct TrackingView: View {
         }
     }
 
-    private func statusLabel(_ value: String) -> Text {
-        switch value {
-        case "ISSUED": Text("status_issued")
-        case "ASSIGNED": Text("status_assigned")
-        case "READY_FOR_PICKUP": Text("status_ready")
-        case "COMPLETED": Text("status_completed")
-        case "CANCELLED": Text("status_cancelled")
-        case "REFUNDED": Text("status_refunded")
-        case "HELD": Text("status_held")
-        default: Text(value)
-        }
-    }
-
+    private func statusLabel(_ value: String) -> String { ["ISSUED":"تم الإصدار","ASSIGNED":"تم التعيين","READY_FOR_PICKUP":"جاهزة للاستلام","COMPLETED":"مكتملة","CANCELLED":"ملغاة","REFUNDED":"مستردة","HELD":"قيد المراجعة"][value] ?? value }
     private func statusSymbol(_ value: String) -> String { value == "COMPLETED" ? "checkmark.seal.fill" : value == "HELD" ? "exclamationmark.shield.fill" : "clock.badge.checkmark" }
 }

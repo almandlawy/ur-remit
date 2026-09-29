@@ -1,4 +1,5 @@
 import Fastify, { type FastifyError } from "fastify";
+import { existsSync } from "node:fs";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import { loadConfig, loadLocalEnvironment, type AppConfig } from "./config.js";
@@ -6,6 +7,11 @@ import { registerPublicRoutes } from "./public-routes.js";
 import { PostgresPublicStore, type PublicStore } from "./store.js";
 import { registerAdminRoutes } from "./admin-routes.js";
 import { PostgresAdminStore, type AdminStore } from "./admin-store.js";
+
+if (process.env.NODE_ENV !== "test") {
+  const localEnvironmentFile = new URL("../.env", import.meta.url);
+  if (existsSync(localEnvironmentFile)) process.loadEnvFile(localEnvironmentFile);
+}
 
 export async function buildServer(config: AppConfig, suppliedStore?: PublicStore, suppliedAdminStore?: AdminStore) {
   const store = suppliedStore ?? new PostgresPublicStore(config.DATABASE_URL);
