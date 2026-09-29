@@ -117,6 +117,7 @@
 "admin_forgot_password" = "نسيت كلمة المرور؟";
 "admin_forgot_password_hint" = "يرسل رابط تعيين كلمة مرور جديدة للبريد أعلاه عبر Supabase Auth.";
 "admin_reset_email_sent" = "تم إرسال رابط تعيين كلمة المرور إلى بريدك الإلكتروني.";
+"admin_reset_request_failed" = "تعذر إرسال رابط تعيين كلمة المرور. تأكد من الاتصال بالإنترنت وحاول مجدداً.";
 "admin_enter_pin" = "أدخل رمز الدخول السريع";
 "admin_pin_placeholder" = "الرمز (4-6 أرقام)";
 "admin_confirm_pin" = "تأكيد الرمز";

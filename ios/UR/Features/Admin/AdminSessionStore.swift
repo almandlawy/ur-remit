@@ -70,7 +70,7 @@ final class AdminSessionStore: ObservableObject {
             try await client.requestPasswordReset(email: email)
             message = String(localized: "admin_reset_email_sent")
         } catch {
-            message = String(localized: "admin_login_failed")
+            message = String(localized: "admin_reset_request_failed")
         }
     }
 
