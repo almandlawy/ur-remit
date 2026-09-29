@@ -1,13 +1,11 @@
 {
-  "$schema": "https://railway.com/railway.schema.json",
+  "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "builder": "DOCKERFILE",
-    "dockerfilePath": "backend/Dockerfile"
+    "builder": "RAILPACK",
+    "buildCommand": "cd backend && pnpm install && pnpm run build"
   },
   "deploy": {
-    "healthcheckPath": "/api/v1/health",
-    "healthcheckTimeout": 300,
-    "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10
+    "startCommand": "cd backend && pnpm start",
+    "restartPolicyType": "ON_FAILURE"
   }
 }
