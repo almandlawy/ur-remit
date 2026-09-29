@@ -17,3 +17,10 @@ backend/.local/
 
 # Local Netlify folder
 .netlify
+
+# Build artifacts
+work/
+DerivedData/
+*.pcm
+*.modulevalidation
+*.sdkstatcache
