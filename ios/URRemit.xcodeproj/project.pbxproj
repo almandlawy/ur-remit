@@ -7,25 +7,25 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0480C85B10F4F9B25C4ED0CE /* AdminModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74CAE5C61435CA7575AAD0C9 /* AdminModels.swift */; };
-		0F5E36E3E879CCA35402FE93 /* AdminAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFA524C0E60227845ABE40EA /* AdminAPIClient.swift */; };
-		1FD845C7816325397487F812 /* AdminSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92E9DA5A56B8A2F63C63D282 /* AdminSessionStore.swift */; };
-		24E5A8C6FC8B2A05F6C47BF7 /* AdminLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7973EBFC1B3343B9AB80CAE0 /* AdminLoginView.swift */; };
-		1E07F5EE2010A1C741A9881B /* AdminRatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28FBDDF5982A785F1A17978F /* AdminRatesView.swift */; };
-		391FBD0586475B40CBB257B6 /* AdminAPIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E684C8820089B0CFF7D67385 /* AdminAPIClientTests.swift */; };
+		04E71357797BB3AC2B1CF4DA /* SupabaseRealtimeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FB979C9A9AF54DAEF2DBD10 /* SupabaseRealtimeClient.swift */; };
+		05FEA299372D9CD614FECBD9 /* AdminAPIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E40BF73DAA0A29AEDC4E8EF9 /* AdminAPIClientTests.swift */; };
+		066BED30C45AED73E67DCFEA /* AdminModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 781079947A4BC81173F265AA /* AdminModels.swift */; };
 		1B9E5653E2F5342B40FCB34E /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37EFB72B68736CCF1D021589 /* APIClient.swift */; };
-		EF0B30C3C78E4F6BBA66AA0F /* SupabaseRealtimeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29C54EA775D24A08ADDF31EA /* SupabaseRealtimeClient.swift */; };
 		2A37E0F76CB93A624C20245C /* CalculatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86D9A82CE56351874727A791 /* CalculatorView.swift */; };
 		2BACBAA03445AA05C8CDBE09 /* RatesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44458181F01A4278D6DAB85B /* RatesViewModel.swift */; };
 		3F6CA866941267A8DB2919F8 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = AF7C8E9D12D5043E7598CBDF /* Localizable.strings */; };
 		4B5E17F9B719C78B1A14F93C /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10AE76AC5E559DA98159CD24 /* MoreView.swift */; };
+		5344237CA07FBA12D349817E /* AdminRatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11093E3B385DF5F1B130CAE /* AdminRatesView.swift */; };
 		571506A680F6DDA3883926F0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 673C0DF216A55E9EC898CAB5 /* Assets.xcassets */; };
 		5765518353D6A2C880AC76E7 /* TrackingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 935E7FDFC28A0D554F80AE53 /* TrackingView.swift */; };
+		5C5F9DFA881A02E66795A339 /* AdminAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC89FA19E43C2B7530D6DE96 /* AdminAPIClient.swift */; };
+		5E0B1C36D7C7AE711B287FEC /* TrackingLookupFailureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5F8168FC6878857F3F291F7 /* TrackingLookupFailureTests.swift */; };
 		60ABE0B91A8366A26FDDEF27 /* PublicModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74CC08056F06B058D31A3953 /* PublicModels.swift */; };
 		763C0F31EE03A18F51236E95 /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0004C43C0A31A6A8E69F12C5 /* AccountView.swift */; };
 		7D932515278C41107C786D9C /* RatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90FF8E23FCEFFE761B6BBDF7 /* RatesView.swift */; };
 		854654D527F5521E7AFB2937 /* URTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7D97FEB1BF2F19BD085A93B /* URTheme.swift */; };
 		8F492CBE0DF02021DCC1559E /* FileRatesCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBD6D7FF0233D61CA3D001B5 /* FileRatesCache.swift */; };
+		903617FFA4041C817043C3F0 /* AdminLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C0B7F1AF98B3D103C05081B /* AdminLoginView.swift */; };
 		AE69A7F42100D8670786DB56 /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 280667B7F029B5EFE2484D3E /* AppContainer.swift */; };
 		B95F008D6F5138A408D43586 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92361D0BABF7531EF45E4CA5 /* HomeView.swift */; };
 		BC1D49AA513859D2303AA8D7 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 982003CA002FFAFC6640E6CA /* PrivacyInfo.xcprivacy */; };
@@ -35,6 +35,7 @@
 		DA91AD9D8D85A442E4CF1E2C /* RateCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A47C464A4E5B6AE18337C874 /* RateCacheTests.swift */; };
 		DE35DAD0F74C7BBBAD3E6E79 /* URAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6623AA122B1508E97E4AE8E1 /* URAuthService.swift */; };
 		EDC2703267573881CCD270CD /* URRemitApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69977AFBB6CCADE019FA80EB /* URRemitApp.swift */; };
+		FBA26D3514DA613DCAC50BE0 /* AdminSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFFAB666F972E30FEFC84844 /* AdminSessionStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -48,23 +49,19 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		74CAE5C61435CA7575AAD0C9 /* AdminModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminModels.swift; sourceTree = "<group>"; };
-		EFA524C0E60227845ABE40EA /* AdminAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminAPIClient.swift; sourceTree = "<group>"; };
-		92E9DA5A56B8A2F63C63D282 /* AdminSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminSessionStore.swift; sourceTree = "<group>"; };
-		7973EBFC1B3343B9AB80CAE0 /* AdminLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminLoginView.swift; sourceTree = "<group>"; };
-		28FBDDF5982A785F1A17978F /* AdminRatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminRatesView.swift; sourceTree = "<group>"; };
-		E684C8820089B0CFF7D67385 /* AdminAPIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminAPIClientTests.swift; sourceTree = "<group>"; };
 		0004C43C0A31A6A8E69F12C5 /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
 		0C8D40B3DBD54C5596D36304 /* URRemit.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = URRemit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		10AE76AC5E559DA98159CD24 /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
 		280667B7F029B5EFE2484D3E /* AppContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContainer.swift; sourceTree = "<group>"; };
 		37EFB72B68736CCF1D021589 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
-		29C54EA775D24A08ADDF31EA /* SupabaseRealtimeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseRealtimeClient.swift; sourceTree = "<group>"; };
 		44458181F01A4278D6DAB85B /* RatesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatesViewModel.swift; sourceTree = "<group>"; };
+		4C0B7F1AF98B3D103C05081B /* AdminLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminLoginView.swift; sourceTree = "<group>"; };
+		4FB979C9A9AF54DAEF2DBD10 /* SupabaseRealtimeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseRealtimeClient.swift; sourceTree = "<group>"; };
 		6623AA122B1508E97E4AE8E1 /* URAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URAuthService.swift; sourceTree = "<group>"; };
 		673C0DF216A55E9EC898CAB5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		69977AFBB6CCADE019FA80EB /* URRemitApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URRemitApp.swift; sourceTree = "<group>"; };
 		74CC08056F06B058D31A3953 /* PublicModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublicModels.swift; sourceTree = "<group>"; };
+		781079947A4BC81173F265AA /* AdminModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminModels.swift; sourceTree = "<group>"; };
 		86D9A82CE56351874727A791 /* CalculatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalculatorView.swift; sourceTree = "<group>"; };
 		90FF8E23FCEFFE761B6BBDF7 /* RatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatesView.swift; sourceTree = "<group>"; };
 		92361D0BABF7531EF45E4CA5 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
@@ -76,24 +73,17 @@
 		AC1E6D4F7A7F9D87256F187C /* RatesRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatesRepository.swift; sourceTree = "<group>"; };
 		B4CEC5F540A617AA9F5BE0FF /* URRemitTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = URRemitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BBD6D7FF0233D61CA3D001B5 /* FileRatesCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileRatesCache.swift; sourceTree = "<group>"; };
+		C5F8168FC6878857F3F291F7 /* TrackingLookupFailureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackingLookupFailureTests.swift; sourceTree = "<group>"; };
+		CC89FA19E43C2B7530D6DE96 /* AdminAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminAPIClient.swift; sourceTree = "<group>"; };
 		CF235AA22A2234FB50546305 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		D11093E3B385DF5F1B130CAE /* AdminRatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminRatesView.swift; sourceTree = "<group>"; };
 		D68719E48D78EA257F78893B /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		E40BF73DAA0A29AEDC4E8EF9 /* AdminAPIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminAPIClientTests.swift; sourceTree = "<group>"; };
 		E7D97FEB1BF2F19BD085A93B /* URTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URTheme.swift; sourceTree = "<group>"; };
+		EFFAB666F972E30FEFC84844 /* AdminSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminSessionStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
-		4C1AF5BA74BC65D5F080C90E /* Admin */ = {
-			isa = PBXGroup;
-			children = (
-				74CAE5C61435CA7575AAD0C9 /* AdminModels.swift */,
-				EFA524C0E60227845ABE40EA /* AdminAPIClient.swift */,
-				92E9DA5A56B8A2F63C63D282 /* AdminSessionStore.swift */,
-				7973EBFC1B3343B9AB80CAE0 /* AdminLoginView.swift */,
-				28FBDDF5982A785F1A17978F /* AdminRatesView.swift */,
-			);
-			path = Admin;
-			sourceTree = "<group>";
-		};
 		0E344DD6B6C0CB3E4870551D /* DesignSystem */ = {
 			isa = PBXGroup;
 			children = (
@@ -175,8 +165,9 @@
 		812B2896AB2829A39EAD4652 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				E40BF73DAA0A29AEDC4E8EF9 /* AdminAPIClientTests.swift */,
 				A47C464A4E5B6AE18337C874 /* RateCacheTests.swift */,
-				E684C8820089B0CFF7D67385 /* AdminAPIClientTests.swift */,
+				C5F8168FC6878857F3F291F7 /* TrackingLookupFailureTests.swift */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -200,8 +191,8 @@
 		91BD05565077F95377330E95 /* Features */ = {
 			isa = PBXGroup;
 			children = (
-				4C1AF5BA74BC65D5F080C90E /* Admin */,
 				FBE89C193F55F12058E2D431 /* Account */,
+				F126179E183E24B7AC94836F /* Admin */,
 				2BB581589C1534D74188C1D6 /* Calculator */,
 				1210E9787C6B2DB55C8EF2C1 /* Home */,
 				BB6E4A687AFFEE7ECD3D6B33 /* More */,
@@ -216,7 +207,7 @@
 			isa = PBXGroup;
 			children = (
 				37EFB72B68736CCF1D021589 /* APIClient.swift */,
-				29C54EA775D24A08ADDF31EA /* SupabaseRealtimeClient.swift */,
+				4FB979C9A9AF54DAEF2DBD10 /* SupabaseRealtimeClient.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -276,6 +267,18 @@
 				91BD05565077F95377330E95 /* Features */,
 			);
 			path = UR;
+			sourceTree = "<group>";
+		};
+		F126179E183E24B7AC94836F /* Admin */ = {
+			isa = PBXGroup;
+			children = (
+				CC89FA19E43C2B7530D6DE96 /* AdminAPIClient.swift */,
+				4C0B7F1AF98B3D103C05081B /* AdminLoginView.swift */,
+				781079947A4BC81173F265AA /* AdminModels.swift */,
+				D11093E3B385DF5F1B130CAE /* AdminRatesView.swift */,
+				EFFAB666F972E30FEFC84844 /* AdminSessionStore.swift */,
+			);
+			path = Admin;
 			sourceTree = "<group>";
 		};
 		FBE89C193F55F12058E2D431 /* Account */ = {
@@ -382,14 +385,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0480C85B10F4F9B25C4ED0CE /* AdminModels.swift in Sources */,
-				0F5E36E3E879CCA35402FE93 /* AdminAPIClient.swift in Sources */,
-				1FD845C7816325397487F812 /* AdminSessionStore.swift in Sources */,
-				24E5A8C6FC8B2A05F6C47BF7 /* AdminLoginView.swift in Sources */,
-				1E07F5EE2010A1C741A9881B /* AdminRatesView.swift in Sources */,
 				1B9E5653E2F5342B40FCB34E /* APIClient.swift in Sources */,
-				EF0B30C3C78E4F6BBA66AA0F /* SupabaseRealtimeClient.swift in Sources */,
 				763C0F31EE03A18F51236E95 /* AccountView.swift in Sources */,
+				5C5F9DFA881A02E66795A339 /* AdminAPIClient.swift in Sources */,
+				903617FFA4041C817043C3F0 /* AdminLoginView.swift in Sources */,
+				066BED30C45AED73E67DCFEA /* AdminModels.swift in Sources */,
+				5344237CA07FBA12D349817E /* AdminRatesView.swift in Sources */,
+				FBA26D3514DA613DCAC50BE0 /* AdminSessionStore.swift in Sources */,
 				AE69A7F42100D8670786DB56 /* AppContainer.swift in Sources */,
 				2A37E0F76CB93A624C20245C /* CalculatorView.swift in Sources */,
 				8F492CBE0DF02021DCC1559E /* FileRatesCache.swift in Sources */,
@@ -401,6 +403,7 @@
 				7D932515278C41107C786D9C /* RatesView.swift in Sources */,
 				2BACBAA03445AA05C8CDBE09 /* RatesViewModel.swift in Sources */,
 				C76146AB0A3917B9B6F2D977 /* RootView.swift in Sources */,
+				04E71357797BB3AC2B1CF4DA /* SupabaseRealtimeClient.swift in Sources */,
 				5765518353D6A2C880AC76E7 /* TrackingView.swift in Sources */,
 				DE35DAD0F74C7BBBAD3E6E79 /* URAuthService.swift in Sources */,
 				EDC2703267573881CCD270CD /* URRemitApp.swift in Sources */,
@@ -412,8 +415,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				05FEA299372D9CD614FECBD9 /* AdminAPIClientTests.swift in Sources */,
 				DA91AD9D8D85A442E4CF1E2C /* RateCacheTests.swift in Sources */,
-				391FBD0586475B40CBB257B6 /* AdminAPIClientTests.swift in Sources */,
+				5E0B1C36D7C7AE711B287FEC /* TrackingLookupFailureTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

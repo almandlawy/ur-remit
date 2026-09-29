@@ -52,7 +52,8 @@
 "estimated_completion" = "Estimated completion";
 "transfer_held_notice" = "This transfer is under review. Contact support if the status does not change.";
 "tracking_security_notice" = "Do not share your tracking reference or pickup code with anyone who is not authorized.";
-"tracking_lookup_failed" = "Could not find tracking information or connect to the service.";
+"tracking_lookup_failed" = "Could not reach the tracking service. Check your connection and try again.";
+"reference_not_found" = "No transfer was found with that reference. Double-check the number and try again.";
 "status_issued" = "Issued";
 "status_assigned" = "Assigned";
 "status_ready" = "Ready for pickup";

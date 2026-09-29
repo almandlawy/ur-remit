@@ -1,9 +1,35 @@
 import SwiftUI
 
+/// Classifies a tracking lookup failure into a localized message key and whether a retry makes
+/// sense — pulled out of `TrackingView` so this branching is unit-testable without SwiftUI.
+enum TrackingLookupFailure: Equatable {
+    case notFound
+    case transient
+
+    init(_ error: Error) {
+        if case NetworkError.httpStatus(404) = error {
+            // A 404 means the reference format is valid but no such transfer exists (likely a typo
+            // or an old/expired reference) — this is not a transient failure, so no retry action.
+            self = .notFound
+        } else {
+            self = .transient
+        }
+    }
+
+    var messageKey: String.LocalizationValue {
+        switch self {
+        case .notFound: "reference_not_found"
+        case .transient: "tracking_lookup_failed"
+        }
+    }
+
+    var canRetry: Bool { self == .transient }
+}
+
 struct TrackingView: View {
     let api: any APIClient
     @State private var reference = ""; @State private var result: TransferTracking?
-    @State private var message = ""; @State private var loading = false
+    @State private var message = ""; @State private var canRetry = false; @State private var loading = false
 
     var body: some View {
         Form {
@@ -51,7 +77,12 @@ struct TrackingView: View {
                 }
             }
             if !message.isEmpty {
-                Section { Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(.secondary) }
+                Section {
+                    Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(.secondary)
+                    if canRetry {
+                        Button("retry") { Task { await track() } }
+                    }
+                }
             }
             Section { Text("tracking_security_notice").font(.footnote) }
         }.navigationTitle("tracking")
@@ -61,10 +92,16 @@ struct TrackingView: View {
     private var validReference: Bool { normalizedReference.range(of: #"^UR-[A-Z0-9]{8}$"#, options: .regularExpression) != nil }
 
     private func track() async {
-        loading = true; message = ""; result = nil; defer { loading = false }
-        do { result = try await api.track(reference: normalizedReference) }
-        catch is CancellationError { return }
-        catch { message = String(localized: "tracking_lookup_failed") }
+        loading = true; message = ""; canRetry = false; result = nil; defer { loading = false }
+        do {
+            result = try await api.track(reference: normalizedReference)
+        } catch is CancellationError {
+            return
+        } catch {
+            let failure = TrackingLookupFailure(error)
+            message = String(localized: failure.messageKey)
+            canRetry = failure.canRetry
+        }
     }
 
     private func statusLabel(_ value: String) -> Text {
