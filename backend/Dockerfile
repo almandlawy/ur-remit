@@ -3,15 +3,19 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY backend/package.json backend/package.json
 COPY admin/package.json admin/package.json
-RUN corepack enable && pnpm install --frozen-lockfile --filter @ur/backend...
+RUN corepack enable && pnpm install --frozen-lockfile
 COPY backend backend
 RUN pnpm --filter @ur/backend build
 
+RUN pnpm --filter @ur/backend deploy --prod --legacy /deploy
+
 FROM node:24-alpine
 ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=8080
 USER node
 WORKDIR /app
-COPY --from=build --chown=node:node /app/backend/dist ./dist
-COPY --from=build --chown=node:node /app/backend/node_modules ./node_modules
-COPY --from=build --chown=node:node /app/backend/package.json ./package.json
+COPY --from=build --chown=node:node /deploy/dist ./dist
+COPY --from=build --chown=node:node /deploy/node_modules ./node_modules
+COPY --from=build --chown=node:node /deploy/package.json ./package.json
 CMD ["node", "dist/server.js"]
