@@ -8,7 +8,7 @@ struct APIConfiguration: Sendable {
 
     var adminBaseURL: URL {
         #if DEBUG
-        URL(string: "http://127.0.0.1:8080/api/v1/admin/")!
+        URL(string: "http://\(APIConfiguration.debugHost):8080/api/v1/admin/")!
         #else
         URL(string: "https://yqvcoomjunwokyxwofvt.supabase.co/functions/v1/mobile-api/admin/")!
         #endif
@@ -34,15 +34,12 @@ struct APIConfiguration: Sendable {
         #endif
     }
 
+    /// Matches the backend's default `PORT` (see `backend/src/config.ts` / `.env.example`). Both the
+    /// mobile and admin routes are served by the same process, so this must stay in sync with
+    /// `adminBaseURL` above — a mismatch here silently breaks every rates/tracking/offices call in
+    /// Debug builds while admin sign-in (which hardcoded the correct port) still appeared to work.
     private static var debugBaseURL: URL {
-        URL(string: "http://\(debugHost):8081/api/v1/mobile/")!
-    }
-
-    /// Base URL for the admin-only endpoints (`/api/v1/admin/...`) exposed by the same local backend.
-    /// These routes are never deployed behind the public Supabase Edge Function, so this in-app admin
-    /// access only works while the backend is running and reachable on the local network (Debug builds only).
-    static var debugAdminBaseURL: URL {
-        URL(string: "http://\(debugHost):8081/api/v1/admin/")!
+        URL(string: "http://\(debugHost):8080/api/v1/mobile/")!
     }
     #endif
 
