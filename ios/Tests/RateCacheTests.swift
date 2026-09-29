@@ -230,6 +230,18 @@ final class RateCacheTests: XCTestCase {
             staleAfter: now.addingTimeInterval(900)
         )
     }
+
+    /// Regression guard: `debugBaseURL` (mobile routes) and `adminBaseURL` (admin routes) must target
+    /// the same host+port, since both are served by the single local backend process. A drift here
+    /// previously left rates/tracking silently unreachable on the Simulator while admin login still
+    /// appeared to work — this locks the two together and to the backend's actual default port.
+    func testDebugBaseURLsShareTheSameHostAndPortAsTheAdminBaseURL() {
+        let configuration = APIConfiguration.current
+        let mobileComponents = URLComponents(url: configuration.baseURL, resolvingAgainstBaseURL: false)
+        let adminComponents = URLComponents(url: configuration.adminBaseURL, resolvingAgainstBaseURL: false)
+        XCTAssertEqual(mobileComponents?.host, adminComponents?.host)
+        XCTAssertEqual(mobileComponents?.port, adminComponents?.port)
+    }
 }
 
 private enum RepositoryTestError: Error, Sendable { case unavailable }

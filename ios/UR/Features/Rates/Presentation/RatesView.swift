@@ -27,7 +27,10 @@ struct RatesView: View {
         }
         .background(Palette.ivory.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
-        .task { if case .idle = model.state { await model.load() } }
+        .task {
+            if case .idle = model.state { await model.load() }
+            model.startObservingRemoteChanges()
+        }
     }
 
     private func content(_ snapshot: RatesSnapshot, scale: CGFloat) -> some View {
