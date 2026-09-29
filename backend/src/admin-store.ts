@@ -1,6 +1,7 @@
 import { createHmac, randomBytes } from "node:crypto";
 import pg from "pg";
 import { decryptMFASecret, hashPassword, verifyPassword, verifyTOTP } from "./admin-auth.js";
+import { postgresSSLConfig } from "./postgres-ssl.js";
 
 export type AdminActor = { id: string; role: string; permissions: string[] };
 export type RateUpdate = {
@@ -43,7 +44,7 @@ export class PostgresAdminStore implements AdminStore {
   private readonly pool: pg.Pool;
   constructor(databaseURL: string) {
     this.pool = new pg.Pool({ connectionString: databaseURL, max: 10, connectionTimeoutMillis: 5_000,
-      ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: true } : undefined });
+      ssl: postgresSSLConfig(databaseURL) });
   }
 
   async login(credentials: { username: string; password: string; mfaCode: string }, keys: { session: string; mfa: string }, context: { requestId: string; ip?: string | undefined; userAgent?: string | undefined }): Promise<{ token: string; expiresAt: string } | null> {

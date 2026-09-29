@@ -1,6 +1,7 @@
 import { createHmac } from "node:crypto";
 import pg from "pg";
 import type { AgentVerification, PublicOffice, PublicRate, TransferPublicStatus } from "./domain.js";
+import { postgresSSLConfig } from "./postgres-ssl.js";
 
 export interface PublicStore {
   health(): Promise<boolean>;
@@ -39,7 +40,7 @@ export class PostgresPublicStore implements PublicStore {
       max: 15,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 5_000,
-      ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: true } : undefined
+      ssl: postgresSSLConfig(databaseURL)
     });
   }
 
