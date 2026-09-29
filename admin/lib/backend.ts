@@ -462,6 +462,46 @@ async function auditLog(): Promise<Record<string, unknown>[]> {
   }));
 }
 
+/**
+ * Self-service "forgot password" flow, used because the real admin account
+ * (almandlawy112@gmail.com) originally authenticated via Google OAuth only
+ * and has no password set in Supabase Auth yet. Sends the standard Supabase
+ * recovery email; does not reveal whether the email exists (always returns
+ * true unless the request itself is malformed) to avoid account enumeration.
+ */
+async function requestPasswordReset(email: string, redirectTo: string): Promise<void> {
+  await anonClient().auth.resetPasswordForEmail(email, { redirectTo });
+}
+
+/**
+ * Completes the recovery flow: the browser lands on /reset-password with a
+ * Supabase recovery access token in the URL fragment (never sent to any
+ * server by the browser automatically). The client posts that token here
+ * directly, scoped to a one-off client tied to that token, to set the new
+ * password. This is independent from our own admin_sessions bearer tokens.
+ */
+async function confirmPasswordReset(recoveryAccessToken: string, newPassword: string): Promise<boolean> {
+  const scopedClient = createClient(requireEnv("SUPABASE_URL"), process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? "", {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${recoveryAccessToken}` } }
+  });
+  const { data: userData, error: userError } = await scopedClient.auth.getUser();
+  if (userError || !userData?.user?.email) return false;
+
+  // Only allow this for emails already registered as admin_users, so the
+  // recovery flow can't be used to set a password for an arbitrary auth.users
+  // account that has no admin console access.
+  const { data: adminUser } = await serviceClient()
+    .from("admin_users")
+    .select("id, disabled_at")
+    .ilike("email", userData.user.email)
+    .maybeSingle();
+  if (!adminUser || adminUser.disabled_at) return false;
+
+  const { error: updateError } = await scopedClient.auth.updateUser({ password: newPassword });
+  return !updateError;
+}
+
 async function changePasswordForActor(actor: Actor, currentPassword: string, newPassword: string): Promise<boolean> {
   const client = serviceClient();
   const { data: adminUser } = await client.from("admin_users").select("email").eq("id", actor.id).maybeSingle();
@@ -520,6 +560,21 @@ export async function backendRequest(path: string, init: RequestInit = {}): Prom
       const result = await login(body, { requestId });
       if (!result) return json({ error: "INVALID_CREDENTIALS" }, 401);
       return json({ data: result });
+    }
+    if (path === "/api/v1/admin/auth/forgot-password" && method === "POST") {
+      const body = readBody<{ email?: unknown; redirectTo?: unknown }>(init);
+      if (typeof body?.email === "string" && typeof body?.redirectTo === "string") {
+        await requestPasswordReset(body.email, body.redirectTo);
+      }
+      // Always return ok, whether or not the email exists, to avoid account enumeration.
+      return json({ data: { ok: true } });
+    }
+    if (path === "/api/v1/admin/auth/reset-password" && method === "POST") {
+      const body = readBody<{ accessToken?: unknown; newPassword?: unknown }>(init);
+      const ok = typeof body?.accessToken === "string" && typeof body?.newPassword === "string"
+        ? await confirmPasswordReset(body.accessToken, body.newPassword)
+        : false;
+      return ok ? json({ data: { ok: true } }) : json({ error: "INVALID_RESET_LINK" }, 400);
     }
 
     // Everything below requires a bearer session token.
