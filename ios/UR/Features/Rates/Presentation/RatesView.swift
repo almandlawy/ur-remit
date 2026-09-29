@@ -4,8 +4,23 @@ struct RatesView: View {
     @StateObject private var model: RatesViewModel
     @AppStorage("com.urremit.rates.favoriteIDs") private var storedFavoriteIDs = ""
     @Environment(\.locale) private var locale
+    @Environment(\.scenePhase) private var scenePhase
     @State private var searchText = ""
     @State private var favoritesOnly = false
+    @State private var hasLoadedOnce = false
+
+    /// Safety-net refresh: normally the Realtime subscription below pushes admin rate updates the
+    /// instant they're saved, but this keeps rates fresh even if the socket drops and hasn't
+    /// reconnected yet (e.g. brief network loss).
+    private static let autoRefreshInterval: TimeInterval = 60
+    private let autoRefreshTimer = Timer.publish(every: autoRefreshInterval, on: .main, in: .common).autoconnect()
+
+    /// Subscribes to `postgres_changes` on the `rates` table so admin edits appear immediately
+    /// without waiting for the timer above or a manual pull-to-refresh.
+    private let realtimeClient: SupabaseRealtimeClient? = {
+        guard let url = APIConfiguration.supabaseProjectURL, let key = APIConfiguration.supabasePublishableKey else { return nil }
+        return SupabaseRealtimeClient(projectURL: url, apiKey: key)
+    }()
 
     init(repository: any RatesRepository) {
         _model = StateObject(wrappedValue: RatesViewModel(repository: repository))
@@ -67,7 +82,31 @@ struct RatesView: View {
                 .accessibilityHint(Text(favoritesOnly ? "show_all_rates_hint" : "show_favorites_hint"))
             }
         }
-        .task { if case .idle = model.state { await model.load() } }
+        .task {
+            if case .idle = model.state {
+                await model.load()
+                hasLoadedOnce = true
+            }
+        }
+        .task {
+            guard let realtimeClient else { return }
+            await withTaskCancellationHandler {
+                for await _ in await realtimeClient.changes(table: "rates") {
+                    guard hasLoadedOnce else { continue }
+                    await model.load()
+                }
+            } onCancel: {
+                Task { await realtimeClient.stop() }
+            }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard hasLoadedOnce, newPhase == .active else { return }
+            Task { await model.load() }
+        }
+        .onReceive(autoRefreshTimer) { _ in
+            guard hasLoadedOnce, scenePhase == .active else { return }
+            Task { await model.load() }
+        }
     }
 
     private func ratesList(_ snapshot: RatesSnapshot, isRefreshing: Bool, hasError: Bool) -> some View {

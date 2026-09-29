@@ -14,7 +14,13 @@ struct CalculatorView: View {
     @State private var loadFailed = false
     @State private var isFromCache = false
     @State private var cacheWriteFailed = false
+    @State private var hasLoadedOnce = false
     @Environment(\.locale) private var locale
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// Auto-refresh so admin rate updates reach the app without a manual pull-to-refresh.
+    private static let autoRefreshInterval: TimeInterval = 60
+    private let autoRefreshTimer = Timer.publish(every: autoRefreshInterval, on: .main, in: .common).autoconnect()
 
     private var selectedRate: Rate? { rates.first { $0.id == selectedRateID } }
     private var result: Decimal? {
@@ -85,12 +91,25 @@ struct CalculatorView: View {
             }
         }
         .navigationTitle("calculator")
-        .task { await loadRates() }
+        .task {
+            await loadRates()
+            hasLoadedOnce = true
+        }
         .refreshable { await loadRates() }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard hasLoadedOnce, newPhase == .active else { return }
+            Task { await loadRates() }
+        }
+        .onReceive(autoRefreshTimer) { _ in
+            guard hasLoadedOnce, scenePhase == .active else { return }
+            Task { await loadRates() }
+        }
     }
 
     private func loadRates() async {
-        loading = true
+        // Only show the full-screen loading state on the very first fetch; background
+        // auto-refreshes (foreground/periodic) should update silently without flicker.
+        if rates.isEmpty { loading = true }
         loadFailed = false
         defer { loading = false }
         do {

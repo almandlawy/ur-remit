@@ -45,6 +45,19 @@ describe("admin API", () => {
     await app.close();
   });
 
+  it("accepts a blank OTP field for accounts configured without MFA", async () => {
+    const store = adminStore([]);
+    store.login = async (credentials) => {
+      expect(credentials.otp).toBe("");
+      return { token: "password-only-local-session", expiresAt: "2026-09-25T01:00:00.000Z" };
+    };
+    const app = await buildServer(config, publicStore(), store);
+    const response = await app.inject({ method: "POST", url: "/api/v1/admin/auth/login",
+      payload: { email: "admin@urremit.com", password: "a-secure-password-value", otp: "" } });
+    expect(response.statusCode).toBe(200);
+    await app.close();
+  });
+
   it("returns a generic login failure", async () => {
     const app = await buildServer(config, publicStore(), adminStore([]));
     const response = await app.inject({ method: "POST", url: "/api/v1/admin/auth/login",

@@ -12,7 +12,8 @@ const updateRateSchema = z.object({
 }).refine((value) => Object.keys(value).length > 0);
 const idSchema = z.object({ id: z.string().uuid() });
 const loginSchema = z.object({
-  email: z.email().max(254), password: z.string().min(12).max(256), otp: z.string().regex(/^\d{6}$/)
+  email: z.email().max(254), password: z.string().min(12).max(256),
+  otp: z.string().regex(/^(?:\d{6})?$/).optional().default("")
 });
 
 function bearerToken(request: FastifyRequest): string | null {
@@ -32,7 +33,9 @@ export async function registerAdminRoutes(app: FastifyInstance, store: AdminStor
     request.adminActor = actor;
   });
 
-  app.post("/api/v1/admin/auth/login", { config: { rateLimit: { max: 5, timeWindow: "15 minutes" } } }, async (request, reply) => {
+  // HTTP-level throttling only guards against scripted flooding; the real anti-brute-force control is the
+  // per-account failed_login_count lockout below, which already locks a specific account after 5 wrong passwords.
+  app.post("/api/v1/admin/auth/login", { config: { rateLimit: { max: 20, timeWindow: "15 minutes" } } }, async (request, reply) => {
     const parsed = loginSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ requestId: request.id, error: { code: "INVALID_INPUT", message: "The request is invalid" } });
     const session = await store.login(parsed.data, keys, { ip: request.ip, userAgent: request.headers["user-agent"] });

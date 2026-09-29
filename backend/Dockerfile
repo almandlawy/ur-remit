@@ -21,5 +21,11 @@ WORKDIR /app
 COPY --from=build --chown=node:node /deploy/dist ./dist
 COPY --from=build --chown=node:node /deploy/node_modules ./node_modules
 COPY --from=build --chown=node:node /deploy/package.json ./package.json
+# postgres-ssl.ts resolves the bundled Supabase root CA relative to its own
+# compiled location (dist/../certs/...). Without copying certs/ into the
+# runtime image, that lookup silently fails and TLS falls back to
+# rejectUnauthorized:true without a CA, defeating the certificate bundling
+# fix entirely.
+COPY --from=build --chown=node:node /deploy/certs ./certs
 CMD ["node", "dist/server.js"]
 

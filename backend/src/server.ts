@@ -1,7 +1,7 @@
-import Fastify from "fastify";
+import Fastify, { type FastifyError } from "fastify";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
-import { loadConfig, type AppConfig } from "./config.js";
+import { loadConfig, loadLocalEnvironment, type AppConfig } from "./config.js";
 import { registerPublicRoutes } from "./public-routes.js";
 import { PostgresPublicStore, type PublicStore } from "./store.js";
 import { registerAdminRoutes } from "./admin-routes.js";
@@ -42,8 +42,16 @@ export async function buildServer(config: AppConfig, suppliedStore?: PublicStore
     error: { code: "RESOURCE_NOT_FOUND", message: "Resource not found" }
   }));
 
-  app.setErrorHandler((error, request, reply) => {
+  app.setErrorHandler((error: FastifyError, request, reply) => {
     request.log.error({ err: error }, "request failed");
+    // Rate-limit rejections must surface as 429 (with a clear, actionable message) rather than a generic 500,
+    // otherwise callers cannot distinguish "try again shortly" from a real server fault.
+    if (error.statusCode === 429) {
+      return reply.code(429).send({
+        requestId: request.id,
+        error: { code: "RATE_LIMITED", message: "Too many requests. Please wait a few minutes and try again." }
+      });
+    }
     reply.code(500).send({
       requestId: request.id,
       error: { code: "INTERNAL_ERROR", message: "Request could not be completed" }
@@ -54,6 +62,7 @@ export async function buildServer(config: AppConfig, suppliedStore?: PublicStore
 }
 
 if (process.env.NODE_ENV !== "test") {
+  loadLocalEnvironment();
   const config = loadConfig();
   const app = await buildServer(config);
   await app.listen({ host: config.HOST, port: config.PORT });

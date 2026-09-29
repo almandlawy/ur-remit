@@ -14,29 +14,14 @@
  * COMPLIANCE_OFFICER, SUPPORT_EMPLOYEE, CONTENT_MANAGER, PRICE_MANAGER,
  * VIEWER).
  *
- * The script prints a base32 TOTP secret ONCE. Add it to an authenticator
- * app (e.g. Google Authenticator, 1Password) immediately — it is not stored
- * anywhere in plaintext and cannot be recovered afterwards; you would need
- * to re-run this script to rotate it.
+ * MFA is disabled for this local development account. Do not reuse this
+ * password or account in production.
  */
-import { config } from "dotenv";
-import { randomBytes } from "node:crypto";
 import { Pool } from "pg";
-import { loadConfig } from "../src/config.js";
-import { encryptMFASecret, hashPassword } from "../src/admin-auth.js";
+import { loadConfig, loadLocalEnvironment } from "../src/config.js";
+import { hashPassword } from "../src/admin-auth.js";
 
-config();
-
-function encodeBase32(bytes: Buffer): string {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  let bits = "";
-  for (const byte of bytes) bits += byte.toString(2).padStart(8, "0");
-  let output = "";
-  for (let index = 0; index + 5 <= bits.length; index += 5) {
-    output += alphabet[Number.parseInt(bits.slice(index, index + 5), 2)];
-  }
-  return output;
-}
+loadLocalEnvironment();
 
 async function main() {
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
@@ -54,6 +39,11 @@ async function main() {
   }
 
   const config = loadConfig();
+  const database = new URL(config.DATABASE_URL);
+  if (!["localhost", "127.0.0.1", "::1", "[::1]"].includes(database.hostname) || database.pathname !== "/ur_local") {
+    console.error("Refusing to continue: this helper only permits localhost databases named ur_local.");
+    process.exit(1);
+  }
   const pool = new Pool({ connectionString: config.DATABASE_URL });
 
   try {
@@ -64,30 +54,28 @@ async function main() {
     }
 
     const passwordHash = await hashPassword(password);
-    const totpSecret = encodeBase32(randomBytes(20));
-    const mfaSecretCiphertext = encryptMFASecret(totpSecret, config.ADMIN_MFA_ENCRYPTION_KEY);
 
     const result = await pool.query<{ id: string }>(
       `INSERT INTO admin_users (email, password_hash, role_id, mfa_required, mfa_secret_ciphertext)
-       VALUES ($1, $2, $3, true, $4)
+       VALUES ($1, $2, $3, false, NULL)
        ON CONFLICT (email) DO UPDATE
          SET password_hash = EXCLUDED.password_hash,
              role_id = EXCLUDED.role_id,
              mfa_secret_ciphertext = EXCLUDED.mfa_secret_ciphertext,
+             mfa_required = false,
              failed_login_count = 0,
              locked_until = NULL,
              disabled_at = NULL
        RETURNING id`,
-      [email, passwordHash, role.rows[0]!.id, mfaSecretCiphertext]
+      [email, passwordHash, role.rows[0]!.id]
     );
 
     console.log("\n✅ Admin account ready.");
     console.log(`   id:    ${result.rows[0]!.id}`);
     console.log(`   email: ${email}`);
     console.log(`   role:  ${roleName}`);
-    console.log(`\n🔑 TOTP secret (add to your authenticator app now, shown only once):`);
-    console.log(`   ${totpSecret}`);
-    console.log(`\nLog in at http://localhost:3000/login with your email + password, then the 6-digit code.`);
+    console.log("\nMFA is disabled for this LOCAL development account.");
+    console.log("Log in at http://localhost:3000/login with your email and password only.");
   } finally {
     await pool.end();
   }

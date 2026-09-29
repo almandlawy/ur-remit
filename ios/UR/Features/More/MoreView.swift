@@ -3,6 +3,7 @@ import SwiftUI
 struct MoreView: View {
     let api: any APIClient
     @EnvironmentObject private var auth: URAuthService
+    @State private var showAdminAccess = false
     var body: some View {
         List {
             Section {
@@ -23,7 +24,10 @@ struct MoreView: View {
                 Link(destination: URL(string: "https://urremit.com/contact")!) { Label("contact", systemImage: "phone") }
             }
             Section { LabeledContent("version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—") }
+                .contentShape(Rectangle())
+                .onTapGesture(count: 5) { showAdminAccess = true }
         }.navigationTitle("more")
+        .sheet(isPresented: $showAdminAccess) { AdminAccessView(api: api) }
     }
 }
 
