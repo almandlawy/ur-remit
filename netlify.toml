@@ -3,5 +3,11 @@
   command = "pnpm run build"
   publish = ".next"
 
+[build.environment]
+  # SUPABASE_PUBLISHABLE_KEY هو مفتاح anon/publishable عام مصمم أصلاً للكشف من جهة العميل
+  # (الحماية الفعلية تأتي من Row Level Security بقاعدة البيانات وليس من سرية هذا المفتاح).
+  # نستثنيه من فاحص الأسرار لتفادي False Positive يوقف عملية النشر.
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_PUBLISHABLE_KEY"
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
