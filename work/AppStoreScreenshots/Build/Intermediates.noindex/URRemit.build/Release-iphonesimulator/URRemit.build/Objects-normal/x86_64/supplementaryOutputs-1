@@ -1,0 +1,12 @@
+{
+  "/Users/rifad/Documents/Codex/2026-09-24/ur-ultimate-production-master-prompt-ios/ios/UR/Core/Networking/APIClient.swift" : {
+    "abi-baseline-json" : "/Users/rifad/Documents/Codex/2026-09-24/ur-ultimate-production-master-prompt-ios/work/AppStoreScreenshots/Build/Intermediates.noindex/URRemit.build/Release-iphonesimulator/URRemit.build/Objects-normal/x86_64/URRemit.abi.json",
+    "const-values" : "/Users/rifad/Documents/Codex/2026-09-24/ur-ultimate-production-master-prompt-ios/work/AppStoreScreenshots/Build/Intermediates.noindex/URRemit.build/Release-iphonesimulator/URRemit.build/Objects-normal/x86_64/URRemit-primary.swiftconstvalues",
+    "dependencies" : "/Users/rifad/Documents/Codex/2026-09-24/ur-ultimate-production-master-prompt-ios/work/AppStoreScreenshots/Build/Intermediates.noindex/URRemit.build/Release-iphonesimulator/URRemit.build/Objects-normal/x86_64/URRemit-primary.d",
+    "diagnostics" : "/Users/rifad/Documents/Codex/2026-09-24/ur-ultimate-production-master-prompt-ios/work/AppStoreScreenshots/Build/Intermediates.noindex/URRemit.build/Release-iphonesimulator/URRemit.build/Objects-normal/x86_64/URRemit-primary.dia",
+    "objc-header" : "/Users/rifad/Documents/Codex/2026-09-24/ur-ultimate-production-master-prompt-ios/work/AppStoreScreenshots/Build/Intermediates.noindex/URRemit.build/Release-iphonesimulator/URRemit.build/Objects-normal/x86_64/URRemit-Swift.h",
+    "swiftdoc" : "/Users/rifad/Documents/Codex/2026-09-24/ur-ultimate-production-master-prompt-ios/work/AppStoreScreenshots/Build/Intermediates.noindex/URRemit.build/Release-iphonesimulator/URRemit.build/Objects-normal/x86_64/URRemit.swiftdoc",
+    "swiftmodule" : "/Users/rifad/Documents/Codex/2026-09-24/ur-ultimate-production-master-prompt-ios/work/AppStoreScreenshots/Build/Intermediates.noindex/URRemit.build/Release-iphonesimulator/URRemit.build/Objects-normal/x86_64/URRemit.swiftmodule",
+    "swiftsourceinfo" : "/Users/rifad/Documents/Codex/2026-09-24/ur-ultimate-production-master-prompt-ios/work/AppStoreScreenshots/Build/Intermediates.noindex/URRemit.build/Release-iphonesimulator/URRemit.build/Objects-normal/x86_64/URRemit.swiftsourceinfo"
+  }
+}

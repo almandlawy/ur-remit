@@ -16,3 +16,34 @@ input { min-height:48px; border:1px solid var(--line); border-radius:12px; paddi
 @media (max-width:620px) { .adminContent { padding:18px }.adminSidebar { align-items:flex-start; flex-direction:column; gap:14px }.adminSidebar nav { margin:0; width:100% }.adminSidebar nav a { flex:1 }.loginCard { padding:26px }.metricGrid { grid-template-columns:1fr 1fr; gap:10px }.metricCard { padding:16px }.metricCard strong { font-size:1.5rem }.topbar,.heroMetrics { align-items:flex-start; flex-direction:column }.heroRate { width:100% }.heroRate span { min-width:0; flex:1 }.rateEditor { display:grid }.rateIdentity { align-items:flex-start } }
 @media (prefers-color-scheme:dark) { :root { color-scheme:dark; --ink:#edf3ff; --muted:#a9b4c8; --line:#263750; --surface:#101d31; --bg:#081221 } input { background:#0b1728 }.metricCard,.panel,.loginCard { background:var(--surface) }.currencyPair { background:#172b49 } }
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; transition:none!important; animation:none!important } }
+.logoutControl { display:grid; justify-items:end; gap:6px }.logoutControl [role="alert"] { color:#9d2424; font-size:.8rem }
+.adminSidebar nav a { min-height:44px }
+.adminTableWrap { width:100%; overflow-x:auto; margin-top:18px; border-radius:14px }
+.adminTable { width:100%; border-collapse:collapse; min-width:700px; text-align:right; background:var(--surface) }
+.adminTable th { color:#fff; background:var(--navy); padding:13px 14px; font-size:.82rem; white-space:nowrap }
+.adminTable td { padding:13px 14px; border-bottom:1px solid var(--line); font-size:.88rem; vertical-align:middle }
+.adminTable tbody tr:hover { background:#c59b3d0d }
+.adminTable code { direction:ltr; display:inline-block }
+.buttonLink { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; min-height:44px; white-space:nowrap }
+.officeForm { display:grid; gap:20px }
+.officeFields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px }
+.officeFields label { display:grid; gap:8px; font-weight:650; font-size:.9rem }
+.officeFields select { min-height:48px; border:1px solid var(--line); border-radius:12px; padding:0 12px; background:var(--surface); color:var(--ink); font:inherit }
+.formActions,.rowActions { display:flex; align-items:center; gap:10px; flex-wrap:wrap }
+.rowActions { min-width:165px }
+.dangerButton { border:0; border-radius:10px; padding:0 14px; min-height:42px; color:#fff; background:#b42318; font-weight:700 }
+.dangerButton:disabled { opacity:.6 }
+.rowActions .error { flex-basis:100%; padding:6px; font-size:.78rem }
+.accessDenied { border-color:#e6bd76; background:#fffaf0 }
+.passwordForm { max-width:620px; margin-top:18px }
+.settingsIntro { margin-top:20px; color:var(--muted); line-height:1.7 }
+.textLink { display:inline-block; margin-top:8px; color:var(--blue); font-weight:700; text-decoration:none }
+.textLink:hover { text-decoration:underline }
+.detailGrid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px }
+.detailGrid div { padding:14px; background:var(--bg); border-radius:12px }
+.detailGrid dt { color:var(--muted); font-size:.85rem }
+.detailGrid dd { margin:6px 0 0; font-weight:750; overflow-wrap:anywhere }
+.rateEditPanel { margin-top:18px }
+.rateEditPanel h2 { margin-bottom:18px }
+@media (max-width:620px) { .officeFields { grid-template-columns:1fr }.logoutControl { justify-items:start } }
+@media (max-width:620px) { .detailGrid { grid-template-columns:repeat(2,minmax(0,1fr)) } }

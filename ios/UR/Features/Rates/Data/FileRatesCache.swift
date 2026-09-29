@@ -14,7 +14,14 @@ actor FileRatesCache: RatesCache {
         let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
         self.fileURL = fileURL ?? base.appending(path: "ur-rates-v1.json")
         encoder.dateEncodingStrategy = .iso8601
-        decoder.dateDecodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let value = try container.decode(String.self)
+            guard let date = ISO8601DateParser.date(from: value) else {
+                throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid ISO-8601 date: \(value)")
+            }
+            return date
+        }
     }
 
     func read() throws -> [Rate] {
@@ -43,4 +50,3 @@ struct DefaultRatesRepository: RatesRepository {
         }
     }
 }
-

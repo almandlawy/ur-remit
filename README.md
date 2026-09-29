@@ -32,3 +32,5 @@ Copy `backend/.env.example` to `backend/.env` and supply non-production local va
 
 Current delivery status and verified commands are recorded in [`docs/STATUS.md`](docs/STATUS.md).
 
+The Arabic admin console architecture, setup, first-admin bootstrap, security
+model, and deployment instructions are documented in [`admin/README.md`](admin/README.md).

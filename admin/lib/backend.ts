@@ -1,8 +1,22 @@
 import "server-only";
 
-const backendURL = process.env.UR_BACKEND_URL ?? "http://127.0.0.1:8080";
-
 export async function backendRequest(path: string, init: RequestInit = {}) {
-  return fetch(`${backendURL}${path}`, { ...init, cache: "no-store", headers: { "content-type": "application/json", ...init.headers } });
-}
+  const backendURL = process.env.UR_BACKEND_URL;
+  if (!backendURL) throw new Error("UR_BACKEND_URL must be configured on the Next.js server.");
 
+  let origin: URL;
+  try { origin = new URL(backendURL); }
+  catch { throw new Error("UR_BACKEND_URL must be an absolute HTTP(S) URL."); }
+
+  if (!["http:", "https:"].includes(origin.protocol))
+    throw new Error("UR_BACKEND_URL must use HTTP or HTTPS.");
+  if (process.env.NODE_ENV === "production" && origin.protocol !== "https:")
+    throw new Error("UR_BACKEND_URL must use HTTPS in production.");
+  if (!path.startsWith("/")) throw new Error("Backend paths must be absolute paths.");
+
+  return fetch(new URL(path, origin), {
+    ...init,
+    cache: "no-store",
+    headers: { "content-type": "application/json", ...init.headers }
+  });
+}

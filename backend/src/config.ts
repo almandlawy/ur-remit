@@ -14,5 +14,8 @@ const schema = z.object({
 export type AppConfig = z.infer<typeof schema>;
 
 export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppConfig {
-  return schema.parse(environment);
+  return schema.parse({
+    ...environment,
+    HOST: environment.HOST ?? (environment.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1")
+  });
 }

@@ -2,6 +2,7 @@ FROM node:24-alpine AS build
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY backend/package.json backend/package.json
+COPY admin/package.json admin/package.json
 RUN corepack enable && pnpm install --frozen-lockfile --filter @ur/backend...
 COPY backend backend
 RUN pnpm --filter @ur/backend build
@@ -14,4 +15,3 @@ COPY --from=build --chown=node:node /app/backend/dist ./dist
 COPY --from=build --chown=node:node /app/backend/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/backend/package.json ./package.json
 CMD ["node", "dist/server.js"]
-

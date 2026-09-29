@@ -25,19 +25,29 @@ function adminStore(permissions: string[]): AdminStore {
   return {
     login: async () => null,
     authenticate: async () => ({ id: "c65d937a-e48f-4be1-83e6-1934534dad10", role: "PRICE_MANAGER", permissions }),
+    revokeSession: async () => undefined,
     dashboard: async () => ({ activeRoutes: 3 }),
+    listRates: async () => [],
     updateRate: async (_id, update, actor, requestId) => ({ ...update, actorId: actor.id, requestId }),
+    listOffices: async () => [],
+    createOffice: async (input) => ({ ...input, id: "93c7b4b1-14aa-4622-bbad-0d3a470c89c2" }),
+    updateOffice: async (id, input) => ({ ...input, id }),
+    deleteOffice: async () => true,
+    listAgents: async () => [],
+    listAdmins: async () => [],
+    auditLog: async () => [],
+    changePassword: async () => true,
     close: async () => undefined
   };
 }
 
 describe("admin API", () => {
-  it("issues a session only after the store verifies password and MFA", async () => {
+  it("issues a session after the store verifies the username and password", async () => {
     const store = adminStore([]);
     store.login = async () => ({ token: "issued-session", expiresAt: "2026-09-25T01:00:00.000Z" });
     const app = await buildServer(config, publicStore(), store);
     const response = await app.inject({ method: "POST", url: "/api/v1/admin/auth/login",
-      payload: { email: "admin@urremit.com", password: "a-secure-password-value", otp: "123456" } });
+      payload: { username: "Almandlawy", password: "a-secure-password-value", mfaCode: "123456" } });
     expect(response.statusCode).toBe(200);
     expect(response.json().data.token).toBe("issued-session");
     await app.close();
@@ -46,9 +56,20 @@ describe("admin API", () => {
   it("returns a generic login failure", async () => {
     const app = await buildServer(config, publicStore(), adminStore([]));
     const response = await app.inject({ method: "POST", url: "/api/v1/admin/auth/login",
-      payload: { email: "admin@urremit.com", password: "a-secure-password-value", otp: "123456" } });
+      payload: { username: "Almandlawy", password: "a-secure-password-value", mfaCode: "123456" } });
     expect(response.statusCode).toBe(401);
     expect(response.json().error.code).toBe("INVALID_CREDENTIALS");
+    await app.close();
+  });
+
+  it("requires a six-digit MFA code for login", async () => {
+    const app = await buildServer(config, publicStore(), adminStore([]));
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/admin/auth/login",
+      payload: { username: "Almandlawy", password: "a-secure-password-value" }
+    });
+    expect(response.statusCode).toBe(400);
     await app.close();
   });
 
@@ -58,6 +79,21 @@ describe("admin API", () => {
     const response = await app.inject({ method: "GET", url: "/api/v1/admin/dashboard" });
     expect(response.statusCode).toBe(401);
     expect(response.json().error.code).toBe("UNAUTHORIZED");
+    await app.close();
+  });
+
+  it("revokes an authenticated admin session on logout", async () => {
+    let revoked = false;
+    const store = adminStore([]);
+    store.revokeSession = async () => { revoked = true; };
+    const app = await buildServer(config, publicStore(), store);
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/admin/auth/logout",
+      headers: { authorization: `Bearer ${token}` }
+    });
+    expect(response.statusCode).toBe(200);
+    expect(revoked).toBe(true);
     await app.close();
   });
 
@@ -94,6 +130,76 @@ describe("admin API", () => {
       headers: { authorization: `Bearer ${token}` }, payload: { buy: 1570.125 }
     });
     expect(response.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("rejects rate updates without write permission", async () => {
+    const app = await buildServer(config, publicStore(), adminStore(["rates.read"]));
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/admin/rates/69c9fe66-775e-4234-8b87-ca9e670342c9",
+      headers: { authorization: "Bearer " + token },
+      payload: { buy: "1570.125" }
+    });
+    expect(response.statusCode).toBe(403);
+    await app.close();
+  });
+
+  it("creates an office with a validated payload for an authorized admin", async () => {
+    const store = adminStore(["offices.write"]);
+    const app = await buildServer(config, publicStore(), store);
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/admin/offices",
+      headers: { authorization: ["Bearer", token].join(" ") },
+      payload: {
+        countryId: "c65d937a-e48f-4be1-83e6-1934534dad10",
+        cityId: "93c7b4b1-14aa-4622-bbad-0d3a470c89c2",
+        publicCode: "BAG-01",
+        nameArabic: "مكتب بغداد",
+        nameEnglish: "Baghdad Office",
+        addressArabic: "بغداد",
+        addressEnglish: "Baghdad"
+      }
+    });
+    expect(response.statusCode).toBe(201);
+    expect(response.json().data.publicCode).toBe("BAG-01");
+    await app.close();
+  });
+
+  it("rejects office creation when required fields are missing", async () => {
+    let called = false;
+    const store = adminStore(["offices.write"]);
+    store.createOffice = async () => { called = true; return null; };
+    const app = await buildServer(config, publicStore(), store);
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/admin/offices",
+      headers: { authorization: ["Bearer", token].join(" ") },
+      payload: { publicCode: "BAG-01" }
+    });
+    expect(response.statusCode).toBe(400);
+    expect(called).toBe(false);
+    await app.close();
+  });
+
+  it("does not allow an admin without office permission to create offices", async () => {
+    const app = await buildServer(config, publicStore(), adminStore([]));
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/admin/offices",
+      headers: { authorization: ["Bearer", token].join(" ") },
+      payload: {
+        countryId: "c65d937a-e48f-4be1-83e6-1934534dad10",
+        cityId: "93c7b4b1-14aa-4622-bbad-0d3a470c89c2",
+        publicCode: "BAG-01",
+        nameArabic: "مكتب بغداد",
+        nameEnglish: "Baghdad Office",
+        addressArabic: "بغداد",
+        addressEnglish: "Baghdad"
+      }
+    });
+    expect(response.statusCode).toBe(403);
     await app.close();
   });
 });

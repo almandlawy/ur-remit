@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!admin/.env.local.example
 node_modules/
 .pnpm-store/
 dist/
@@ -13,3 +14,6 @@ DerivedData/
 *.xcuserstate
 xcuserdata/
 backend/.local/
+
+# Local Netlify folder
+.netlify

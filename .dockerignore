@@ -1,0 +1,17 @@
+.git
+.DS_Store
+**/.env
+**/.env.*
+!**/.env.example
+**/.local
+**/node_modules
+**/dist
+**/.next
+**/coverage
+admin/**
+!admin/package.json
+ios
+docs
+work
+.build
+.pnpm-store
