@@ -22,6 +22,15 @@ export async function buildServer(config: AppConfig, suppliedStore?: PublicStore
   await app.register(helmet, { global: true });
   await app.register(rateLimit, { max: 120, timeWindow: "1 minute" });
 
+  // This is an API-only service with no root page. Browsers/operators poking at "/" directly
+  // (e.g. checking whether a deployment is reachable) used to get the same 404 shape as a
+  // genuinely missing route, which reads as "the deployment is broken". A short, explicit
+  // landing response makes it obvious the service is up and points at the real health check.
+  app.get("/", async (request) => ({
+    service: "ur-public-api", status: "running", requestId: request.id,
+    health: "/api/v1/health", documentation: "See backend/src/public-routes.ts for available endpoints."
+  }));
+
   app.get("/api/v1/health", async (request, reply) => {
     const database = await store.health().catch(() => false);
     if (!database) reply.code(503);
