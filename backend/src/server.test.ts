@@ -21,6 +21,14 @@ function makeStore(overrides: Partial<PublicStore> = {}): PublicStore {
 }
 
 describe("public API", () => {
+  it("returns a friendly landing response at the root instead of a 404", async () => {
+    const app = await buildServer(config, makeStore());
+    const response = await app.inject({ method: "GET", url: "/" });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ service: "ur-public-api", status: "running", health: "/api/v1/health" });
+    await app.close();
+  });
+
   it("returns database-aware versioned health", async () => {
     const app = await buildServer(config, makeStore());
     const response = await app.inject({ method: "GET", url: "/api/v1/health" });
