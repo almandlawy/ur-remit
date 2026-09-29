@@ -73,13 +73,19 @@ export class PostgresAdminStore implements AdminStore {
   }
 
   async dashboard(): Promise<Record<string, unknown>> {
-    const result = await this.pool.query(`SELECT
-      (SELECT count(*)::int FROM rate_routes WHERE is_active) AS "activeRoutes",
-      (SELECT count(*)::int FROM offices WHERE is_active AND is_verified) AS "activeOffices",
-      (SELECT count(*)::int FROM agents WHERE status = 'VERIFIED') AS "verifiedAgents",
-      (SELECT count(*)::int FROM push_tokens WHERE revoked_at IS NULL) AS "pushSubscribers",
-      (SELECT max(source_timestamp) FROM rates WHERE is_active) AS "lastRateUpdate"`);
-    return result.rows[0] ?? {};
+    const [metrics, activity] = await Promise.all([
+      this.pool.query(`SELECT
+        (SELECT count(*)::int FROM rate_routes WHERE is_active) AS "activeRoutes",
+        (SELECT count(*)::int FROM offices WHERE is_active AND is_verified) AS "activeOffices",
+        (SELECT count(*)::int FROM agents WHERE status = 'VERIFIED') AS "verifiedAgents",
+        (SELECT count(*)::int FROM push_tokens WHERE revoked_at IS NULL) AS "pushSubscribers",
+        (SELECT max(source_timestamp) FROM rates WHERE is_active) AS "lastRateUpdate"`),
+      this.pool.query(`SELECT a.action, a.entity_type AS "entityType", a.entity_id AS "entityId",
+          a.created_at AS "createdAt", u.email AS "actorEmail"
+        FROM audit_logs a LEFT JOIN admin_users u ON u.id = a.actor_id
+        ORDER BY a.created_at DESC LIMIT 10`)
+    ]);
+    return { ...(metrics.rows[0] ?? {}), recentActivity: activity.rows };
   }
 
   async updateRate(rateId: string, update: RateUpdate, actor: AdminActor, requestId: string, ip?: string): Promise<Record<string, unknown> | null> {

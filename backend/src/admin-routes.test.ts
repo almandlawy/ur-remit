@@ -25,7 +25,9 @@ function adminStore(permissions: string[]): AdminStore {
   return {
     login: async () => null,
     authenticate: async () => ({ id: "c65d937a-e48f-4be1-83e6-1934534dad10", role: "PRICE_MANAGER", permissions }),
-    dashboard: async () => ({ activeRoutes: 3 }),
+    dashboard: async () => ({ activeRoutes: 3, recentActivity: [
+      { action: "UPDATE", entityType: "rate", entityId: "69c9fe66-775e-4234-8b87-ca9e670342c9", createdAt: "2026-09-24T10:00:00.000Z", actorEmail: "admin@urremit.com" }
+    ] }),
     updateRate: async (_id, update, actor, requestId) => ({ ...update, actorId: actor.id, requestId }),
     close: async () => undefined
   };
@@ -73,6 +75,17 @@ describe("admin API", () => {
     const response = await app.inject({ method: "GET", url: "/api/v1/admin/dashboard", headers: { authorization: `Bearer ${token}` } });
     expect(response.statusCode).toBe(200);
     expect(response.json().data.activeRoutes).toBe(3);
+    await app.close();
+  });
+
+  it("includes recent audit activity in the dashboard payload for authorized roles", async () => {
+    const app = await buildServer(config, publicStore(), adminStore(["dashboard.read"]));
+    const response = await app.inject({ method: "GET", url: "/api/v1/admin/dashboard", headers: { authorization: `Bearer ${token}` } });
+    expect(response.statusCode).toBe(200);
+    const activity = response.json().data.recentActivity;
+    expect(Array.isArray(activity)).toBe(true);
+    expect(activity[0].action).toBe("UPDATE");
+    expect(activity[0].actorEmail).toBe("admin@urremit.com");
     await app.close();
   });
 
