@@ -14,9 +14,11 @@ struct RatesView: View {
             let scale = min(max((geometry.size.width / 430) * 0.88, 0.78), 1.0)
             Group {
                 switch model.state {
-                case .idle, .loading: RatesSkeletonView()
+                case .idle, .loading(nil): RatesSkeletonView()
+                case .loading(let snapshot?): content(snapshot, scale: scale)
                 case .loaded(let snapshot): content(snapshot, scale: scale)
-                case .failed:
+                case .failed(let snapshot?): content(snapshot, scale: scale)
+                case .failed(nil):
                     ContentUnavailableView { Label("تعذر تحميل الأسعار", systemImage: "exclamationmark.triangle") } actions: {
                         Button("إعادة المحاولة") { Task { await model.load() } }
                     }
@@ -34,6 +36,16 @@ struct RatesView: View {
                 BrandHeader(scale: scale)
                 SearchBar(query: $query, scale: scale)
                 favoriteFilterChip(scale: scale)
+                if snapshot.cacheWriteFailed {
+                    HStack(spacing: 6) {
+                        Image(systemName: "externaldrive.badge.exclamationmark")
+                        Text("تعذر حفظ الأسعار للاستخدام دون اتصال")
+                    }
+                    .font(.system(size: 10 * scale, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.horizontal, 4)
+                }
                 HStack(spacing: 6) {
                     Image(systemName: "banknote.fill")
                     Text("العمولة محسوبة لكل 10,000$")

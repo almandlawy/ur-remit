@@ -16,4 +16,18 @@ For the current Netlify admin + Railway backend deployment, follow
 `UR_BACKEND_URL` in Netlify to the Railway HTTPS origin; do not point it at the
 Supabase mobile Edge Function or `127.0.0.1`.
 
+## ربط لوحة الإدارة بدومين حقيقي (خطوات يدوية مطلوبة منك)
+
+هذا الجزء لا يمكن للمساعد تنفيذه تلقائياً لأنه يتطلب الوصول لحساباتك الخارجية (استضافة + DNS)، وهذا ممنوع أمنياً بدون إذنك المباشر وحضورك الفعلي. الخطوات:
+
+1. **اختر مزوّد استضافة** لتطبيق Next.js (لوحة الإدارة) مثل Vercel أو Netlify أو Fly.io. الأسهل لمبتدئ: Vercel.
+2. **انشر مجلد `admin/`** على المزوّد (عادة بربط مستودع GitHub، ثم "Deploy").
+3. **أضف متغيرات البيئة على المنصة** (وليس بالكود):
+   - `UR_BACKEND_URL` = رابط الـ backend المنشور (مثال: `https://api.urremit.com`)
+   - يجب نشر مجلد `backend/` أولاً على منصة تدعم Node.js طويلة التشغيل (مثل Fly.io أو Railway)، وربط قاعدة Supabase عبر `DATABASE_URL` بنفس الطريقة المستخدمة محلياً.
+4. **اربط الدومين**: من إعدادات المشروع بالمنصة، أضف الدومين الذي تملكه، وستعطيك المنصة سجلات DNS (CNAME/A) تضيفها عند مسجّل الدومين (مثل Namecheap/GoDaddy).
+5. بعد الربط، تصفح الدومين مباشرة بدل `localhost:3001`.
+
+⚠️ لا تشارك أي مفتاح API أو `DATABASE_URL` أو كلمة مرور بالمحادثة — أدخلها فقط داخل لوحة تحكم المنصة نفسها.
+
 TestFlight upload requires an Apple Distribution identity, provisioning for `com.urremit.mobile`, and App Store Connect API credentials with the minimum required role. None are committed to this repository.

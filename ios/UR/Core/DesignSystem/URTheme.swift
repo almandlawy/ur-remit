@@ -1,10 +1,17 @@
 import SwiftUI
+import UIKit
 
 // MARK: - URColor
 enum URColor {
     // Primary Brand
     static let deepNavy = Color(red: 0.012, green: 0.08, blue: 0.21)
-    static let royalBlue = Color(red: 0.015, green: 0.18, blue: 0.31)
+    static let royalBlue = Color(uiColor: UIColor { traits in
+        if traits.userInterfaceStyle == .dark {
+            UIColor(red: 0.48, green: 0.64, blue: 0.98, alpha: 1)
+        } else {
+            UIColor(red: 0.015, green: 0.18, blue: 0.31, alpha: 1)
+        }
+    })
     static let premiumGold = Color(red: 0.67, green: 0.49, blue: 0.16)
 
     // Surfaces

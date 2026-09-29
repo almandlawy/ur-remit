@@ -22,7 +22,7 @@
     <string>UIInterfaceOrientationLandscapeLeft</string>
     <string>UIInterfaceOrientationLandscapeRight</string>
   </array>
-  <key>NSAppTransportSecurity</key><dict><key>NSAllowsArbitraryLoads</key><false/></dict>
+  <key>NSAppTransportSecurity</key><dict><key>NSAllowsArbitraryLoads</key><false/><key>NSAllowsLocalNetworking</key><true/></dict>
   <key>ITSAppUsesNonExemptEncryption</key><false/>
   <key>SUPABASE_URL</key><string>https://yqvcoomjunwokyxwofvt.supabase.co</string>
   <key>SUPABASE_PUBLISHABLE_KEY</key><string>sb_publishable_VncbkulRxDxb1bPfGUDxAg_941D7He-</string>

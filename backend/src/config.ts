@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -12,6 +14,12 @@ const schema = z.object({
 });
 
 export type AppConfig = z.infer<typeof schema>;
+
+export function loadLocalEnvironment(): void {
+  if (process.env.NODE_ENV === "production" || process.env.NODE_ENV === "test") return;
+  const envFile = fileURLToPath(new URL("../.env", import.meta.url));
+  if (existsSync(envFile)) process.loadEnvFile(envFile);
+}
 
 export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppConfig {
   return schema.parse({

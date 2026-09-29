@@ -3,10 +3,13 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY backend/package.json backend/package.json
 COPY admin/package.json admin/package.json
-RUN corepack enable && pnpm install --frozen-lockfile
+RUN corepack enable && pnpm install --frozen-lockfile --filter @ur/backend...
 COPY backend backend
 RUN pnpm --filter @ur/backend build
-
+# pnpm workspace installs hoist real files into a root node_modules/.pnpm store and
+# leave backend/node_modules as symlinks pointing there. Copying backend/node_modules
+# alone into the runtime stage leaves dangling symlinks (e.g. "Cannot find package
+# 'fastify'"). `pnpm deploy` materializes a self-contained, symlink-free package.
 RUN pnpm --filter @ur/backend deploy --prod --legacy /deploy
 
 FROM node:24-alpine

@@ -106,6 +106,7 @@ private struct URBottomNavigation: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(tab.title)
                 .accessibilityAddTraits(selection == tab ? .isSelected : [])
             }
         }

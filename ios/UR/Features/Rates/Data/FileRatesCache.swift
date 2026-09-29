@@ -40,13 +40,23 @@ struct DefaultRatesRepository: RatesRepository {
     let cache: any RatesCache
 
     func loadRates() async throws -> RatesSnapshot {
+        let rates: [Rate]
         do {
-            let rates = try await remote.rates()
-            try await cache.write(rates)
-            return RatesSnapshot(rates: rates, isFromCache: false)
+            rates = try await remote.rates()
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             let cached = try await cache.read()
             return RatesSnapshot(rates: cached, isFromCache: true)
+        }
+
+        do {
+            try await cache.write(rates)
+            return RatesSnapshot(rates: rates, isFromCache: false)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            return RatesSnapshot(rates: rates, isFromCache: false, cacheWriteFailed: true)
         }
     }
 }

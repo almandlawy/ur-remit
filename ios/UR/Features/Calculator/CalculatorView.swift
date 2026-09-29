@@ -1,5 +1,12 @@
 import SwiftUI
 
+enum TransferAmount {
+    static func positiveDecimal(from text: String, locale: Locale) -> Decimal? {
+        guard let amount = Decimal(string: text, locale: locale), amount > 0 else { return nil }
+        return amount
+    }
+}
+
 struct SupportView: View {
     let repository: any RatesRepository
     let api: any APIClient
@@ -48,10 +55,22 @@ struct CalculatorView: View {
     @State private var selectedRateID: UUID?
     @State private var amount = ""
     @State private var loading = true
+    @State private var loadFailed = false
+    @State private var isFromCache = false
+    @State private var cacheWriteFailed = false
+    @State private var hasLoadedOnce = false
+    @Environment(\.locale) private var locale
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// Auto-refresh so admin rate updates reach the app without a manual pull-to-refresh.
+    private static let autoRefreshInterval: TimeInterval = 60
+    private let autoRefreshTimer = Timer.publish(every: autoRefreshInterval, on: .main, in: .common).autoconnect()
 
     private var selectedRate: Rate? { rates.first { $0.id == selectedRateID } }
     private var result: Decimal? {
-        guard let rate = selectedRate, let value = Decimal(string: amount), let exchange = rate.sell ?? rate.buy else { return nil }
+        guard let rate = selectedRate,
+              let value = TransferAmount.positiveDecimal(from: amount, locale: locale),
+              let exchange = rate.sell ?? rate.buy else { return nil }
         return value * exchange
     }
 
@@ -64,11 +83,11 @@ struct CalculatorView: View {
                         Text("زوج العملات").font(.caption.weight(.bold)).foregroundStyle(.secondary)
                         Picker("المسار", selection: $selectedRateID) {
                             Text("اختر المسار").tag(UUID?.none)
-                            ForEach(rates) { Text($0.routeNameArabic).tag(Optional($0.id)) }
+                            ForEach(rates) { Text($0.displayName(locale: locale)).tag(Optional($0.id)) }
                         }.pickerStyle(.menu).tint(URColor.deepNavy).frame(maxWidth: .infinity, alignment: .trailing)
                         Divider()
                         Text("المبلغ بالدولار").font(.caption.weight(.bold)).foregroundStyle(.secondary)
-                        HStack { Text("USD").font(.headline.weight(.black)).foregroundStyle(URColor.premiumGold); TextField("0.00", text: $amount).keyboardType(.decimalPad).font(.title2.weight(.bold)).multilineTextAlignment(.trailing) }
+                        HStack { Text("USD").font(.headline.weight(.black)).foregroundStyle(URColor.premiumGold); TextField("0.00", text: $amount).keyboardType(.decimalPad).font(.title2.weight(.bold)).multilineTextAlignment(.trailing).accessibilityLabel(Text("amount_to_convert")) }
                     }
                 }
                 if let rate = selectedRate, let result {
@@ -78,13 +97,70 @@ struct CalculatorView: View {
                         Text(rate.destinationCurrency).font(.headline.weight(.bold)).foregroundStyle(URColor.premiumGold)
                         Divider().overlay(.white.opacity(0.20))
                         HStack { Text((rate.sell ?? rate.buy ?? 0).formatted()); Spacer(); Text("سعر الصرف") }.font(.caption).foregroundStyle(.white.opacity(0.72))
+                        if isFromCache {
+                            HStack { Image(systemName: "wifi.slash"); Text("أنت تشاهد آخر أسعار محفوظة") }.font(.caption2).foregroundStyle(.white.opacity(0.65))
+                        }
+                        if cacheWriteFailed {
+                            HStack { Image(systemName: "externaldrive.badge.exclamationmark"); Text("تعذر حفظ الأسعار للاستخدام دون اتصال") }.font(.caption2).foregroundStyle(.white.opacity(0.65))
+                        }
+                        if Date.now >= rate.staleAfter {
+                            HStack { Image(systemName: "clock.badge.exclamationmark"); Text("قد يكون السعر قديماً") }.font(.caption2).foregroundStyle(.orange)
+                        }
                     }
                     .foregroundStyle(.white).padding(20).frame(maxWidth: .infinity).background(URColor.deepNavy, in: RoundedRectangle(cornerRadius: 18))
+                }
+                if selectedRate != nil && !amount.isEmpty && result == nil {
+                    Text("الرجاء إدخال مبلغ صحيح أكبر من صفر").font(.caption).foregroundStyle(.secondary)
+                }
+                if loadFailed && !rates.isEmpty {
+                    VStack(spacing: 8) {
+                        Label("تعذر تحديث الأسعار، تُعرض آخر بيانات محفوظة", systemImage: "wifi.exclamationmark").font(.caption).foregroundStyle(.secondary)
+                        Button("إعادة المحاولة") { Task { await loadRates() } }.buttonStyle(URPrimaryButtonStyle())
+                    }
+                } else if loading {
+                    ProgressView("جارٍ تحميل الأسعار…").padding()
+                } else if rates.isEmpty {
+                    VStack(spacing: 10) {
+                        Image(systemName: loadFailed ? "wifi.exclamationmark" : "function").font(.system(size: 34)).foregroundStyle(.secondary)
+                        Text(loadFailed ? "تعذر تحميل الأسعار" : "لا توجد أسعار متاحة حالياً").font(.subheadline.weight(.bold))
+                        Button("إعادة المحاولة") { Task { await loadRates() } }.buttonStyle(URPrimaryButtonStyle())
+                    }.padding()
                 }
                 Text("الحسبة معلوماتية وتقريبية فقط، وقد يختلف السعر الفعلي حسب السوق والوقت.").font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }.padding(14)
         }
         .background(URColor.ivory.ignoresSafeArea()).navigationBarTitleDisplayMode(.inline)
-        .task { defer { loading = false }; rates = ((try? await repository.loadRates())?.rates ?? []).filter { $0.buy != nil || $0.sell != nil }; selectedRateID = rates.first?.id }
+        .task {
+            await loadRates()
+            hasLoadedOnce = true
+        }
+        .refreshable { await loadRates() }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard hasLoadedOnce, newPhase == .active else { return }
+            Task { await loadRates() }
+        }
+        .onReceive(autoRefreshTimer) { _ in
+            guard hasLoadedOnce, scenePhase == .active else { return }
+            Task { await loadRates() }
+        }
+    }
+
+    private func loadRates() async {
+        // Only show the full-screen loading state on the very first fetch; background
+        // auto-refreshes (foreground/periodic) should update silently without flicker.
+        if rates.isEmpty { loading = true }
+        loadFailed = false
+        defer { loading = false }
+        do {
+            let snapshot = try await repository.loadRates()
+            rates = snapshot.rates.filter { $0.buy != nil || $0.sell != nil }
+            if selectedRateID == nil { selectedRateID = rates.first?.id }
+            isFromCache = snapshot.isFromCache
+            cacheWriteFailed = snapshot.cacheWriteFailed
+        } catch is CancellationError {
+            return
+        } catch {
+            loadFailed = true
+        }
     }
 }

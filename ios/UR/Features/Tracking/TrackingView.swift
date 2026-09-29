@@ -1,10 +1,37 @@
 import SwiftUI
 
+/// Classifies a tracking lookup failure into a localized message key and whether a retry makes
+/// sense — pulled out of `TrackingView` so this branching is unit-testable without SwiftUI.
+enum TrackingLookupFailure: Equatable {
+    case notFound
+    case transient
+
+    init(_ error: Error) {
+        if case NetworkError.httpStatus(404) = error {
+            // A 404 means the reference format is valid but no such transfer exists (likely a typo
+            // or an old/expired reference) — this is not a transient failure, so no retry action.
+            self = .notFound
+        } else {
+            self = .transient
+        }
+    }
+
+    var messageKey: String.LocalizationValue {
+        switch self {
+        case .notFound: "reference_not_found"
+        case .transient: "tracking_lookup_failed"
+        }
+    }
+
+    var canRetry: Bool { self == .transient }
+}
+
 struct TrackingView: View {
     let api: any APIClient
     @State private var reference = ""
     @State private var result: TransferTracking?
     @State private var message = ""
+    @State private var canRetry = false
     @State private var loading = false
 
     var body: some View {
@@ -18,6 +45,7 @@ struct TrackingView: View {
                     TextField("UR-XXXXXXXX", text: $reference)
                         .textInputAutocapitalization(.characters).autocorrectionDisabled().multilineTextAlignment(.center)
                         .font(.title3.weight(.bold)).padding().background(URColor.ivory, in: RoundedRectangle(cornerRadius: 13)).overlay(RoundedRectangle(cornerRadius: 13).stroke(URColor.hairline))
+                        .accessibilityLabel(Text("transfer_reference"))
                     Button(loading ? "جارٍ التحقق…" : "تتبع الحوالة") { Task { await track() } }.buttonStyle(URPrimaryButtonStyle()).disabled(loading || !validReference)
                 }
                 .padding(18).background(.white.opacity(0.84), in: RoundedRectangle(cornerRadius: 18)).overlay(RoundedRectangle(cornerRadius: 18).stroke(URColor.hairline))
@@ -32,7 +60,14 @@ struct TrackingView: View {
                         }
                     }
                 }
-                if !message.isEmpty { Label(message, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.secondary).padding() }
+                if !message.isEmpty {
+                    VStack(spacing: 8) {
+                        Label(message, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.secondary)
+                        if canRetry {
+                            Button("retry") { Task { await track() } }.buttonStyle(URPrimaryButtonStyle())
+                        }
+                    }.padding()
+                }
                 Label("لا تشارك رقم التتبع أو رمز الاستلام إلا مع الشخص المخوّل.", systemImage: "lock.shield.fill").font(.caption).foregroundStyle(URColor.deepNavy.opacity(0.66)).padding(14)
             }.padding(14)
         }
@@ -41,7 +76,20 @@ struct TrackingView: View {
 
     private func detail(_ label: String, _ value: String) -> some View { HStack { Text(value).foregroundStyle(URColor.deepNavy); Spacer(); Text(label).foregroundStyle(.secondary) }.font(.subheadline) }
     private var validReference: Bool { reference.uppercased().range(of: #"^UR-[A-Z0-9]{8}$"#, options: .regularExpression) != nil }
-    private func track() async { loading = true; message = ""; result = nil; defer { loading = false }; do { result = try await api.track(reference: reference.uppercased()) } catch { message = "تعذر العثور على معلومات التتبع أو الاتصال بالخدمة." } }
+
+    private func track() async {
+        loading = true; message = ""; canRetry = false; result = nil; defer { loading = false }
+        do {
+            result = try await api.track(reference: reference.uppercased())
+        } catch is CancellationError {
+            return
+        } catch {
+            let failure = TrackingLookupFailure(error)
+            message = String(localized: failure.messageKey)
+            canRetry = failure.canRetry
+        }
+    }
+
     private func statusLabel(_ value: String) -> String { ["ISSUED":"تم الإصدار","ASSIGNED":"تم التعيين","READY_FOR_PICKUP":"جاهزة للاستلام","COMPLETED":"مكتملة","CANCELLED":"ملغاة","REFUNDED":"مستردة","HELD":"قيد المراجعة"][value] ?? value }
     private func statusSymbol(_ value: String) -> String { value == "COMPLETED" ? "checkmark.seal.fill" : value == "HELD" ? "exclamationmark.shield.fill" : "clock.badge.checkmark" }
 }
