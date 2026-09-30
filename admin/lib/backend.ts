@@ -245,24 +245,31 @@ async function listRates(): Promise<Record<string, unknown>[]> {
 // *currently* active, so saves succeed even with a stale id.
 async function updateRate(
   rateId: string,
-  update: { buy?: unknown; sell?: unknown; feeFixed?: unknown; feePercent?: unknown },
+  update: {
+    buy?: unknown; sell?: unknown; feeFixed?: unknown; feePercent?: unknown;
+    validFrom?: string; validUntil?: string | null; active?: boolean;
+  },
   actor: Actor,
   requestId: string,
   ip?: string
 ): Promise<Record<string, unknown> | null> {
   const client = serviceClient();
-  const { data: oldRate, error: fetchError } = await client.from("rates").select("*").eq("id", rateId).maybeSingle();
-  if (fetchError) throw new Error(fetchError.message);
-  if (!oldRate) return null;
-
   const { data: newRate, error: rpcError } = await client.rpc("admin_update_rate", {
     p_actor_id: actor.id,
     p_rate_id: rateId,
-    p_buy: update.buy === undefined ? oldRate.buy : update.buy,
-    p_sell: update.sell === undefined ? oldRate.sell : update.sell,
-    p_fee_fixed: update.feeFixed === undefined ? oldRate.fee_fixed : update.feeFixed,
+    p_buy: update.buy ?? null,
+    p_sell: update.sell ?? null,
+    p_fee_fixed: update.feeFixed ?? null,
     p_request_id: requestId,
-    p_fee_percent: update.feePercent === undefined ? null : update.feePercent
+    p_fee_percent: update.feePercent ?? null,
+    p_buy_set: Object.prototype.hasOwnProperty.call(update, "buy"),
+    p_sell_set: Object.prototype.hasOwnProperty.call(update, "sell"),
+    p_fee_fixed_set: Object.prototype.hasOwnProperty.call(update, "feeFixed"),
+    p_fee_percent_set: Object.prototype.hasOwnProperty.call(update, "feePercent"),
+    p_valid_from: update.validFrom ?? null,
+    p_valid_until: update.validUntil ?? null,
+    p_valid_until_set: Object.prototype.hasOwnProperty.call(update, "validUntil"),
+    p_active: update.active ?? true
   });
   if (rpcError) throw new Error(rpcError.message);
   if (!newRate) return null;
@@ -607,7 +614,10 @@ export async function backendRequest(path: string, init: RequestInit = {}): Prom
 
     const ratesMatch = /^\/api\/v1\/admin\/rates\/([0-9a-f-]{36})$/i.exec(path);
     if (ratesMatch && method === "PATCH") {
-      const body = readBody<{ buy?: unknown; sell?: unknown; feeFixed?: unknown; feePercent?: unknown }>(init) ?? {};
+      const body = readBody<{
+        buy?: unknown; sell?: unknown; feeFixed?: unknown; feePercent?: unknown;
+        validFrom?: string; validUntil?: string | null; active?: boolean;
+      }>(init) ?? {};
       const rate = await updateRate(ratesMatch[1]!, body, actor, requestId);
       if (!rate) return json({ error: "NOT_FOUND" }, 404);
       return json({ data: rate });

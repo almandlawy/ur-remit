@@ -18,6 +18,23 @@ export type OfficeInput = {
 };
 export type OfficeUpdate = { [Key in keyof OfficeInput]?: OfficeInput[Key] | undefined };
 
+export function rateUpdateRpcArguments(update: RateUpdate): unknown[] {
+  return [
+    update.buy ?? null,
+    update.sell ?? null,
+    update.feeFixed ?? null,
+    update.feePercent ?? null,
+    Object.prototype.hasOwnProperty.call(update, "buy"),
+    Object.prototype.hasOwnProperty.call(update, "sell"),
+    Object.prototype.hasOwnProperty.call(update, "feeFixed"),
+    Object.prototype.hasOwnProperty.call(update, "feePercent"),
+    update.validFrom ?? null,
+    update.validUntil ?? null,
+    Object.prototype.hasOwnProperty.call(update, "validUntil"),
+    update.active ?? true,
+  ];
+}
+
 export interface AdminStore {
   login(credentials: { username: string; password: string }, keys: { session: string }, context: { requestId: string; ip?: string | undefined; userAgent?: string | undefined }): Promise<{ token: string; expiresAt: string } | null>;
   authenticate(tokenHash: string): Promise<AdminActor | null>;
@@ -145,24 +162,24 @@ export class PostgresAdminStore implements AdminStore {
   // network/connectivity problem. admin_update_rate() resolves the route
   // from whatever id is passed, locks all of that route's rows, and always
   // versions off the row that is *currently* active, so retries and
-  // successive saves with a stale id succeed instead of racing.
+  // successive saves with a stale id succeed instead of racing. Update flags
+  // let the function preserve omitted fields from the active row under lock,
+  // rather than copying stale values from a pre-read.
   async updateRate(rateId: string, update: RateUpdate, actor: AdminActor, requestId: string, ip?: string): Promise<Record<string, unknown> | null> {
     const client = await this.pool.connect();
     try {
-      const oldRateResult = await client.query(`SELECT * FROM rates WHERE id = $1`, [rateId]);
-      const oldRate = oldRateResult.rows[0] as Record<string, unknown> | undefined;
-      if (!oldRate) return null;
-
+      const rateArguments = rateUpdateRpcArguments(update);
       const result = await client.query(
-        `SELECT admin_update_rate($1, $2, $3, $4, $5, $6, $7) AS rate`,
+        `SELECT admin_update_rate(
+          $1, $2, $3, $4, $5, $6, $7,
+          $8, $9, $10, $11, $12, $13, $14, $15
+        ) AS rate`,
         [
           actor.id,
           rateId,
-          update.buy === undefined ? oldRate.buy : update.buy,
-          update.sell === undefined ? oldRate.sell : update.sell,
-          update.feeFixed === undefined ? oldRate.fee_fixed : update.feeFixed,
+          ...rateArguments.slice(0, 3),
           requestId,
-          update.feePercent === undefined ? null : update.feePercent,
+          ...rateArguments.slice(3),
         ],
       );
       const newRate = result.rows[0]?.rate as Record<string, unknown> | undefined;
