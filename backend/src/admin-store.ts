@@ -132,34 +132,53 @@ export class PostgresAdminStore implements AdminStore {
     return result.rows as Record<string, unknown>[];
   }
 
+  // Delegates to the admin_update_rate() SQL function instead of
+  // re-implementing rate versioning here. A prior version of this method
+  // resolved the row to update with `WHERE id = $1 FOR UPDATE` and computed
+  // `version = oldRate.version + 1` directly from the row the caller passed
+  // in. If a caller (a UI that hadn't refreshed after an earlier save, or a
+  // second concurrent admin) reused a rate id that had since been retired,
+  // that recomputed a version number that had already been inserted by the
+  // save that retired it, and the insert failed against the
+  // `rates_route_id_version_key` unique constraint - surfacing as "تعذّر
+  // الاتصال بخدمة الإدارة" even though the real cause was a stale id, not a
+  // network/connectivity problem. admin_update_rate() resolves the route
+  // from whatever id is passed, locks all of that route's rows, and always
+  // versions off the row that is *currently* active, so retries and
+  // successive saves with a stale id succeed instead of racing.
   async updateRate(rateId: string, update: RateUpdate, actor: AdminActor, requestId: string, ip?: string): Promise<Record<string, unknown> | null> {
     const client = await this.pool.connect();
     try {
-      await client.query("BEGIN");
-      const current = await client.query(`SELECT * FROM rates WHERE id = $1 FOR UPDATE`, [rateId]);
-      const oldRate = current.rows[0] as Record<string, unknown> | undefined;
-      if (!oldRate) { await client.query("ROLLBACK"); return null; }
-      await client.query("UPDATE rates SET is_active = false WHERE id = $1", [rateId]);
-      const inserted = await client.query(`INSERT INTO rates
-        (route_id, buy, sell, fee_fixed, fee_percent, valid_from, valid_until, source_timestamp, version, is_active)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,now(),$8,$9) RETURNING *`, [
-        oldRate.route_id, update.buy === undefined ? oldRate.buy : update.buy,
-        update.sell === undefined ? oldRate.sell : update.sell,
-        update.feeFixed === undefined ? oldRate.fee_fixed : update.feeFixed,
-        update.feePercent === undefined ? oldRate.fee_percent : update.feePercent,
-        update.validFrom ?? new Date().toISOString(), update.validUntil === undefined ? oldRate.valid_until : update.validUntil,
-        Number(oldRate.version) + 1, update.active ?? true
-      ]);
-      const newRate = inserted.rows[0] as Record<string, unknown>;
-      await client.query(`INSERT INTO rate_history(rate_id, old_value, new_value, actor_id, request_id, context)
-        VALUES ($1,$2,$3,$4,$5,$6)`, [newRate.id, oldRate, newRate, actor.id, requestId, { source: "admin-api" }]);
-      await client.query(`INSERT INTO audit_logs(actor_id, action, entity_type, entity_id, before_value, after_value, request_id, ip_context)
-        VALUES ($1,'UPDATE','rate',$2,$3,$4,$5,$6)`, [actor.id, String(newRate.id), oldRate, newRate, requestId, ip ?? null]);
-      await client.query("COMMIT");
+      const oldRateResult = await client.query(`SELECT * FROM rates WHERE id = $1`, [rateId]);
+      const oldRate = oldRateResult.rows[0] as Record<string, unknown> | undefined;
+      if (!oldRate) return null;
+
+      const result = await client.query(
+        `SELECT admin_update_rate($1, $2, $3, $4, $5, $6, $7) AS rate`,
+        [
+          actor.id,
+          rateId,
+          update.buy === undefined ? oldRate.buy : update.buy,
+          update.sell === undefined ? oldRate.sell : update.sell,
+          update.feeFixed === undefined ? oldRate.fee_fixed : update.feeFixed,
+          requestId,
+          update.feePercent === undefined ? null : update.feePercent,
+        ],
+      );
+      const newRate = result.rows[0]?.rate as Record<string, unknown> | undefined;
+      if (!newRate) return null;
+
+      // admin_update_rate() already records rate_history and audit_logs
+      // entries internally (matching the production edge function path);
+      // inserting another audit row here would double-log every save. The
+      // ip_context column is best-effort only for this action.
+      if (ip) {
+        await client.query(
+          `UPDATE audit_logs SET ip_context = $1 WHERE request_id = $2 AND entity_type = 'rate' AND ip_context IS NULL`,
+          [ip, requestId],
+        );
+      }
       return newRate;
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
     } finally { client.release(); }
   }
 

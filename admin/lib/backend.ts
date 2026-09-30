@@ -230,6 +230,19 @@ async function listRates(): Promise<Record<string, unknown>[]> {
   });
 }
 
+// Delegates to the admin_update_rate() SQL function (the same RPC the iOS
+// app and the Supabase edge function use) instead of re-implementing rate
+// versioning with plain insert/update calls here. The previous version
+// retired the row matching the client-provided id directly and computed
+// `version = oldRate.version + 1` from it. If that id had already been
+// superseded by an earlier save (this admin's own retry, or a concurrent
+// admin's edit), the recomputed version number collided with the row that
+// superseded it and the insert failed against the
+// `rates_route_id_version_key` unique constraint - which is exactly the
+// "تعذّر الاتصال بخدمة الإدارة" failure reported from the admin panel.
+// admin_update_rate() resolves the route from whichever id is passed, locks
+// all of that route's rows, and always versions off the row that is
+// *currently* active, so saves succeed even with a stale id.
 async function updateRate(
   rateId: string,
   update: { buy?: unknown; sell?: unknown; feeFixed?: unknown; feePercent?: unknown },
@@ -242,44 +255,28 @@ async function updateRate(
   if (fetchError) throw new Error(fetchError.message);
   if (!oldRate) return null;
 
-  await client.from("rates").update({ is_active: false }).eq("id", rateId);
+  const { data: newRate, error: rpcError } = await client.rpc("admin_update_rate", {
+    p_actor_id: actor.id,
+    p_rate_id: rateId,
+    p_buy: update.buy === undefined ? oldRate.buy : update.buy,
+    p_sell: update.sell === undefined ? oldRate.sell : update.sell,
+    p_fee_fixed: update.feeFixed === undefined ? oldRate.fee_fixed : update.feeFixed,
+    p_request_id: requestId,
+    p_fee_percent: update.feePercent === undefined ? null : update.feePercent
+  });
+  if (rpcError) throw new Error(rpcError.message);
+  if (!newRate) return null;
 
-  const insertPayload = {
-    route_id: oldRate.route_id,
-    buy: update.buy === undefined ? oldRate.buy : update.buy,
-    sell: update.sell === undefined ? oldRate.sell : update.sell,
-    fee_fixed: update.feeFixed === undefined ? oldRate.fee_fixed : update.feeFixed,
-    fee_percent: update.feePercent === undefined ? oldRate.fee_percent : update.feePercent,
-    valid_from: new Date().toISOString(),
-    valid_until: oldRate.valid_until,
-    source_timestamp: new Date().toISOString(),
-    version: Number(oldRate.version) + 1,
-    is_active: true
-  };
-  const { data: newRate, error: insertError } = await client.from("rates").insert(insertPayload).select("*").single();
-  if (insertError || !newRate) {
-    await client.from("rates").update({ is_active: true }).eq("id", rateId);
-    throw new Error(insertError?.message ?? "rate insert failed");
+  // admin_update_rate() already writes rate_history and audit_logs entries
+  // internally; ip_context is applied as a best-effort follow-up since the
+  // RPC has no IP parameter.
+  if (ip) {
+    await client.from("audit_logs")
+      .update({ ip_context: ip })
+      .eq("request_id", requestId)
+      .eq("entity_type", "rate")
+      .is("ip_context", null);
   }
-
-  await client.from("rate_history").insert({
-    rate_id: newRate.id,
-    old_value: oldRate,
-    new_value: newRate,
-    actor_id: actor.id,
-    request_id: requestId,
-    context: { source: "admin-web-supabase" }
-  });
-  await client.from("audit_logs").insert({
-    actor_id: actor.id,
-    action: "UPDATE",
-    entity_type: "rate",
-    entity_id: String(newRate.id),
-    before_value: oldRate,
-    after_value: newRate,
-    request_id: requestId,
-    ip_context: ip ?? null
-  });
 
   return newRate as Record<string, unknown>;
 }
