@@ -5,9 +5,9 @@ import type { PublicStore } from "./store.js";
 const config = {
   NODE_ENV: "test" as const, HOST: "127.0.0.1", PORT: 8080,
   DATABASE_URL: "postgres://test:test@127.0.0.1:5432/test",
-  LOOKUP_HASH_KEY: "test-key-with-at-least-thirty-two-characters", TRUST_PROXY: false
-  , ADMIN_SESSION_HASH_KEY: "independent-admin-session-test-key-32-chars",
-  ADMIN_MFA_ENCRYPTION_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+  LOOKUP_HASH_KEY: "test-key-with-at-least-thirty-two-characters",
+  ADMIN_SESSION_HASH_KEY: "independent-admin-session-test-key-32-chars",
+  TRUST_PROXY: false
 };
 
 function makeStore(overrides: Partial<PublicStore> = {}): PublicStore {

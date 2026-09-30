@@ -14,7 +14,6 @@ export default async function AdminUsersPage() {
         { key: "username", label: "اسم المستخدم" },
         { key: "email", label: "البريد" },
         { key: "role", label: "الدور" },
-        { key: "mfaRequired", label: "MFA إلزامي" },
         { key: "disabledAt", label: "تعطيل الحساب" },
         { key: "lastLoginAt", label: "آخر دخول" }
       ]} />

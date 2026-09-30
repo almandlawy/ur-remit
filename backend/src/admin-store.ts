@@ -1,6 +1,6 @@
 import { createHmac, randomBytes } from "node:crypto";
 import pg from "pg";
-import { decryptMFASecret, hashPassword, verifyPassword, verifyTOTP } from "./admin-auth.js";
+import { hashPassword, verifyPassword } from "./admin-auth.js";
 import { postgresSSLConfig } from "./postgres-ssl.js";
 
 export type AdminActor = { id: string; role: string; permissions: string[] };
@@ -19,7 +19,7 @@ export type OfficeInput = {
 export type OfficeUpdate = { [Key in keyof OfficeInput]?: OfficeInput[Key] | undefined };
 
 export interface AdminStore {
-  login(credentials: { username: string; password: string; mfaCode: string }, keys: { session: string; mfa: string }, context: { requestId: string; ip?: string | undefined; userAgent?: string | undefined }): Promise<{ token: string; expiresAt: string } | null>;
+  login(credentials: { username: string; password: string }, keys: { session: string }, context: { requestId: string; ip?: string | undefined; userAgent?: string | undefined }): Promise<{ token: string; expiresAt: string } | null>;
   authenticate(tokenHash: string): Promise<AdminActor | null>;
   revokeSession(tokenHash: string, actorId: string, requestId: string, ip?: string): Promise<void>;
   dashboard(): Promise<Record<string, unknown>>;
@@ -32,7 +32,7 @@ export interface AdminStore {
   listAgents(): Promise<Record<string, unknown>[]>;
   listAdmins(): Promise<Record<string, unknown>[]>;
   auditLog(): Promise<Record<string, unknown>[]>;
-  changePassword(actor: AdminActor, currentPassword: string, newPassword: string, mfaCode: string, mfaKey: string, requestId: string, ip?: string): Promise<boolean>;
+  changePassword(actor: AdminActor, currentPassword: string, newPassword: string, requestId: string, ip?: string): Promise<boolean>;
   close(): Promise<void>;
 }
 
@@ -47,23 +47,14 @@ export class PostgresAdminStore implements AdminStore {
       ssl: postgresSSLConfig(databaseURL) });
   }
 
-  async login(credentials: { username: string; password: string; mfaCode: string }, keys: { session: string; mfa: string }, context: { requestId: string; ip?: string | undefined; userAgent?: string | undefined }): Promise<{ token: string; expiresAt: string } | null> {
-    const result = await this.pool.query<{ id: string; password_hash: string; mfa_secret_ciphertext: Buffer | null; mfa_required: boolean; failed_login_count: number }>(`
-      SELECT id, password_hash, mfa_secret_ciphertext, mfa_required, failed_login_count FROM admin_users
+  async login(credentials: { username: string; password: string }, keys: { session: string }, context: { requestId: string; ip?: string | undefined; userAgent?: string | undefined }): Promise<{ token: string; expiresAt: string } | null> {
+    const result = await this.pool.query<{ id: string; password_hash: string; failed_login_count: number }>(`
+      SELECT id, password_hash, failed_login_count FROM admin_users
       WHERE (lower(username) = lower($1) OR lower(email) = lower($1))
         AND disabled_at IS NULL AND (locked_until IS NULL OR locked_until <= now()) LIMIT 1`, [credentials.username]);
     const user = result.rows[0];
     const passwordValid = user ? await verifyPassword(credentials.password, user.password_hash) : false;
-    let mfaValid = false;
-    if (user?.mfa_required && user.mfa_secret_ciphertext && passwordValid) {
-      try {
-        const secret = decryptMFASecret(user.mfa_secret_ciphertext, keys.mfa);
-        mfaValid = verifyTOTP(secret, credentials.mfaCode);
-      } catch {
-        mfaValid = false;
-      }
-    }
-    if (!user || !passwordValid || !mfaValid) {
+    if (!user || !passwordValid) {
       if (user) await this.pool.query(`UPDATE admin_users SET failed_login_count = failed_login_count + 1,
         locked_until = CASE WHEN failed_login_count + 1 >= 5 THEN now() + interval '15 minutes' ELSE locked_until END WHERE id = $1`, [user.id]);
       return null;
@@ -73,8 +64,8 @@ export class PostgresAdminStore implements AdminStore {
     const client = await this.pool.connect();
     await client.query("BEGIN");
     try {
-      await client.query(`INSERT INTO admin_sessions(admin_user_id, token_hash, mfa_verified_at, expires_at, ip_fingerprint, user_agent_fingerprint)
-        VALUES ($1,$2,now(),$3,$4,$5)`, [user.id, tokenHash, expiresAt,
+      await client.query(`INSERT INTO admin_sessions(admin_user_id, token_hash, expires_at, ip_fingerprint, user_agent_fingerprint)
+        VALUES ($1,$2,$3,$4,$5)`, [user.id, tokenHash, expiresAt,
         context.ip ? sessionFingerprint(context.ip, keys.session) : null,
         context.userAgent ? sessionFingerprint(context.userAgent, keys.session) : null]);
       await client.query("UPDATE admin_users SET failed_login_count = 0, locked_until = NULL, last_login_at = now() WHERE id = $1", [user.id]);
@@ -92,8 +83,7 @@ export class PostgresAdminStore implements AdminStore {
       UPDATE admin_sessions s SET last_seen_at = now()
       FROM admin_users u JOIN roles r ON r.id = u.role_id
       WHERE s.admin_user_id = u.id AND s.token_hash = $1 AND s.revoked_at IS NULL
-        AND s.expires_at > now() AND s.mfa_verified_at IS NOT NULL
-        AND u.mfa_required AND u.disabled_at IS NULL
+        AND s.expires_at > now() AND u.disabled_at IS NULL
       RETURNING u.id, r.name AS role,
         ARRAY(SELECT p.name FROM role_permissions rp JOIN permissions p ON p.id = rp.permission_id WHERE rp.role_id = r.id) AS permissions`,
       [tokenHash]);
@@ -298,7 +288,7 @@ export class PostgresAdminStore implements AdminStore {
 
   async listAdmins(): Promise<Record<string, unknown>[]> {
     const result = await this.pool.query(`SELECT u.id, u.username, u.email, r.name AS role,
-      u.mfa_required AS "mfaRequired", u.disabled_at AS "disabledAt",
+      u.disabled_at AS "disabledAt",
       u.last_login_at AS "lastLoginAt", u.created_at AS "createdAt"
       FROM admin_users u JOIN roles r ON r.id = u.role_id ORDER BY u.created_at DESC LIMIT 500`);
     return result.rows as Record<string, unknown>[];
@@ -313,21 +303,13 @@ export class PostgresAdminStore implements AdminStore {
     return result.rows as Record<string, unknown>[];
   }
 
-  async changePassword(actor: AdminActor, currentPassword: string, newPassword: string, mfaCode: string, mfaKey: string, requestId: string, ip?: string): Promise<boolean> {
-    const result = await this.pool.query<{
-      password_hash: string;
-      mfa_secret_ciphertext: Buffer | null;
-      mfa_required: boolean;
-    }>("SELECT password_hash, mfa_secret_ciphertext, mfa_required FROM admin_users WHERE id = $1 AND disabled_at IS NULL", [actor.id]);
+  async changePassword(actor: AdminActor, currentPassword: string, newPassword: string, requestId: string, ip?: string): Promise<boolean> {
+    const result = await this.pool.query<{ password_hash: string }>(
+      "SELECT password_hash FROM admin_users WHERE id = $1 AND disabled_at IS NULL", [actor.id]);
     const user = result.rows[0];
-    if (!user?.mfa_required || !user.mfa_secret_ciphertext) return false;
+    if (!user) return false;
     const passwordValid = await verifyPassword(currentPassword, user.password_hash);
-    let mfaValid = false;
-    if (passwordValid) {
-      try { mfaValid = verifyTOTP(decryptMFASecret(user.mfa_secret_ciphertext, mfaKey), mfaCode); }
-      catch { mfaValid = false; }
-    }
-    if (!passwordValid || !mfaValid) return false;
+    if (!passwordValid) return false;
 
     const newHash = await hashPassword(newPassword);
     const client = await this.pool.connect();

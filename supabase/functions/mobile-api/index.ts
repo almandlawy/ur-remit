@@ -69,75 +69,6 @@ async function verifyPassword(password: string, encoded: string) {
   return difference === 0;
 }
 
-function decodeBase32(value: string) {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  let bits = "";
-  for (const character of value.replace(/=+$/g, "").toUpperCase()) {
-    const index = alphabet.indexOf(character);
-    if (index < 0) throw new Error("invalid_mfa_secret");
-    bits += index.toString(2).padStart(5, "0");
-  }
-  const bytes: number[] = [];
-  for (let index = 0; index + 8 <= bits.length; index += 8) {
-    bytes.push(Number.parseInt(bits.slice(index, index + 8), 2));
-  }
-  return Uint8Array.from(bytes);
-}
-
-function decodeBase64(value: string) {
-  return Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
-}
-
-function decodePostgresBytea(value: unknown) {
-  if (typeof value !== "string" || !value.startsWith("\\x") || !/^(?:[0-9a-f]{2})+$/i.test(value.slice(2))) {
-    throw new Error("invalid_mfa_ciphertext");
-  }
-  return Uint8Array.from(value.slice(2).match(/.{2}/g)!, (byte) => Number.parseInt(byte, 16));
-}
-
-async function decryptMFASecret(payload: unknown) {
-  const encodedKey = Deno.env.get("ADMIN_MFA_ENCRYPTION_KEY");
-  if (!encodedKey) throw new Error("mfa_key_unavailable");
-  const keyBytes = decodeBase64(encodedKey);
-  const bytes = decodePostgresBytea(payload);
-  if (keyBytes.length !== 32 || bytes.length < 29) throw new Error("invalid_mfa_key_material");
-
-  const key = await crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["decrypt"]);
-  const iv = bytes.slice(0, 12);
-  const ciphertextAndTag = new Uint8Array(bytes.length - 12);
-  ciphertextAndTag.set(bytes.slice(28));
-  ciphertextAndTag.set(bytes.slice(12, 28), bytes.length - 28);
-  const plaintext = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv, tagLength: 128 },
-    key,
-    ciphertextAndTag,
-  );
-  return new TextDecoder().decode(plaintext);
-}
-
-async function verifyTOTP(secret: string, code: string) {
-  if (!/^\d{6}$/.test(code)) return false;
-  const secretBytes = decodeBase32(secret);
-  if (secretBytes.length < 16) return false;
-  const key = await crypto.subtle.importKey("raw", secretBytes, { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
-  const currentStep = Math.floor(Date.now() / 30_000);
-  for (const offset of [-1, 0, 1]) {
-    const counter = new Uint8Array(8);
-    new DataView(counter.buffer).setBigUint64(0, BigInt(currentStep + offset));
-    const digest = new Uint8Array(await crypto.subtle.sign("HMAC", key, counter));
-    const position = digest[digest.length - 1]! & 0x0f;
-    const binary = ((digest[position]! & 0x7f) << 24)
-      | ((digest[position + 1]! & 0xff) << 16)
-      | ((digest[position + 2]! & 0xff) << 8)
-      | (digest[position + 3]! & 0xff);
-    const expected = String(binary % 1_000_000).padStart(6, "0");
-    let difference = 0;
-    for (let index = 0; index < 6; index += 1) difference |= expected.charCodeAt(index) ^ code.charCodeAt(index);
-    if (difference === 0) return true;
-  }
-  return false;
-}
-
 function bearerToken(request: Request) {
   const value = request.headers.get("authorization");
   const token = value?.startsWith("Bearer ") ? value.slice(7) : "";
@@ -175,22 +106,12 @@ Deno.serve(async (request) => {
       const body = await readJSON(request);
       const username = typeof body?.username === "string" ? body.username.trim() : "";
       const password = typeof body?.password === "string" ? body.password : "";
-      const mfaCode = typeof body?.mfaCode === "string" ? body.mfaCode : "";
-      if (!/^[A-Za-z0-9@._-]{4,254}$/.test(username) || password.length < 10 || password.length > 256 || !/^\d{6}$/.test(mfaCode))
+      if (!/^[A-Za-z0-9@._-]{4,254}$/.test(username) || password.length < 10 || password.length > 256)
         return response("INVALID_INPUT", 400, true);
-      const users = await rest(`admin_users?select=id,password_hash,mfa_required,mfa_secret_ciphertext,failed_login_count,locked_until&or=(username.ilike.${encodeURIComponent(username)},email.ilike.${encodeURIComponent(username)})&disabled_at=is.null&limit=1`) as Array<Record<string, unknown>>;
+      const users = await rest(`admin_users?select=id,password_hash,failed_login_count,locked_until&or=(username.ilike.${encodeURIComponent(username)},email.ilike.${encodeURIComponent(username)})&disabled_at=is.null&limit=1`) as Array<Record<string, unknown>>;
       const user = users[0];
       const isLocked = Boolean(user?.locked_until && Date.parse(String(user.locked_until)) > Date.now());
-      let valid = Boolean(user && !isLocked && user.mfa_required === true && await verifyPassword(password, String(user.password_hash)));
-      if (valid && user) {
-        try {
-          const secret = await decryptMFASecret(user.mfa_secret_ciphertext);
-          valid = await verifyTOTP(secret, mfaCode);
-        } catch {
-          valid = false;
-        }
-      }
-      if (!valid) {
+      if (!user || isLocked || !(await verifyPassword(password, String(user.password_hash)))) {
         if (user?.id && !isLocked) {
           const failedCount = Number(user.failed_login_count ?? 0) + 1;
           await rest(`admin_users?id=eq.${user.id}`, {
@@ -208,7 +129,7 @@ Deno.serve(async (request) => {
       await rest("admin_sessions", { method: "POST", body: JSON.stringify({
         admin_user_id: user.id,
         token_hash: await sha256(token),
-        mfa_verified_at: new Date().toISOString(),
+        mfa_verified_at: null,
         expires_at: expiresAt,
         user_agent_fingerprint: request.headers.get("user-agent") ? await sha256(request.headers.get("user-agent")!) : null,
       }) });

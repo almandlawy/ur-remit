@@ -4,8 +4,7 @@ import { loadConfig } from "./config.js";
 const validEnvironment = {
   DATABASE_URL: "postgresql://localhost:5432/ur",
   LOOKUP_HASH_KEY: "a-lookup-key-that-is-long-enough-32",
-  ADMIN_SESSION_HASH_KEY: "a-distinct-session-key-long-enough-32",
-  ADMIN_MFA_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64")
+  ADMIN_SESSION_HASH_KEY: "a-distinct-session-key-long-enough-32"
 };
 
 describe("server network configuration", () => {
@@ -19,5 +18,9 @@ describe("server network configuration", () => {
 
   it("respects an explicitly configured host", () => {
     expect(loadConfig({ ...validEnvironment, NODE_ENV: "production", HOST: "127.0.0.1" }).HOST).toBe("127.0.0.1");
+  });
+
+  it("does not require an authenticator encryption key", () => {
+    expect(() => loadConfig({ ...validEnvironment, NODE_ENV: "production" })).not.toThrow();
   });
 });

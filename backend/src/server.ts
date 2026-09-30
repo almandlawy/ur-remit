@@ -48,7 +48,7 @@ export async function buildServer(config: AppConfig, suppliedStore?: PublicStore
   });
 
   await registerPublicRoutes(app, store, config.LOOKUP_HASH_KEY);
-  await registerAdminRoutes(app, adminStore, { session: config.ADMIN_SESSION_HASH_KEY, mfa: config.ADMIN_MFA_ENCRYPTION_KEY });
+  await registerAdminRoutes(app, adminStore, { session: config.ADMIN_SESSION_HASH_KEY });
   app.addHook("onClose", async () => store.close());
   app.addHook("onClose", async () => adminStore.close());
 
