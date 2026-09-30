@@ -3,10 +3,11 @@ import Observation
 import Security
 import SwiftUI
 
-/// Mirrors the backend's `decimal` schema (`backend/src/admin-routes.ts`): up to 16 integer digits and
-/// up to 8 fractional digits, no sign. Validating client-side avoids a round trip to the server for
-/// obviously malformed input and stops the misleading "server unreachable" message a raw 400 used to
-/// surface for what was actually a formatting mistake. Internal (not private) so it stays unit-testable.
+/// Mirrors the backend's `decimal` schema (`backend/src/admin-routes.ts`): an optional leading `-`,
+/// up to 16 integer digits and up to 8 fractional digits. Validating client-side avoids a round trip
+/// to the server for obviously malformed input and stops the misleading "server unreachable" message
+/// a raw 400 used to surface for what was actually a formatting mistake. Internal (not private) so it
+/// stays unit-testable.
 enum AdminRateInputValidator {
     static func normalizedDecimalInput(_ value: String) -> String? {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -14,8 +15,12 @@ enum AdminRateInputValidator {
 
         var result = ""
         var hasDecimalSeparator = false
-        for character in trimmed {
-            if let digit = character.wholeNumberValue, (0...9).contains(digit) {
+        var hasSign = false
+        for (index, character) in trimmed.enumerated() {
+            if character == "-", index == 0 {
+                hasSign = true
+                result.append("-")
+            } else if let digit = character.wholeNumberValue, (0...9).contains(digit) {
                 result.append(String(digit))
             } else if character == "." || character == "\u{066B}" {
                 guard !hasDecimalSeparator else { return nil }
@@ -25,7 +30,8 @@ enum AdminRateInputValidator {
                 return nil
             }
         }
-        return result.range(of: "^\\d{1,16}(\\.\\d{1,8})?$", options: .regularExpression) == nil
+        let digitsPattern = hasSign ? "^-\\d{1,16}(\\.\\d{1,8})?$" : "^\\d{1,16}(\\.\\d{1,8})?$"
+        return result.range(of: digitsPattern, options: .regularExpression) == nil
             ? nil
             : result
     }
@@ -680,15 +686,33 @@ private struct AdminRateEditor: View {
     private func valueField(_ title: String, text: Binding<String>) -> some View {
         VStack(alignment: .trailing, spacing: 4) {
             Text(title).font(.caption2.weight(.bold))
-            TextField("—", text: text)
-                .keyboardType(.decimalPad)
-                .multilineTextAlignment(.trailing)
-                .padding(8)
-                .background(URColor.ivory, in: RoundedRectangle(cornerRadius: 8))
-                .accessibilityLabel(title)
-                .focused($isValueFieldFocused)
+            HStack(spacing: 4) {
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    toggleSign(text)
+                } label: {
+                    Image(systemName: "plusminus.circle.fill")
+                        .foregroundStyle(text.wrappedValue.hasPrefix("-") ? URColor.error : URColor.deepNavy.opacity(0.45))
+                }
+                .accessibilityLabel("عكس إشارة \(title)")
+                TextField("—", text: text)
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.trailing)
+                    .padding(8)
+                    .background(URColor.ivory, in: RoundedRectangle(cornerRadius: 8))
+                    .accessibilityLabel(title)
+                    .focused($isValueFieldFocused)
+            }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private func toggleSign(_ text: Binding<String>) {
+        if text.wrappedValue.hasPrefix("-") {
+            text.wrappedValue.removeFirst()
+        } else {
+            text.wrappedValue = "-" + text.wrappedValue
+        }
     }
 
     private func requestSave() {

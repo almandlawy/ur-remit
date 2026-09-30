@@ -4,7 +4,7 @@ import { sessionFingerprint, type AdminActor, type AdminStore, type OfficeInput 
 
 declare module "fastify" { interface FastifyRequest { adminActor?: AdminActor } }
 
-const decimal = z.string().regex(/^\d{1,16}(\.\d{1,8})?$/);
+const decimal = z.string().regex(/^-?\d{1,16}(\.\d{1,8})?$/);
 const updateRateSchema = z.object({
   buy: decimal.nullable().optional(), sell: decimal.nullable().optional(),
   feeFixed: decimal.nullable().optional(), feePercent: decimal.nullable().optional(),

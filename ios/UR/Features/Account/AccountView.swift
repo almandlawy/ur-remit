@@ -37,8 +37,13 @@ struct AccountView: View {
                                 if case let .success(authorization) = result { Task { await auth.signInWithApple(authorization: authorization, nonce: appleNonce) } }
                             }
                             .signInWithAppleButtonStyle(.black).frame(height: 50).disabled(auth.isLoading)
-                            Button { Task { await auth.signInWithGoogle() } } label: { Label("المتابعة باستخدام Google", systemImage: "g.circle.fill") }
-                                .buttonStyle(URPrimaryButtonStyle()).disabled(auth.isLoading)
+                            Button { Task { await auth.signInWithGoogle() } } label: {
+                                HStack(spacing: 10) {
+                                    GoogleLogoMark(size: 20)
+                                    Text("المتابعة باستخدام Google")
+                                }
+                            }
+                            .buttonStyle(GoogleSignInButtonStyle()).disabled(auth.isLoading)
                         }
                     }
                 }

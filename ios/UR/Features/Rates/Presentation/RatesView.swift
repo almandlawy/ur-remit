@@ -7,6 +7,7 @@ struct RatesView: View {
     @State private var query = ""
     @State private var collapsedSections: Set<String> = []
     @State private var showOnlyFavorites = false
+    @State private var selectedTab: RateTabCategory = .all
     @State private var hasLoadedOnce = false
 
     /// Backstop refresh in case the Realtime subscription drops silently; the push subscription
@@ -56,6 +57,7 @@ struct RatesView: View {
                 BrandHeader(scale: scale)
                 SearchBar(query: $query, scale: scale)
                 favoriteFilterChip(scale: scale)
+                categoryTabBar(scale: scale)
                 if snapshot.cacheWriteFailed {
                     HStack(spacing: 6) {
                         Image(systemName: "externaldrive.badge.exclamationmark")
@@ -120,8 +122,35 @@ struct RatesView: View {
         .padding(.horizontal, 4)
     }
 
+    @ViewBuilder
+    private func categoryTabBar(scale: CGFloat) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8 * scale) {
+                ForEach(RateTabCategory.allCases) { tab in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) { selectedTab = tab }
+                    } label: {
+                        Text(tab.rawValue)
+                            .font(.system(size: 11 * scale, weight: .bold))
+                            .padding(.horizontal, 14 * scale)
+                            .frame(height: 30 * scale)
+                            .background(selectedTab == tab ? Palette.navy : .white, in: Capsule())
+                            .foregroundStyle(selectedTab == tab ? .white : Palette.navy)
+                            .overlay(Capsule().stroke(Palette.line))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 4)
+        }
+    }
+
     private func filteredSections(_ rates: [Rate]) -> [DisplaySection] {
         var sections = makeSections(rates)
+
+        if selectedTab != .all {
+            sections = sections.filter { RateTabCategory.of(sectionTitle: $0.title) == selectedTab }
+        }
 
         if showOnlyFavorites {
             sections = sections.compactMap { section in
@@ -147,10 +176,14 @@ struct RatesView: View {
             ("العراق — المدن الرئيسية", "🇮🇶", ["بغداد", "أربيل", "السليمانية", "البصرة"]),
             ("بقية مدن العراق", "🗺️", ["دهوك", "الموصل", "زاخو", "كركوك", "تكريت", "كربلاء", "النجف", "الناصرية", "العمارة", "الكوت", "الحلة", "الديوانية"]),
             ("الخليج", "🏙️", ["السعودية", "قطر", "دبي", "الكويت", "سلطنة عمان", "البحرين"]),
+            ("البنوك والإيداعات", "🏦", [
+                "الحوالات البنكية", "أبوظبي الإسلامي", "بنك ويو", "بنك أبوظبي الأول", "بنك المشرق",
+                "موني جرام", "ويسترن يونيون", "فودافون كاش"
+            ]),
             ("إيران وتركيا", "🕌", ["طهران", "مشهد", "قم", "تومان", "تركيا"]),
             ("أوروبا وكندا", "🏛️", ["فرنسا", "بريطانيا", "كندا", "ألمانيا", "إيطاليا", "كرواتيا"]),
             ("الدول العربية", "🌍", ["الأردن", "لبنان", "مصر"]),
-            ("أسعار دولية", "🌐", ["الحوالات البنكية", "الصين"])
+            ("أسعار دولية", "🌐", ["الصين"])
         ]
         var used = Set<UUID>()
         var sections: [DisplaySection] = definitions.compactMap { title, icon, names in
@@ -338,6 +371,30 @@ private struct DisplayRow: Hashable {
         return flags.first { name.contains($0.0) }?.1 ?? "🇮🇶"
     }
 }
+private enum RateTabCategory: String, CaseIterable, Identifiable {
+    case all = "الكل"
+    case iraq = "العراق"
+    case gulf = "الخليج"
+    case banks = "البنوك والإيداعات"
+    case europe = "أوروبا"
+    case asia = "آسيا"
+    var id: String { rawValue }
+
+    /// Maps a `DisplaySection` title to the tab it belongs under. "الدول العربية" (Jordan/Lebanon/
+    /// Egypt) has no exact match among the five requested tabs; it is grouped with the Gulf tab as
+    /// the closest regional neighbor rather than mislabeling it Europe or Asia.
+    static func of(sectionTitle: String) -> RateTabCategory? {
+        switch sectionTitle {
+        case "العراق — المدن الرئيسية", "بقية مدن العراق": return .iraq
+        case "الخليج", "الدول العربية": return .gulf
+        case "البنوك والإيداعات": return .banks
+        case "أوروبا وكندا": return .europe
+        case "إيران وتركيا", "أسعار دولية": return .asia
+        default: return nil
+        }
+    }
+}
+
 private struct DisplaySection: Hashable {
     let title: String; let icon: String; let rows: [DisplayRow]
 }
@@ -501,7 +558,7 @@ private struct RateRow: View {
             Spacer(minLength: 2)
             VStack(alignment: .trailing, spacing: -1) {
                 Text(formattedAmount).font(.system(size: 16 * scale, weight: .black)).monospacedDigit().foregroundStyle((row.amount ?? 0) < 0 ? Palette.red : Palette.green)
-                Text(row.isFee ? "لكل 10,000$" : "سعر الصرف").font(.system(size: 8.5 * scale)).foregroundStyle(Palette.navy.opacity(0.62))
+                Text(row.isFee ? "عمولة" : "سعر الصرف").font(.system(size: 8.5 * scale)).foregroundStyle(Palette.navy.opacity(0.62))
             }
             Image(systemName: "chevron.right").font(.system(size: 12 * scale, weight: .bold)).foregroundStyle(Palette.navy.opacity(0.78))
         }

@@ -136,6 +136,16 @@ describe("admin API", () => {
     await app.close();
   });
 
+  it("accepts negative decimal values for discount/adjustment fee routes", async () => {
+    const app = await buildServer(config, publicStore(), adminStore(["rates.write"]));
+    const response = await app.inject({
+      method: "PATCH", url: "/api/v1/admin/rates/69c9fe66-775e-4234-8b87-ca9e670342c9",
+      headers: { authorization: `Bearer ${token}` }, payload: { feeFixed: "-2.5" }
+    });
+    expect(response.statusCode).toBe(200);
+    await app.close();
+  });
+
   it("rejects floating-point and malformed monetary input", async () => {
     const app = await buildServer(config, publicStore(), adminStore(["rates.write"]));
     const response = await app.inject({
