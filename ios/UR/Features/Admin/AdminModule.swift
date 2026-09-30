@@ -72,11 +72,11 @@ private actor AdminAPI {
         }
     }
 
-    func login(username: String, password: String, mfaCode: String) async throws -> AdminSession {
+    func login(username: String, password: String) async throws -> AdminSession {
         try await send(
             to: configuration.adminBaseURL.appending(path: "auth/login"),
             method: "POST",
-            body: ["username": username, "password": password, "mfaCode": mfaCode],
+            body: ["username": username, "password": password],
             token: nil
         )
     }
@@ -185,8 +185,8 @@ private final class AdminAuth {
         sessionToken = Self.readToken(account: keychainAccount)
     }
 
-    func login(username: String, password: String, mfaCode: String) async throws {
-        let session = try await AdminAPI.shared.login(username: username, password: password, mfaCode: mfaCode)
+    func login(username: String, password: String) async throws {
+        let session = try await AdminAPI.shared.login(username: username, password: password)
         try Self.storeToken(session.token, account: keychainAccount)
         sessionToken = session.token
     }
@@ -261,7 +261,6 @@ private struct AdminLoginView: View {
     let auth: AdminAuth
     @State private var username = ""
     @State private var password = ""
-    @State private var mfaCode = ""
     @State private var errorMessage: String?
     @State private var isLoggingIn = false
 
@@ -272,7 +271,7 @@ private struct AdminLoginView: View {
 
                 URCard {
                     VStack(alignment: .trailing, spacing: 14) {
-                        TextField("اسم المستخدم", text: $username)
+                        TextField("اسم المستخدم أو البريد الإداري", text: $username)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .multilineTextAlignment(.trailing)
@@ -283,13 +282,6 @@ private struct AdminLoginView: View {
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .multilineTextAlignment(.trailing)
-                            .padding(14)
-                            .background(URColor.ivory, in: RoundedRectangle(cornerRadius: 12))
-
-                        TextField("رمز المصادقة (6 أرقام)", text: $mfaCode)
-                            .keyboardType(.numberPad)
-                            .textContentType(.oneTimeCode)
-                            .multilineTextAlignment(.center)
                             .padding(14)
                             .background(URColor.ivory, in: RoundedRectangle(cornerRadius: 12))
 
@@ -309,8 +301,8 @@ private struct AdminLoginView: View {
                                 Label("دخول آمن", systemImage: "arrow.right.circle.fill")
                             }
                         }
-                        .buttonStyle(URPrimaryButtonStyle(isEnabled: !username.isEmpty && !password.isEmpty && mfaCode.count == 6))
-                        .disabled(username.isEmpty || password.isEmpty || mfaCode.count != 6 || isLoggingIn)
+                        .buttonStyle(URPrimaryButtonStyle(isEnabled: !username.isEmpty && !password.isEmpty))
+                        .disabled(username.isEmpty || password.isEmpty || isLoggingIn)
                     }
                 }
             }
@@ -323,9 +315,8 @@ private struct AdminLoginView: View {
         errorMessage = nil
         defer { isLoggingIn = false }
         do {
-            try await auth.login(username: username, password: password, mfaCode: mfaCode)
+            try await auth.login(username: username, password: password)
             password = ""
-            mfaCode = ""
         } catch {
             errorMessage = error.localizedDescription
         }

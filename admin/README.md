@@ -13,18 +13,18 @@ Browser (Arabic RTL; session cookie is httpOnly)
 ```
 
 The existing Fastify service is the security boundary. It checks the
-session-token fingerprint against `admin_sessions`, enforces MFA and
-role-permission checks, validates every write with Zod, and writes audited
+session-token fingerprint against `admin_sessions`, enforces password
+authentication and role-permission checks, validates every write with Zod, and writes audited
 changes in PostgreSQL transactions. The database `service_role` key is not
 used by this console and must never be added to a browser bundle. The
 Supabase `service_role` role remains server-only; Supabase public policies
 allow anonymous reads of active rates and offices only.
 
-The login route forwards username, password, and a six-digit TOTP to Fastify.
+The iOS admin login forwards only the username and password to Fastify; an Authenticator app or MFA code is not required.
 The returned random session token is set only in a `Secure` (in production),
 `SameSite=Strict`, `httpOnly` cookie. PostgreSQL stores only its keyed
 SHA-256 fingerprint and a 24-hour expiry. Logout revokes the session in the
-database. Password changes require the current password and MFA, revoke all
+database. Password changes require the current password, revoke all
 sessions for the account, and require a fresh login. Login is rate-limited by
 Fastify to five attempts per 15 minutes.
 
@@ -40,8 +40,8 @@ by `audit.read`.
 - Node.js 24 or newer
 - pnpm 10 (`corepack enable` if needed)
 - PostgreSQL/Supabase schema and admin migrations applied
-- The UR Fastify service configured with `DATABASE_URL`,
-  `ADMIN_SESSION_HASH_KEY`, and `ADMIN_MFA_ENCRYPTION_KEY`
+- The UR Fastify service configured with `DATABASE_URL` and
+  `ADMIN_SESSION_HASH_KEY`
 
 ## Local setup
 
@@ -69,8 +69,7 @@ for any non-local deployment.
 
 Apply the SQL migrations before bootstrapping an account. Generate a strong
 password outside shell history and export it only in the short-lived command
-environment. `ADMIN_MFA_ENCRYPTION_KEY` must be the same base64-encoded
-32-byte key configured on the backend.
+environment.
 
 ```sh
 cd backend
@@ -84,12 +83,10 @@ node --env-file=.env scripts/seed-admin.mjs \
 unset ADMIN_INITIAL_PASSWORD
 ```
 
-Set `ADMIN_INITIAL_PASSWORD` in the environment of that command. The script
-prints a newly generated TOTP seed and provisioning URI once; enroll the seed
-in an authenticator and store it securely. The database stores only an
-AES-256-GCM ciphertext. To rotate an existing bootstrap account, explicitly
-pass `--reset-existing`; doing so replaces its password and MFA seed and
-revokes its existing sessions. The script never prints a password.
+Set `ADMIN_INITIAL_PASSWORD` in the environment of that command. To rotate an
+existing bootstrap account, explicitly pass `--reset-existing`; doing so
+replaces its password and revokes its existing sessions. The script never
+prints a password.
 
 ## Configuration
 
@@ -105,22 +102,21 @@ provider's secret store:
 ```dotenv
 DATABASE_URL=postgresql://...
 ADMIN_SESSION_HASH_KEY=<independent-random-secret-at-least-32-characters>
-ADMIN_MFA_ENCRYPTION_KEY=<base64-encoded-random-32-byte-key>
 ```
 
-Never commit real credentials, database URLs, MFA seeds, or production keys.
+Never commit real credentials, database URLs, or production keys.
 No service-role key or secret is required by the browser or Next.js app.
 
 ## Routes
 
-- `/login` — username, password, and TOTP login
+- `/login` — username and password login
 - `/dashboard` — operations metrics and current active rates
 - `/rates` and `/rates/[id]/edit` — rate list, history versions, and updates
 - `/offices`, `/offices/new`, `/offices/[id]/edit` — office management
 - `/agents` — read-only agents
 - `/admins` — read-only administrator accounts
 - `/audit` — read-only audit log
-- `/settings` — MFA-protected password change
+- `/settings` — password change
 
 Next.js proxies browser mutations through same-origin handlers. The handlers
 validate the `Origin` header, whitelist API paths, and read the session only
@@ -143,12 +139,14 @@ creation validation and permissions.
 
 1. Review `supabase/migrations/20260928000000_admin_console_read_permissions.sql`.
    It enables public reads for active rates/offices, grants read-only admin
-   permissions by role, revokes sessions lacking MFA, and disables accounts
-   without an encrypted MFA seed. Apply it first to a non-production branch,
-   verify an MFA-enrolled `SUPER_ADMIN` can sign in, then apply it to production.
+   permissions by role, and historically disabled accounts without MFA. Apply
+   `20260930001800_remove_admin_mfa_requirement.sql` after it to remove that
+   requirement. The new migration leaves `disabled_at` unchanged so it does
+   not reactivate accounts that may have been intentionally disabled; verify
+   and re-enable only the intended admin account through an authorized process.
 2. Set backend secrets on the private Fastify host and deploy `backend/`.
    Configure `TRUST_PROXY=true` only behind a trusted proxy. Keep
-   `ADMIN_SESSION_HASH_KEY` independent from the MFA encryption key.
+   `ADMIN_SESSION_HASH_KEY` secret and independent from other application keys.
 3. Set `UR_BACKEND_URL` as a server-only environment variable for the Next.js
    deployment. Vercel or Netlify can host the Next.js application; ensure
    server route handlers can reach Fastify over HTTPS/private networking.
@@ -156,10 +154,10 @@ creation validation and permissions.
    The app rejects cross-origin mutations and sends restrictive security
    headers. Avoid wildcard CORS for admin endpoints.
 5. Create or rotate the first admin with `backend/scripts/seed-admin.mjs`,
-   enroll its TOTP seed, and verify login, logout, permissions, and audit
-   records before opening access to operators.
+   and verify password login, logout, permissions, and audit records before
+   opening access to operators.
 6. Never expose a PostgreSQL connection string, Supabase `service_role` key,
-   session hash key, MFA encryption key, or TOTP seed to the browser.
+   or session hash key to the browser.
 
 ## Netlify + Railway deployment
 
@@ -187,7 +185,6 @@ not needed and should not be opened up for the dashboard.
    DATABASE_URL=<Supabase Session pooler PostgreSQL URI>
    LOOKUP_HASH_KEY=<random secret of at least 32 characters>
    ADMIN_SESSION_HASH_KEY=<a separate random secret of at least 32 characters>
-   ADMIN_MFA_ENCRYPTION_KEY=<base64 encoding of exactly 32 random bytes>
    TRUST_PROXY=true
    ```
 
@@ -224,7 +221,7 @@ not needed and should not be opened up for the dashboard.
    leave that managed value alone. Trigger a new production deploy so the
    serverless functions receive `UR_BACKEND_URL`.
 4. Visit `https://ur-global-admin.netlify.app/login` and sign in with the
-   enabled admin username, password, and current TOTP code. The cookie is
+   enabled admin username and password. The cookie is
    `httpOnly`, `Secure` in production, and `SameSite=Strict`. Dashboard and
    mutation requests go through same-origin Next.js API routes; each write
    still passes the Fastify session, permission, validation, rate-limit, and
@@ -245,9 +242,9 @@ keys in Netlify variables prefixed with `NEXT_PUBLIC_`.
 
 ## Troubleshooting
 
-- **Login always fails:** confirm the backend has the same MFA encryption
-  key used when the seed was enrolled, the TOTP device clock is synchronized,
-  and the account is enabled with MFA required.
+- **Login always fails:** confirm the username/password are correct, the
+  account is enabled, and migration
+  `20260930001800_remove_admin_mfa_requirement.sql` has been applied.
 - **Dashboard returns 403:** apply the role-permission migration and assign
   only the minimum required permissions to that role.
 - **API unavailable:** check the server-only `UR_BACKEND_URL`, backend health,
@@ -266,8 +263,8 @@ keys in Netlify variables prefixed with `NEXT_PUBLIC_`.
 - **Railway never passes health check:** confirm it builds from the repository
   root with `backend/Dockerfile`, has all required environment variables, and
   that `/api/v1/health` reports the database dependency as `ok`.
-- **MFA lockout:** do not disable MFA. An authorized operator should rotate
-  the account with `seed-admin.mjs --reset-existing`, securely enroll the new
-  seed, and invalidate old sessions.
+- **Admin account is disabled:** the MFA-removal migration intentionally does
+  not reactivate disabled accounts. Have an authorized operator verify the
+  account and enable only the intended user.
 - **RLS query failures:** public anon access is intentionally limited to
   active rate and office rows. Admin queries must stay in the trusted backend.

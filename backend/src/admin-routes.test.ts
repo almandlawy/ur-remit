@@ -8,7 +8,6 @@ const config = {
   DATABASE_URL: "postgres://test:test@127.0.0.1:5432/test",
   LOOKUP_HASH_KEY: "test-key-with-at-least-thirty-two-characters",
   ADMIN_SESSION_HASH_KEY: "independent-admin-session-test-key-32-chars", TRUST_PROXY: false
-  , ADMIN_MFA_ENCRYPTION_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 };
 const token = "A_secure_test_session_token_1234567890";
 
@@ -47,7 +46,7 @@ describe("admin API", () => {
     store.login = async () => ({ token: "issued-session", expiresAt: "2026-09-25T01:00:00.000Z" });
     const app = await buildServer(config, publicStore(), store);
     const response = await app.inject({ method: "POST", url: "/api/v1/admin/auth/login",
-      payload: { username: "Almandlawy", password: "a-secure-password-value", mfaCode: "123456" } });
+      payload: { username: "Almandlawy", password: "a-secure-password-value" } });
     expect(response.statusCode).toBe(200);
     expect(response.json().data.token).toBe("issued-session");
     await app.close();
@@ -56,18 +55,32 @@ describe("admin API", () => {
   it("returns a generic login failure", async () => {
     const app = await buildServer(config, publicStore(), adminStore([]));
     const response = await app.inject({ method: "POST", url: "/api/v1/admin/auth/login",
-      payload: { username: "Almandlawy", password: "a-secure-password-value", mfaCode: "123456" } });
+      payload: { username: "Almandlawy", password: "a-secure-password-value" } });
     expect(response.statusCode).toBe(401);
     expect(response.json().error.code).toBe("INVALID_CREDENTIALS");
     await app.close();
   });
 
-  it("requires a six-digit MFA code for login", async () => {
-    const app = await buildServer(config, publicStore(), adminStore([]));
+  it("accepts an admin username and password without an authenticator code", async () => {
+    const store = adminStore([]);
+    store.login = async () => ({ token: "password-only-session", expiresAt: "2026-09-25T01:00:00.000Z" });
+    const app = await buildServer(config, publicStore(), store);
     const response = await app.inject({
       method: "POST",
       url: "/api/v1/admin/auth/login",
       payload: { username: "Almandlawy", password: "a-secure-password-value" }
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().data.token).toBe("password-only-session");
+    await app.close();
+  });
+
+  it("rejects malformed credentials without an authenticator code", async () => {
+    const app = await buildServer(config, publicStore(), adminStore([]));
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/admin/auth/login",
+      payload: { username: "Almandlawy", password: "short" }
     });
     expect(response.statusCode).toBe(400);
     await app.close();

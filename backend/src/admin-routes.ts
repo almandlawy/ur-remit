@@ -35,13 +35,11 @@ const updateOfficeSchema = z.object(officeFields).partial().strict()
   .refine((value) => Object.keys(value).length > 0);
 const loginSchema = z.object({
   username: z.string().min(4).max(254).regex(/^[A-Za-z0-9@._-]+$/),
-  password: z.string().min(10).max(256),
-  mfaCode: z.string().regex(/^\d{6}$/)
+  password: z.string().min(10).max(256)
 });
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(10).max(256),
   newPassword: z.string().min(12).max(256),
-  mfaCode: z.string().regex(/^\d{6}$/)
 }).strict().refine((value) => value.currentPassword !== value.newPassword);
 
 function bearerToken(request: FastifyRequest): string | null {
@@ -51,7 +49,7 @@ function bearerToken(request: FastifyRequest): string | null {
   return /^[A-Za-z0-9_-]{32,256}$/.test(token) ? token : null;
 }
 
-export async function registerAdminRoutes(app: FastifyInstance, store: AdminStore, keys: { session: string; mfa: string }) {
+export async function registerAdminRoutes(app: FastifyInstance, store: AdminStore, keys: { session: string }) {
   app.addHook("preHandler", async (request, reply) => {
     if (!request.url.startsWith("/api/v1/admin/")) return;
     if (request.url === "/api/v1/admin/auth/login" && request.method === "POST") return;
@@ -86,8 +84,7 @@ export async function registerAdminRoutes(app: FastifyInstance, store: AdminStor
     if (!parsed.success)
       return reply.code(400).send({ requestId: request.id, error: { code: "INVALID_INPUT", message: "The request is invalid" } });
     const changed = await store.changePassword(
-      request.adminActor!, parsed.data.currentPassword, parsed.data.newPassword,
-      parsed.data.mfaCode, keys.mfa, request.id, request.ip
+      request.adminActor!, parsed.data.currentPassword, parsed.data.newPassword, request.id, request.ip
     );
     return changed ? { requestId: request.id, data: { success: true } }
       : reply.code(401).send({ requestId: request.id, error: { code: "INVALID_CREDENTIALS", message: "Credentials could not be verified" } });

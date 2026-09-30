@@ -7,7 +7,6 @@ Required backend secrets:
 - `DATABASE_URL`
 - `LOOKUP_HASH_KEY`
 - `ADMIN_SESSION_HASH_KEY`
-- `ADMIN_MFA_ENCRYPTION_KEY` (base64-encoded 32 bytes)
 
 The production API origin is `https://api.urremit.com`; staging is `https://api-staging.urremit.com`. TLS termination, HSTS, DDoS/WAF controls, database backups, metrics, alerts, and secret rotation are infrastructure requirements.
 

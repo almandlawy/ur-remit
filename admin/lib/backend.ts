@@ -128,7 +128,7 @@ async function login(
   const { error: insertError } = await client.from("admin_sessions").insert({
     admin_user_id: adminUser.id,
     token_hash: tokenHash,
-    mfa_verified_at: new Date().toISOString(),
+    mfa_verified_at: null,
     expires_at: expiresAt,
     ip_fingerprint: context.ip ? fingerprint(context.ip) : null
   });
@@ -438,13 +438,13 @@ async function listAgents(): Promise<Record<string, unknown>[]> {
 async function listAdmins(): Promise<Record<string, unknown>[]> {
   const { data, error } = await serviceClient()
     .from("admin_users")
-    .select("id, username, email, mfa_required, disabled_at, last_login_at, created_at, roles(name)")
+    .select("id, username, email, disabled_at, last_login_at, created_at, roles(name)")
     .order("created_at", { ascending: false })
     .limit(500);
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => ({
     id: row.id, username: row.username, email: row.email, role: (row.roles as { name?: string } | null)?.name ?? null,
-    mfaRequired: row.mfa_required, disabledAt: row.disabled_at, lastLoginAt: row.last_login_at, createdAt: row.created_at
+    disabledAt: row.disabled_at, lastLoginAt: row.last_login_at, createdAt: row.created_at
   }));
 }
 
