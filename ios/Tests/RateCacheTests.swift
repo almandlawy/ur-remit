@@ -206,6 +206,45 @@ final class RateCacheTests: XCTestCase {
         XCTAssertNil(TransferAmount.positiveDecimal(from: "not-an-amount", locale: Locale(identifier: "en_US")))
     }
 
+    func testGuestFacingMobileAPIRequestsNeverAttachAnAuthorizationHeader() async throws {
+        // Guests must be able to browse rates/offices/tracking without ever signing in (the app-root
+        // gate that used to force `AuthView` on every launch has been removed) — this locks in that
+        // the mobile API client itself never depends on a bearer token for these calls.
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [RecordingURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        let client = URLSessionAPIClient(
+            configuration: APIConfiguration(baseURL: URL(string: "https://example.invalid/api/")!, timeout: .seconds(5)),
+            session: session
+        )
+        RecordingURLProtocol.responseData = Data(#"{"data":[]}"#.utf8)
+
+        _ = try await client.rates()
+        XCTAssertNil(RecordingURLProtocol.lastRequest?.value(forHTTPHeaderField: "Authorization"))
+
+        _ = try await client.offices()
+        XCTAssertNil(RecordingURLProtocol.lastRequest?.value(forHTTPHeaderField: "Authorization"))
+    }
+
+    func testRateReportsStaleOnlyAfterItsOwnSourceTimestampCrossesTheServerComputedCutoffNotLocalFetchTime() {
+        let sourceTimestamp = Date(timeIntervalSince1970: 1_800_000_000)
+        let rate = makeRate(
+            id: UUID(),
+            arabic: "بغداد إلى دبي",
+            english: "Baghdad to Dubai",
+            sourceCurrency: "USD",
+            destinationCurrency: "AED",
+            sourceTimestamp: sourceTimestamp,
+            staleAfter: sourceTimestamp.addingTimeInterval(900)
+        )
+
+        XCTAssertFalse(rate.isStale(asOf: sourceTimestamp.addingTimeInterval(899)))
+        XCTAssertTrue(rate.isStale(asOf: sourceTimestamp.addingTimeInterval(900)))
+        // A fetch/render happening "now" (far later than the source's real timestamp) must not make
+        // an old price look fresh — staleness only depends on the source's own timestamp.
+        XCTAssertTrue(rate.isStale(asOf: sourceTimestamp.addingTimeInterval(60 * 60 * 24 * 2)))
+    }
+
     private func makeRate(
         id: UUID,
         arabic: String,
@@ -228,6 +267,32 @@ final class RateCacheTests: XCTestCase {
             sourceTimestamp: now,
             version: 1,
             staleAfter: now.addingTimeInterval(900)
+        )
+    }
+
+    private func makeRate(
+        id: UUID,
+        arabic: String,
+        english: String,
+        sourceCurrency: String,
+        destinationCurrency: String,
+        sourceTimestamp: Date,
+        staleAfter: Date
+    ) -> Rate {
+        Rate(
+            id: id,
+            routeNameArabic: arabic,
+            routeNameEnglish: english,
+            sourceCurrency: sourceCurrency,
+            destinationCurrency: destinationCurrency,
+            buy: Decimal(string: "1.5"),
+            sell: nil,
+            feeFixed: nil,
+            feePercent: nil,
+            updatedAt: sourceTimestamp,
+            sourceTimestamp: sourceTimestamp,
+            version: 1,
+            staleAfter: staleAfter
         )
     }
 
@@ -301,4 +366,31 @@ private actor SequencedRatesRepository: RatesRepository {
         guard !responses.isEmpty else { throw RepositoryTestError.unavailable }
         return try responses.removeFirst().get()
     }
+}
+
+/// Test-only `URLProtocol` that records the last request it intercepted and returns a canned
+/// response, so tests can assert on request-building behavior (e.g. headers) without a real network
+/// call. Access is serial within each test (one `await` at a time), so `nonisolated(unsafe)` storage
+/// is safe here.
+private final class RecordingURLProtocol: URLProtocol {
+    nonisolated(unsafe) static var lastRequest: URLRequest?
+    nonisolated(unsafe) static var responseData = Data()
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        RecordingURLProtocol.lastRequest = request
+        let response = HTTPURLResponse(
+            url: request.url!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: ["Content-Type": "application/json"]
+        )!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: RecordingURLProtocol.responseData)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
 }

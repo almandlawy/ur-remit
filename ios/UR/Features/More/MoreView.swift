@@ -52,7 +52,7 @@ struct MoreView: View {
                     Divider(); Link(destination: URL(string: "https://urremit.com/contact")!) { MoreRow("اتصل بنا", "phone.fill") }
                 }
                 Text("UR Remit  •  الإصدار \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")").font(.caption2).foregroundStyle(.secondary).padding(.top, 8)
-            }.padding(.horizontal, 14).padding(.top, 10).padding(.bottom, 14)
+            }.padding(.horizontal, 14).padding(.top, 10).padding(.bottom, 96)
         }
         .background(URColor.ivory.ignoresSafeArea()).toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showAdminLogin) {
@@ -151,7 +151,7 @@ struct OfficesView: View {
                     HStack { Image(systemName: "chevron.left"); Spacer(); VStack(alignment: .trailing, spacing: 3) { Text("شبكة الأسعار العالمية").font(.headline.weight(.bold)); Text("دول ومدن تتوفر لها معلومات سعرية إرشادية").font(.caption).foregroundStyle(.secondary) }; Image(systemName: "globe.europe.africa.fill").font(.title2).foregroundStyle(URColor.premiumGold) }
                         .foregroundStyle(URColor.deepNavy).padding(16).background(.white.opacity(0.85), in: RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(URColor.hairline))
                 }
-            }.padding(14)
+            }.padding(.horizontal, 14).padding(.top, 14).padding(.bottom, 96)
         }
         .background(URColor.ivory.ignoresSafeArea()).toolbar(.hidden, for: .navigationBar)
         .task { await loadOffices() }
@@ -227,7 +227,7 @@ private struct ServiceDestinationsView: View {
                 } }
             }
             Text("هذه قائمة معلومات سعرية وليست عرضًا لتنفيذ حوالة أو معاملة مالية. قد تتغير الأسعار حسب السوق والوقت.").font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center).padding()
-        }.padding(14) }.background(URColor.ivory.ignoresSafeArea()).navigationBarTitleDisplayMode(.inline)
+        }.padding(.horizontal, 14).padding(.top, 14).padding(.bottom, 96) }.background(URColor.ivory.ignoresSafeArea()).navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -248,7 +248,7 @@ struct AgentVerificationView: View {
                 } }
                 if let result { Label(result.status == "VERIFIED" ? "وكيل معتمد" : "الوكيل غير معتمد", systemImage: result.status == "VERIFIED" ? "checkmark.seal.fill" : "xmark.shield.fill").font(.title3.weight(.black)).foregroundStyle(result.status == "VERIFIED" ? URColor.success : .red).padding(20).frame(maxWidth: .infinity).background(.white.opacity(0.85), in: RoundedRectangle(cornerRadius: 16)) }
                 Label("لا تسلم أي مبلغ إلا بعد ظهور حالة «وكيل معتمد».", systemImage: "exclamationmark.shield.fill").font(.caption).foregroundStyle(.secondary).padding()
-            }.padding(14)
+            }.padding(.horizontal, 14).padding(.top, 14).padding(.bottom, 96)
         }.background(URColor.ivory.ignoresSafeArea()).navigationBarTitleDisplayMode(.inline)
     }
     private func verify() async { loading = true; defer { loading = false }; result = try? await api.verifyAgent(code: code) }

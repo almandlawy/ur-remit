@@ -447,6 +447,7 @@ private struct AdminRateEditor: View {
     @State private var feeFixed: String
     @State private var message: String?
     @State private var isSaving = false
+    @FocusState private var isValueFieldFocused: Bool
 
     init(rate: Rate, token: String, onSaved: @escaping () async -> Void) {
         self.rate = rate
@@ -493,6 +494,8 @@ private struct AdminRateEditor: View {
                 }
             }
         }
+        .numericKeyboardDoneToolbar(focused: $isValueFieldFocused)
+        .onTapGesture { isValueFieldFocused = false }
     }
 
     private func valueField(_ title: String, text: Binding<String>) -> some View {
@@ -504,6 +507,7 @@ private struct AdminRateEditor: View {
                 .padding(8)
                 .background(URColor.ivory, in: RoundedRectangle(cornerRadius: 8))
                 .accessibilityLabel(title)
+                .focused($isValueFieldFocused)
         }
         .frame(maxWidth: .infinity)
     }

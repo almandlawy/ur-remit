@@ -9,6 +9,7 @@ struct PriceAlertSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var threshold: String = ""
     @State private var permissionDenied = false
+    @FocusState private var isThresholdFieldFocused: Bool
 
     private var existing: Decimal? {
         PriceAlertManager.shared.threshold(for: rateID)
@@ -36,6 +37,7 @@ struct PriceAlertSheet: View {
                         .keyboardType(.decimalPad)
                         .font(.title2.weight(.bold))
                         .multilineTextAlignment(.trailing)
+                        .focused($isThresholdFieldFocused)
                     Text(currency)
                         .font(.headline.weight(.bold))
                         .foregroundStyle(URColor.premiumGold)
@@ -77,6 +79,8 @@ struct PriceAlertSheet: View {
             .padding(20)
             .navigationTitle("تنبيه سعر")
             .navigationBarTitleDisplayMode(.inline)
+            .numericKeyboardDoneToolbar(focused: $isThresholdFieldFocused)
+            .onTapGesture { isThresholdFieldFocused = false }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("إغلاق") { dismiss() }

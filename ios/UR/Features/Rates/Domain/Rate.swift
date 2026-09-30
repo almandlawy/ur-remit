@@ -18,4 +18,10 @@ struct Rate: Codable, Identifiable, Hashable, Sendable {
     func displayName(locale: Locale) -> String {
         locale.language.languageCode?.identifier == "ar" ? routeNameArabic : routeNameEnglish
     }
+
+    /// True once the source's own reported price age has passed the server-computed `staleAfter`
+    /// cutoff (`sourceTimestamp + 15 minutes`, see `backend/src/store.ts`). Deliberately compares
+    /// against the real source timestamp only — never the local device's fetch/render time — so a
+    /// genuinely old upstream price is always surfaced as stale rather than appearing falsely live.
+    func isStale(asOf now: Date = .now) -> Bool { now >= staleAfter }
 }

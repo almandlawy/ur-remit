@@ -10,6 +10,14 @@ enum TransferAmount {
 struct SupportView: View {
     let repository: any RatesRepository
     let api: any APIClient
+    @State private var expandedFAQ: Int? = nil
+
+    private let faqs: [(String, String)] = [
+        ("شلون تتحدث الأسعار؟", "أسعار الصرف تُسحب من مصدر UR الرسمي وتتحدث تلقائياً كل دقيقة تقريباً. إذا انقطع الاتصال يعرض التطبيق آخر سعر محفوظ مع توضيح وقت آخر تحديث."),
+        ("الحاسبة تعطي مبلغ نهائي؟", "لا، حاسبة العملات تقديرية فقط لمساعدتك على فهم القيمة التقريبية. السعر الفعلي والعمولة يُحددان عند التنفيذ الفعلي عبر أحد مراكز UR المعتمدة."),
+        ("شلون أتأكد أن الوكيل معتمد؟", "استخدم صفحة «تحقق من وكيل» ضمن قسم المزيد وأدخل رمز الوكيل — لا تسلم أي مبلغ إلا بعد ظهور حالة «وكيل معتمد» بوضوح."),
+        ("هل التطبيق ينفذ حوالات؟", "لا، هذا التطبيق معلوماتي بالكامل: يعرض الأسعار ومراكز UR، ولا يقوم بمعالجة أو تنفيذ أي معاملة مالية داخل التطبيق نفسه.")
+    ]
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -28,13 +36,63 @@ struct SupportView: View {
                         }.font(.caption.weight(.bold))
                     }
                 }
+                VStack(alignment: .trailing, spacing: 10) {
+                    HStack { Spacer(); Text("الأسئلة الشائعة").font(.headline.weight(.black)).foregroundStyle(URColor.deepNavy) }
+                    ForEach(faqs.indices, id: \.self) { index in
+                        FAQRow(question: faqs[index].0, answer: faqs[index].1, isExpanded: expandedFAQ == index) {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                                expandedFAQ = expandedFAQ == index ? nil : index
+                            }
+                        }
+                    }
+                }
                 HStack(spacing: 9) { Image(systemName: "info.circle"); Text("التطبيق معلوماتي ولا ينفذ أو يعالج أي معاملة مالية.") }
                     .font(.caption).foregroundStyle(URColor.deepNavy.opacity(0.65)).padding(14)
-            }.padding(14)
+            }
+            // Extra bottom padding clears the custom floating bottom navigation bar.
+            .padding(14).padding(.bottom, 96 - 14)
         }
         .background(URColor.ivory.ignoresSafeArea()).toolbar(.hidden, for: .navigationBar)
     }
 }
+
+private struct FAQRow: View {
+    let question: String
+    let answer: String
+    let isExpanded: Bool
+    let toggle: () -> Void
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 8) {
+            Button(action: toggle) {
+                HStack {
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(question).font(.subheadline.weight(.bold)).foregroundStyle(URColor.deepNavy).multilineTextAlignment(.trailing)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(question)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityValue(isExpanded ? "موسّع" : "مطوي")
+            if isExpanded {
+                Text(answer)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .padding(14)
+        .background(.white.opacity(0.84), in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(URColor.hairline))
+    }
+}
+
+
 
 private struct SupportRow: View {
     let title: String; let detail: String; let symbol: String; let color: Color
@@ -61,6 +119,7 @@ struct CalculatorView: View {
     @State private var hasLoadedOnce = false
     @Environment(\.locale) private var locale
     @Environment(\.scenePhase) private var scenePhase
+    @FocusState private var isAmountFieldFocused: Bool
 
     /// Auto-refresh so admin rate updates reach the app without a manual pull-to-refresh.
     private static let autoRefreshInterval: TimeInterval = 60
@@ -87,7 +146,7 @@ struct CalculatorView: View {
                         }.pickerStyle(.menu).tint(URColor.deepNavy).frame(maxWidth: .infinity, alignment: .trailing)
                         Divider()
                         Text("المبلغ بالدولار").font(.caption.weight(.bold)).foregroundStyle(.secondary)
-                        HStack { Text("USD").font(.headline.weight(.black)).foregroundStyle(URColor.premiumGold); TextField("0.00", text: $amount).keyboardType(.decimalPad).font(.title2.weight(.bold)).multilineTextAlignment(.trailing).accessibilityLabel(Text("amount_to_convert")) }
+                        HStack { Text("USD").font(.headline.weight(.black)).foregroundStyle(URColor.premiumGold); TextField("0.00", text: $amount).keyboardType(.decimalPad).font(.title2.weight(.bold)).multilineTextAlignment(.trailing).focused($isAmountFieldFocused).accessibilityLabel(Text("amount_to_convert")) }
                     }
                 }
                 if let rate = selectedRate, let result {
@@ -103,7 +162,7 @@ struct CalculatorView: View {
                         if cacheWriteFailed {
                             HStack { Image(systemName: "externaldrive.badge.exclamationmark"); Text("تعذر حفظ الأسعار للاستخدام دون اتصال") }.font(.caption2).foregroundStyle(.white.opacity(0.65))
                         }
-                        if Date.now >= rate.staleAfter {
+                        if rate.isStale() {
                             HStack { Image(systemName: "clock.badge.exclamationmark"); Text("قد يكون السعر قديماً") }.font(.caption2).foregroundStyle(.orange)
                         }
                     }
@@ -130,6 +189,9 @@ struct CalculatorView: View {
             }.padding(14)
         }
         .background(URColor.ivory.ignoresSafeArea()).navigationBarTitleDisplayMode(.inline)
+        .scrollDismissesKeyboard(.interactively)
+        .numericKeyboardDoneToolbar(focused: $isAmountFieldFocused)
+        .onTapGesture { isAmountFieldFocused = false }
         .task {
             await loadRates()
             hasLoadedOnce = true

@@ -31,7 +31,8 @@ struct HomeView: View {
                 liveRateCard
                 safetyCard
             }
-            .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 18)
+            // Extra bottom padding clears the custom floating bottom navigation bar.
+            .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 96)
         }
         .background(URColor.ivory.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
