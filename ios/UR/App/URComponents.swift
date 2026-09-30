@@ -1,4 +1,35 @@
 import SwiftUI
+import UIKit
+
+// MARK: - Numeric keyboard "Done" toolbar
+/// `.decimalPad`/`.numberPad` keyboards have no built-in dismiss key on iOS, which leaves users
+/// stuck unable to close the keyboard after entering an amount or code. Attach this to any numeric
+/// `TextField` bound to a `@FocusState` boolean to add a localized "تم" button above the keyboard
+/// (with a light haptic), matching tap-outside/scroll dismissal elsewhere in the app.
+struct NumericKeyboardDoneToolbar: ViewModifier {
+    var isFocused: FocusState<Bool>.Binding
+
+    func body(content: Content) -> some View {
+        content.toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("تم") {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    isFocused.wrappedValue = false
+                }
+                .font(.body.weight(.bold))
+            }
+        }
+    }
+}
+
+extension View {
+    /// Adds a "تم" (Done) button above `.decimalPad`/`.numberPad` keyboards and lets tapping
+    /// anywhere outside the focused field dismiss it too.
+    func numericKeyboardDoneToolbar(focused isFocused: FocusState<Bool>.Binding) -> some View {
+        modifier(NumericKeyboardDoneToolbar(isFocused: isFocused))
+    }
+}
 
 // MARK: - URCard
 struct URCard<Content: View>: View {

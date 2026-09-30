@@ -162,13 +162,19 @@ Deno.serve(async (request) => {
       const body = await readJSON(request);
       if (!body || !validDecimal(body.buy) || !validDecimal(body.sell) || !validDecimal(body.feeFixed))
         return response("INVALID_INPUT", 400, true);
+      const isValidRequestID = (value: unknown): value is string =>
+        typeof value === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+      if (body.requestId !== undefined && !isValidRequestID(body.requestId))
+        return response("INVALID_INPUT", 400, true);
+      const requestID = body.requestId ?? crypto.randomUUID();
       const updated = await rest("rpc/admin_update_rate", { method: "POST", body: JSON.stringify({
         p_actor_id: actor.id,
         p_rate_id: rateMatch[1],
         p_buy: body.buy,
         p_sell: body.sell,
         p_fee_fixed: body.feeFixed,
-        p_request_id: crypto.randomUUID(),
+        p_request_id: requestID,
       }) });
       return updated ? response(updated, 200, true) : response("RATE_UNAVAILABLE", 404, true);
     }

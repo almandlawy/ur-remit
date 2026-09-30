@@ -3,9 +3,17 @@ import SwiftUI
 struct RatesView: View {
     @StateObject private var model: RatesViewModel
     @Environment(FavoritesStore.self) private var favorites
+    @Environment(\.scenePhase) private var scenePhase
     @State private var query = ""
     @State private var collapsedSections: Set<String> = []
     @State private var showOnlyFavorites = false
+    @State private var hasLoadedOnce = false
+
+    /// Backstop refresh in case the Realtime subscription drops silently; the push subscription
+    /// (`startObservingRemoteChanges`) is the primary near-instant update path, this is only a
+    /// resilience net and intentionally coarse to avoid hammering the network.
+    private static let autoRefreshInterval: TimeInterval = 60
+    private let autoRefreshTimer = Timer.publish(every: autoRefreshInterval, on: .main, in: .common).autoconnect()
 
     init(repository: any RatesRepository) { _model = StateObject(wrappedValue: RatesViewModel(repository: repository)) }
 
@@ -29,7 +37,16 @@ struct RatesView: View {
         .toolbar(.hidden, for: .navigationBar)
         .task {
             if case .idle = model.state { await model.load() }
+            hasLoadedOnce = true
             model.startObservingRemoteChanges()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard hasLoadedOnce, newPhase == .active else { return }
+            Task { await model.load() }
+        }
+        .onReceive(autoRefreshTimer) { _ in
+            guard hasLoadedOnce, scenePhase == .active else { return }
+            Task { await model.load() }
         }
     }
 
@@ -73,7 +90,10 @@ struct RatesView: View {
                     }
                 }
             }
-            .padding(.horizontal, 11 * scale).padding(.top, 2).padding(.bottom, 8)
+            // Extra bottom padding (beyond the tab bar's own ~64pt height) so the last rate
+            // section always clears the custom floating bottom navigation instead of being
+            // visually cut off at the end of the list.
+            .padding(.horizontal, 11 * scale).padding(.top, 2).padding(.bottom, 96 * scale)
         }
         .refreshable { await model.load() }
     }
@@ -217,6 +237,20 @@ private struct SearchBar: View {
 
 private struct HeroRateCard: View {
     let rate: Rate?; let isCached: Bool; let scale: CGFloat
+
+    /// True when the rate's own source timestamp is older than its `staleAfter` cutoff — this is
+    /// the *real* upstream freshness, never derived from local fetch time.
+    private var isStale: Bool {
+        guard let rate else { return false }
+        return rate.isStale()
+    }
+    private var freshnessLabel: String {
+        if isStale { return "السعر قديم" }
+        if isCached { return "بيانات محفوظة" }
+        return "محدث"
+    }
+    private var freshnessColor: Color { isStale ? .red : (isCached ? .orange : .green) }
+
     var body: some View {
         ZStack {
             LinearGradient(colors: [Palette.blue, Palette.navy], startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -230,8 +264,13 @@ private struct HeroRateCard: View {
                     }
                     Spacer(minLength: 2)
                     VStack(alignment: .trailing, spacing: 2) {
-                        HStack(spacing: 5) { Text(isCached ? "بيانات محفوظة" : "محدث الآن"); Circle().fill(isCached ? .orange : .green).frame(width: 7 * scale, height: 7 * scale) }
-                        Text("24 سبتمبر 2026   10:30 ص").font(.system(size: 7.5 * scale))
+                        HStack(spacing: 5) { Text(freshnessLabel); Circle().fill(freshnessColor).frame(width: 7 * scale, height: 7 * scale) }
+                        // Re-evaluates every 30s purely to keep the relative "منذ …" text accurate on
+                        // screen; this never triggers a network fetch or fabricates a newer timestamp —
+                        // it only re-renders the real `sourceTimestamp`/`updatedAt` already in hand.
+                        TimelineView(.periodic(from: .now, by: 30)) { _ in
+                            Text(sourceTimestampText)
+                        }
                     }.font(.system(size: 9 * scale, weight: .semibold)).foregroundStyle(.white.opacity(0.78))
                 }
                 HStack(spacing: 0) {
@@ -262,6 +301,18 @@ private struct HeroRateCard: View {
             path.addCurve(to: CGPoint(x: size.width, y: size.height * 0.43), control1: CGPoint(x: size.width * 0.73, y: size.height * 0.41), control2: CGPoint(x: size.width * 0.88, y: size.height * 0.72))
             context.stroke(path, with: .color(Palette.gold.opacity(0.75)), lineWidth: 1)
         }
+    }
+
+    /// The real upstream timestamp for this rate — prefers `sourceTimestamp` (when the source itself
+    /// last changed the price) and falls back to `updatedAt` (when our own database last wrote it) if
+    /// the source didn't report one. This is never the local device's fetch/render time.
+    private var sourceTimestampText: String {
+        guard let rate else { return "—" }
+        let reference = rate.sourceTimestamp
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = Locale(identifier: "ar")
+        formatter.unitsStyle = .short
+        return formatter.localizedString(for: reference, relativeTo: .now)
     }
 }
 
@@ -337,6 +388,7 @@ private struct DestinationRouteView: View {
     let row: DisplayRow
     @State private var amount = ""
     @State private var showAlertSheet = false
+    @FocusState private var isAmountFieldFocused: Bool
 
     private var numericAmount: Decimal { Decimal(string: amount) ?? 0 }
     private var validAmount: Bool { numericAmount > 0 }
@@ -355,7 +407,7 @@ private struct DestinationRouteView: View {
                 URCard {
                     VStack(alignment: .trailing, spacing: 12) {
                         Text("مبلغ المقارنة").font(.caption.weight(.bold)).foregroundStyle(.secondary)
-                        HStack { Text("USD").font(.headline.weight(.black)).foregroundStyle(URColor.premiumGold); TextField("0", text: $amount).keyboardType(.decimalPad).font(.title2.weight(.black)).multilineTextAlignment(.trailing) }
+                        HStack { Text("USD").font(.headline.weight(.black)).foregroundStyle(URColor.premiumGold); TextField("0", text: $amount).keyboardType(.decimalPad).font(.title2.weight(.black)).multilineTextAlignment(.trailing).focused($isAmountFieldFocused) }
                         Text("العمولة أدناه تُحتسب نسبيًا على أساس كل 10,000 دولار").font(.caption2).foregroundStyle(validAmount || amount.isEmpty ? Color.gray : Color.red)
                         Divider()
                         HStack { Text(formattedAdjustment).font(.title3.weight(.black)).foregroundStyle((row.amount ?? 0) < 0 ? Palette.red : Palette.green); Spacer(); Text(row.isFee ? "فرق السعر / الرسوم" : "سعر الصرف").foregroundStyle(.secondary) }
@@ -402,6 +454,9 @@ private struct DestinationRouteView: View {
         }
         .background(URColor.ivory.ignoresSafeArea())
         .toolbar(.visible, for: .navigationBar).navigationBarTitleDisplayMode(.inline)
+        .scrollDismissesKeyboard(.interactively)
+        .numericKeyboardDoneToolbar(focused: $isAmountFieldFocused)
+        .onTapGesture { isAmountFieldFocused = false }
         .sheet(isPresented: $showAlertSheet) {
             PriceAlertSheet(
                 rateID: row.id,

@@ -13,14 +13,11 @@ struct URRemitApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                Group {
-                    if auth.isAuthenticated {
-                        RootView(container: container)
-                    } else {
-                        AuthView()
-                    }
-                }
-                .environmentObject(auth)
+                // Guests are never forced to sign in: rates, offices, tracking and the rest of
+                // RootView's public tabs are available without an account. Sign-in is optional
+                // and reachable from More → "حسابي / تسجيل الدخول الاختياري" (see AccountView).
+                RootView(container: container)
+                    .environmentObject(auth)
                 .environment(favorites)
                 .onOpenURL { url in
                     auth.handle(url: url)
@@ -76,133 +73,3 @@ struct URRemitApp: App {
     }
 }
 
-// ثم AuthView,// MARK: - AuthView
-struct AuthView: View {
-    @EnvironmentObject private var auth: URAuthService
-
-    @State private var nonce = ""
-    @State private var email = ""
-    @State private var password = ""
-
-    var body: some View {
-        ZStack {
-            URColor.ivory.ignoresSafeArea()
-
-            ScrollView {
-                VStack(spacing: 24) {
-                    Spacer(minLength: 20)
-
-                    URPageTitle(
-                        title: "مرحباً بك",
-                        subtitle: "سجّل الدخول للوصول إلى خدمات التحويل",
-                        symbol: "lock.shield.fill"
-                    )
-
-                    URCard {
-                        VStack(spacing: 20) {
-
-                            VStack(spacing: 12) {
-                                SignInWithAppleButton(.signIn) { request in
-                                    nonce = URAuthService.randomNonce()
-                                    auth.prepareAppleRequest(request, nonce: nonce)
-                                } onCompletion: { result in
-                                    switch result {
-                                    case .success(let authorization):
-                                        Task {
-                                            await auth.signInWithApple(authorization: authorization, nonce: nonce)
-                                        }
-                                    case .failure:
-                                        auth.message = "تعذر إكمال تسجيل الدخول بواسطة Apple."
-                                    }
-                                }
-                                .signInWithAppleButtonStyle(.black)
-                                .frame(height: 50)
-                                .cornerRadius(14)
-
-                                Button {
-                                    Task { await auth.signInWithGoogle() }
-                                } label: {
-                                    HStack(spacing: 10) {
-                                        Image(systemName: "g.circle.fill")
-                                            .font(.title3)
-                                            .foregroundStyle(URColor.royalBlue)
-
-                                        Text("تسجيل الدخول بواسطة Google")
-                                            .font(.subheadline.weight(.bold))
-                                            .foregroundStyle(URColor.deepNavy)
-                                    }
-                                    .frame(maxWidth: .infinity, minHeight: 50)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                            .stroke(URColor.hairline, lineWidth: 1)
-                                            .background(Color.white, in: RoundedRectangle(cornerRadius: 14))
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                            }
-
-                            HStack {
-                                Rectangle().fill(URColor.hairline).frame(height: 1)
-                                Text("أو باستخدام البريد")
-                                    .font(.caption)
-                                    .foregroundStyle(URColor.deepNavy.opacity(0.50))
-                                Rectangle().fill(URColor.hairline).frame(height: 1)
-                            }
-                            .padding(.vertical, 4)
-
-                            VStack(spacing: 14) {
-                                URTextField(
-                                    title: "البريد الإلكتروني",
-                                    text: $email,
-                                    placeholder: "name@example.com",
-                                    symbol: "envelope.fill"
-                                )
-
-                                URTextField(
-                                    title: "كلمة المرور",
-                                    text: $password,
-                                    placeholder: "••••••••",
-                                    symbol: "key.fill",
-                                    isSecure: true
-                                )
-                            }
-
-                            if let message = auth.message {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "exclamationmark.triangle.fill")
-                                        .font(.caption)
-                                    Text(message)
-                                        .font(.caption.weight(.medium))
-                                }
-                                .foregroundStyle(URColor.error)
-                                .padding(10)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(
-                                    URColor.error.opacity(0.08),
-                                    in: RoundedRectangle(cornerRadius: 10)
-                                )
-                                .transition(.opacity.combined(with: .move(edge: .top)))
-                            }
-
-                            Button {
-                                // ربط تسجيل الدخول بالبريد لاحقاً
-                            } label: {
-                                if auth.isLoading {
-                                    ProgressView().tint(.white)
-                                } else {
-                                    Text("تسجيل الدخول")
-                                }
-                            }
-                            .buttonStyle(URPrimaryButtonStyle(isEnabled: !email.isEmpty && !password.isEmpty))
-                            .disabled(email.isEmpty || password.isEmpty || auth.isLoading)
-                        }
-                    }
-
-                    Spacer(minLength: 20)
-                }
-                .padding(.horizontal, 16)
-            }
-        }
-        .animation(.easeInOut(duration: 0.2), value: auth.message)
-    }
-}
