@@ -4,6 +4,7 @@ struct MoreView: View {
     let api: any APIClient
     @EnvironmentObject private var auth: URAuthService
     @State private var adminTapCount = 0
+    @State private var adminTapResetTask: Task<Void, Never>?
     @State private var showAdminLogin = false
 
     var body: some View {
@@ -21,14 +22,13 @@ struct MoreView: View {
                         }
                         Spacer()
                         Button {
-                            adminTapCount += 1
-                            guard adminTapCount == 5 else { return }
-                            adminTapCount = 0
-                            showAdminLogin = true
+                            registerAdminTap()
                         } label: {
                             Text("UR")
                                 .font(.title.weight(.black))
                                 .foregroundStyle(URColor.deepNavy)
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("UR")
@@ -60,6 +60,34 @@ struct MoreView: View {
                 AdminEntryView()
             }
         }
+        .onDisappear {
+            adminTapResetTask?.cancel()
+            adminTapResetTask = nil
+            adminTapCount = 0
+        }
+    }
+
+    private func registerAdminTap() {
+        adminTapCount += 1
+        guard adminTapCount == 5 else {
+            adminTapResetTask?.cancel()
+            adminTapResetTask = Task { @MainActor in
+                do {
+                    try await Task.sleep(for: .seconds(3))
+                    adminTapCount = 0
+                } catch is CancellationError {
+                    return
+                } catch {
+                    assertionFailure("Unexpected admin tap reset timer error: \(error)")
+                }
+            }
+            return
+        }
+
+        adminTapResetTask?.cancel()
+        adminTapResetTask = nil
+        adminTapCount = 0
+        showAdminLogin = true
     }
 }
 
