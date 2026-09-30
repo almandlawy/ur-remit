@@ -3,6 +3,17 @@ import Observation
 import Security
 import SwiftUI
 
+/// Mirrors the backend's `decimal` schema (`backend/src/admin-routes.ts`): up to 16 integer digits and
+/// up to 8 fractional digits, no sign. Validating client-side avoids a round trip to the server for
+/// obviously malformed input and stops the misleading "server unreachable" message a raw 400 used to
+/// surface for what was actually a formatting mistake. Internal (not private) so it stays unit-testable.
+enum AdminRateInputValidator {
+    static func isValidDecimalOrAbsent(_ value: String?) -> Bool {
+        guard let value else { return true }
+        return value.range(of: "^\\d{1,16}(\\.\\d{1,8})?$", options: .regularExpression) != nil
+    }
+}
+
 private struct AdminEnvelope<Value: Decodable & Sendable>: Decodable, Sendable {
     let data: Value
 }
@@ -23,6 +34,8 @@ private struct AdminDashboard: Decodable, Sendable {
 private enum AdminAPIError: LocalizedError {
     case unauthorized
     case forbidden
+    case invalidInput
+    case notFound
     case invalidResponse
     case requestFailed
     case secureStorage
@@ -31,8 +44,10 @@ private enum AdminAPIError: LocalizedError {
         switch self {
         case .unauthorized: "انتهت جلسة الإدارة. سجّل الدخول مجدداً."
         case .forbidden: "لا تملك صلاحية تنفيذ هذا الإجراء."
+        case .invalidInput: "القيمة المدخلة غير صالحة. استخدم أرقاماً فقط بحد أقصى 8 خانات عشرية."
+        case .notFound: "هذا السعر لم يعد متاحاً. حدّث القائمة وحاول مجدداً."
         case .invalidResponse: "استجابة الخادم غير صالحة."
-        case .requestFailed: "تعذّر الاتصال بخدمة الإدارة."
+        case .requestFailed: "تعذّر الاتصال بخدمة الإدارة. تحقق من الشبكة وحاول مجدداً."
         case .secureStorage: "تعذّر حفظ جلسة الإدارة بأمان."
         }
     }
@@ -126,8 +141,10 @@ private actor AdminAPI {
         case 200..<300:
             do { return try decoder.decode(AdminEnvelope<Value>.self, from: data).data }
             catch { throw AdminAPIError.invalidResponse }
+        case 400: throw AdminAPIError.invalidInput
         case 401: throw AdminAPIError.unauthorized
         case 403: throw AdminAPIError.forbidden
+        case 404: throw AdminAPIError.notFound
         default: throw AdminAPIError.requestFailed
         }
     }
@@ -495,20 +512,28 @@ private struct AdminRateEditor: View {
                 .multilineTextAlignment(.trailing)
                 .padding(8)
                 .background(URColor.ivory, in: RoundedRectangle(cornerRadius: 8))
+                .accessibilityLabel(title)
         }
         .frame(maxWidth: .infinity)
     }
 
     private func save() async {
-        isSaving = true
         message = nil
+        let buyValue = normalized(buy)
+        let sellValue = normalized(sell)
+        let feeValue = normalized(feeFixed)
+        guard [buyValue, sellValue, feeValue].allSatisfy(AdminRateInputValidator.isValidDecimalOrAbsent) else {
+            message = AdminAPIError.invalidInput.errorDescription
+            return
+        }
+        isSaving = true
         defer { isSaving = false }
         do {
             try await AdminAPI.shared.updateRate(
                 id: rate.id,
-                buy: normalized(buy),
-                sell: normalized(sell),
-                feeFixed: normalized(feeFixed),
+                buy: buyValue,
+                sell: sellValue,
+                feeFixed: feeValue,
                 token: token
             )
             message = "تم حفظ التعديل وتسجيله."
