@@ -8,9 +8,85 @@ import SwiftUI
 /// obviously malformed input and stops the misleading "server unreachable" message a raw 400 used to
 /// surface for what was actually a formatting mistake. Internal (not private) so it stays unit-testable.
 enum AdminRateInputValidator {
+    static func normalizedDecimalInput(_ value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        var result = ""
+        var hasDecimalSeparator = false
+        for character in trimmed {
+            if let digit = character.wholeNumberValue, (0...9).contains(digit) {
+                result.append(String(digit))
+            } else if character == "." || character == "\u{066B}" {
+                guard !hasDecimalSeparator else { return nil }
+                hasDecimalSeparator = true
+                result.append(".")
+            } else {
+                return nil
+            }
+        }
+        return result.range(of: "^\\d{1,16}(\\.\\d{1,8})?$", options: .regularExpression) == nil
+            ? nil
+            : result
+    }
+
     static func isValidDecimalOrAbsent(_ value: String?) -> Bool {
         guard let value else { return true }
-        return value.range(of: "^\\d{1,16}(\\.\\d{1,8})?$", options: .regularExpression) != nil
+        return value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || normalizedDecimalInput(value) != nil
+    }
+}
+
+struct AdminRateChange: Equatable {
+    let title: String
+    let previousValue: String
+    let newValue: String
+}
+
+enum AdminRateDraft {
+    static func changes(for rate: Rate, buy: String, sell: String, feeFixed: String) -> [AdminRateChange] {
+        [
+            change("شراء", current: rate.buy, edited: buy),
+            change("بيع", current: rate.sell, edited: sell),
+            change("العمولة", current: rate.feeFixed, edited: feeFixed)
+        ].compactMap { $0 }
+    }
+
+    static func hasAnyValue(for rate: Rate, buy: String, sell: String, feeFixed: String) -> Bool {
+        rate.feePercent != nil || [buy, sell, feeFixed].contains { normalized($0) != nil }
+    }
+
+    static func summary(of changes: [AdminRateChange]) -> String {
+        changes.map { "\($0.title): \($0.previousValue) ← \($0.newValue)" }.joined(separator: "\n")
+    }
+
+    private static func change(_ title: String, current: Decimal?, edited: String) -> AdminRateChange? {
+        let normalizedValue = normalized(edited)
+        let parsedValue: Decimal?
+        if let normalizedValue {
+            guard let canonical = AdminRateInputValidator.normalizedDecimalInput(normalizedValue),
+                  let parsed = Decimal(string: canonical, locale: Locale(identifier: "en_US_POSIX")) else {
+                return AdminRateChange(
+                    title: title,
+                    previousValue: current.map { NSDecimalNumber(decimal: $0).stringValue } ?? "—",
+                    newValue: normalizedValue
+                )
+            }
+            parsedValue = parsed
+        } else {
+            parsedValue = nil
+        }
+        guard parsedValue != current else { return nil }
+        return AdminRateChange(
+            title: title,
+            previousValue: current.map { NSDecimalNumber(decimal: $0).stringValue } ?? "—",
+            newValue: normalizedValue ?? "—"
+        )
+    }
+
+    private static func normalized(_ value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
 
@@ -31,25 +107,60 @@ private struct AdminDashboard: Decodable, Sendable {
     let lastRateUpdate: String?
 }
 
-private enum AdminAPIError: LocalizedError {
+enum AdminAPIError: LocalizedError {
     case unauthorized
+    case invalidCredentials
     case forbidden
     case invalidInput
     case notFound
     case invalidResponse
+    case networkUnavailable
+    case serverFailure(statusCode: Int)
+    case unexpectedStatus(statusCode: Int)
     case requestFailed
     case secureStorage
+
+    static func loginFailure(for error: Self) -> Self {
+        switch error {
+        case .unauthorized: .invalidCredentials
+        default: error
+        }
+    }
 
     var errorDescription: String? {
         switch self {
         case .unauthorized: "انتهت جلسة الإدارة. سجّل الدخول مجدداً."
+        case .invalidCredentials: "بيانات الدخول غير صحيحة أو الحساب غير متاح."
         case .forbidden: "لا تملك صلاحية تنفيذ هذا الإجراء."
-        case .invalidInput: "القيمة المدخلة غير صالحة. استخدم أرقاماً فقط بحد أقصى 8 خانات عشرية."
+        case .invalidInput: "القيمة غير صالحة. استخدم الأرقام العربية أو الإنجليزية وبحد أقصى 8 خانات عشرية."
         case .notFound: "هذا السعر لم يعد متاحاً. حدّث القائمة وحاول مجدداً."
         case .invalidResponse: "استجابة الخادم غير صالحة."
+        case .networkUnavailable: "تعذر الوصول إلى الإنترنت. تحقق من اتصالك وحاول مجدداً."
+        case .serverFailure(let statusCode):
+            "الخادم واجه مشكلة مؤقتة (رمز \(statusCode)). حاول مرة أخرى بعد قليل."
+        case .unexpectedStatus(let statusCode):
+            "تعذر تنفيذ الطلب (رمز \(statusCode)). راجع البيانات وحاول مجدداً."
         case .requestFailed: "تعذّر الاتصال بخدمة الإدارة. تحقق من الشبكة وحاول مجدداً."
         case .secureStorage: "تعذّر حفظ جلسة الإدارة بأمان."
         }
+    }
+}
+
+enum AdminRateRetryPolicy {
+    static let maximumAttempts = 3
+
+    static func shouldRetry(_ error: AdminAPIError, attempt: Int) -> Bool {
+        guard attempt < maximumAttempts else { return false }
+        switch error {
+        case .networkUnavailable, .serverFailure, .requestFailed:
+            return true
+        default:
+            return false
+        }
+    }
+
+    static func delayMilliseconds(after attempt: Int) -> Int {
+        500 * (1 << max(0, attempt - 1))
     }
 }
 
@@ -73,12 +184,16 @@ private actor AdminAPI {
     }
 
     func login(username: String, password: String) async throws -> AdminSession {
-        try await send(
-            to: configuration.adminBaseURL.appending(path: "auth/login"),
-            method: "POST",
-            body: ["username": username, "password": password],
-            token: nil
-        )
+        do {
+            return try await send(
+                to: configuration.adminBaseURL.appending(path: "auth/login"),
+                method: "POST",
+                body: ["username": username, "password": password],
+                token: nil
+            )
+        } catch let error as AdminAPIError {
+            throw AdminAPIError.loginFailure(for: error)
+        }
     }
 
     func logout(token: String) async throws {
@@ -108,13 +223,33 @@ private actor AdminAPI {
         )
     }
 
-    func updateRate(id: UUID, buy: String?, sell: String?, feeFixed: String?, token: String) async throws {
-        let _: AdminRateUpdateResult = try await send(
-            to: configuration.adminBaseURL.appending(path: "rates/\(id.uuidString)"),
-            method: "PATCH",
-            body: RateUpdateBody(buy: buy, sell: sell, feeFixed: feeFixed),
-            token: token
-        )
+    func updateRate(
+        id: UUID,
+        buy: String?,
+        sell: String?,
+        feeFixed: String?,
+        requestID: UUID,
+        token: String
+    ) async throws {
+        for attempt in 1...AdminRateRetryPolicy.maximumAttempts {
+            do {
+                let _: AdminRateUpdateResult = try await send(
+                    to: configuration.adminBaseURL.appending(path: "rates/\(id.uuidString)"),
+                    method: "PATCH",
+                    body: RateUpdateBody(
+                        buy: buy,
+                        sell: sell,
+                        feeFixed: feeFixed,
+                        requestID: requestID.uuidString
+                    ),
+                    token: token
+                )
+                return
+            } catch let error as AdminAPIError {
+                guard AdminRateRetryPolicy.shouldRetry(error, attempt: attempt) else { throw error }
+                try await Task.sleep(for: .milliseconds(AdminRateRetryPolicy.delayMilliseconds(after: attempt)))
+            }
+        }
     }
 
     private func send<Value: Decodable & Sendable, Body: Encodable>(
@@ -135,7 +270,17 @@ private actor AdminAPI {
             request.httpBody = try JSONEncoder().encode(body)
         }
 
-        let (data, response) = try await session.data(for: request)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let error as URLError where error.code == .cancelled {
+            throw CancellationError()
+        } catch {
+            throw AdminAPIError.networkUnavailable
+        }
         guard let http = response as? HTTPURLResponse else { throw AdminAPIError.invalidResponse }
         switch http.statusCode {
         case 200..<300:
@@ -145,7 +290,9 @@ private actor AdminAPI {
         case 401: throw AdminAPIError.unauthorized
         case 403: throw AdminAPIError.forbidden
         case 404: throw AdminAPIError.notFound
-        default: throw AdminAPIError.requestFailed
+        case 408, 429: throw AdminAPIError.requestFailed
+        case 500...599: throw AdminAPIError.serverFailure(statusCode: http.statusCode)
+        default: throw AdminAPIError.unexpectedStatus(statusCode: http.statusCode)
         }
     }
 }
@@ -153,15 +300,17 @@ private actor AdminAPI {
 private struct EmptyBody: Encodable, Sendable {}
 private struct AdminLogoutResult: Decodable, Sendable { let success: Bool }
 private struct AdminRateUpdateResult: Decodable, Sendable { let id: UUID? }
-private struct RateUpdateBody: Encodable, Sendable {
+struct RateUpdateBody: Encodable, Sendable {
     let buy: String?
     let sell: String?
     let feeFixed: String?
+    let requestID: String
 
     private enum CodingKeys: String, CodingKey {
         case buy
         case sell
         case feeFixed
+        case requestID = "requestId"
     }
 
     func encode(to encoder: Encoder) throws {
@@ -169,6 +318,7 @@ private struct RateUpdateBody: Encodable, Sendable {
         try container.encode(buy, forKey: .buy)
         try container.encode(sell, forKey: .sell)
         try container.encode(feeFixed, forKey: .feeFixed)
+        try container.encode(requestID, forKey: .requestID)
     }
 }
 
@@ -325,6 +475,7 @@ private struct AdminLoginView: View {
 
 private struct AdminDashboardView: View {
     let auth: AdminAuth
+    @FocusState private var isRateInputFocused: Bool
     @State private var dashboard: AdminDashboard?
     @State private var rates: [Rate] = []
     @State private var errorMessage: String?
@@ -360,7 +511,12 @@ private struct AdminDashboardView: View {
                         .padding(24)
                 } else {
                     ForEach(rates) { rate in
-                        AdminRateEditor(rate: rate, token: auth.sessionToken ?? "") {
+                        AdminRateEditor(
+                            rate: rate,
+                            token: auth.sessionToken ?? "",
+                            isValueFieldFocused: $isRateInputFocused,
+                            onUnauthorized: { auth.clearExpiredSession() }
+                        ) {
                             await reload()
                         }
                     }
@@ -391,6 +547,7 @@ private struct AdminDashboardView: View {
             .padding(14)
         }
         .task { await reload() }
+        .numericKeyboardDoneToolbar(focused: $isRateInputFocused)
     }
 
     private func metric(_ title: String, value: Int?) -> some View {
@@ -440,19 +597,32 @@ private struct AdminDashboardView: View {
 private struct AdminRateEditor: View {
     let rate: Rate
     let token: String
+    let onUnauthorized: () -> Void
     let onSaved: () async -> Void
 
+    @FocusState.Binding private var isValueFieldFocused: Bool
     @State private var buy: String
     @State private var sell: String
     @State private var feeFixed: String
     @State private var message: String?
     @State private var isSaving = false
-    @FocusState private var isValueFieldFocused: Bool
+    @State private var isConfirmingSave = false
+    private var changes: [AdminRateChange] {
+        AdminRateDraft.changes(for: rate, buy: buy, sell: sell, feeFixed: feeFixed)
+    }
 
-    init(rate: Rate, token: String, onSaved: @escaping () async -> Void) {
+    init(
+        rate: Rate,
+        token: String,
+        isValueFieldFocused: FocusState<Bool>.Binding,
+        onUnauthorized: @escaping () -> Void,
+        onSaved: @escaping () async -> Void
+    ) {
         self.rate = rate
         self.token = token
+        self.onUnauthorized = onUnauthorized
         self.onSaved = onSaved
+        _isValueFieldFocused = isValueFieldFocused
         _buy = State(initialValue: rate.buy.map { "\($0)" } ?? "")
         _sell = State(initialValue: rate.sell.map { "\($0)" } ?? "")
         _feeFixed = State(initialValue: rate.feeFixed.map { "\($0)" } ?? "")
@@ -475,16 +645,18 @@ private struct AdminRateEditor: View {
                 }
 
                 Button {
-                    Task { await save() }
+                    requestSave()
                 } label: {
                     if isSaving {
                         ProgressView()
+                    } else if changes.isEmpty {
+                        Text("لا توجد تغييرات")
                     } else {
                         Text("حفظ نسخة سعر جديدة")
                     }
                 }
                 .font(.caption.weight(.bold))
-                .disabled(isSaving)
+                .disabled(isSaving || changes.isEmpty)
 
                 if let message {
                     Text(message)
@@ -494,8 +666,15 @@ private struct AdminRateEditor: View {
                 }
             }
         }
-        .numericKeyboardDoneToolbar(focused: $isValueFieldFocused)
         .onTapGesture { isValueFieldFocused = false }
+        .alert("تأكيد تحديث السعر", isPresented: $isConfirmingSave) {
+            Button("إلغاء", role: .cancel) {}
+            Button("تأكيد وحفظ") {
+                Task { await save() }
+            }
+        } message: {
+            Text(AdminRateDraft.summary(of: changes))
+        }
     }
 
     private func valueField(_ title: String, text: Binding<String>) -> some View {
@@ -512,15 +691,28 @@ private struct AdminRateEditor: View {
         .frame(maxWidth: .infinity)
     }
 
+    private func requestSave() {
+        message = nil
+        guard [buy, sell, feeFixed].allSatisfy({ AdminRateInputValidator.isValidDecimalOrAbsent($0) }) else {
+            message = AdminAPIError.invalidInput.errorDescription
+            return
+        }
+        guard AdminRateDraft.hasAnyValue(for: rate, buy: buy, sell: sell, feeFixed: feeFixed) else {
+            message = "أدخل قيمة واحدة على الأقل للسعر أو العمولة."
+            return
+        }
+        guard !changes.isEmpty else {
+            message = "ماكو تغييرات لحفظها."
+            return
+        }
+        isConfirmingSave = true
+    }
+
     private func save() async {
         message = nil
         let buyValue = normalized(buy)
         let sellValue = normalized(sell)
         let feeValue = normalized(feeFixed)
-        guard [buyValue, sellValue, feeValue].allSatisfy(AdminRateInputValidator.isValidDecimalOrAbsent) else {
-            message = AdminAPIError.invalidInput.errorDescription
-            return
-        }
         isSaving = true
         defer { isSaving = false }
         do {
@@ -529,17 +721,20 @@ private struct AdminRateEditor: View {
                 buy: buyValue,
                 sell: sellValue,
                 feeFixed: feeValue,
+                requestID: UUID(),
                 token: token
             )
             message = "تم حفظ التعديل وتسجيله."
             await onSaved()
+        } catch AdminAPIError.unauthorized {
+            onUnauthorized()
+            message = AdminAPIError.unauthorized.errorDescription
         } catch {
             message = error.localizedDescription
         }
     }
 
     private func normalized(_ value: String) -> String? {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
+        AdminRateInputValidator.normalizedDecimalInput(value)
     }
 }

@@ -206,6 +206,35 @@ final class RateCacheTests: XCTestCase {
         XCTAssertNil(TransferAmount.positiveDecimal(from: "not-an-amount", locale: Locale(identifier: "en_US")))
     }
 
+    func testAdminRateRetryPolicyRetriesTransientFailuresOnlyAndStopsAfterThreeAttempts() {
+        XCTAssertTrue(AdminRateRetryPolicy.shouldRetry(.networkUnavailable, attempt: 1))
+        XCTAssertTrue(AdminRateRetryPolicy.shouldRetry(.serverFailure(statusCode: 503), attempt: 2))
+        XCTAssertTrue(AdminRateRetryPolicy.shouldRetry(.requestFailed, attempt: 1))
+        XCTAssertFalse(AdminRateRetryPolicy.shouldRetry(.unauthorized, attempt: 1))
+        XCTAssertFalse(AdminRateRetryPolicy.shouldRetry(.forbidden, attempt: 1))
+        XCTAssertFalse(AdminRateRetryPolicy.shouldRetry(.invalidInput, attempt: 1))
+        XCTAssertFalse(AdminRateRetryPolicy.shouldRetry(.notFound, attempt: 1))
+        XCTAssertFalse(AdminRateRetryPolicy.shouldRetry(.serverFailure(statusCode: 503), attempt: 3))
+        XCTAssertEqual(AdminRateRetryPolicy.delayMilliseconds(after: 1), 500)
+        XCTAssertEqual(AdminRateRetryPolicy.delayMilliseconds(after: 2), 1_000)
+    }
+
+    func testAdminRateUpdateEncodesIdempotencyKeyForEdgeFunction() throws {
+        let requestID = UUID()
+        let body = RateUpdateBody(
+            buy: "3.67",
+            sell: nil,
+            feeFixed: "2",
+            requestID: requestID.uuidString
+        )
+        let json = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(body)) as? [String: Any]
+        )
+
+        XCTAssertEqual(json["requestId"] as? String, requestID.uuidString)
+        XCTAssertNil(json["requestID"])
+    }
+
     func testGuestFacingMobileAPIRequestsNeverAttachAnAuthorizationHeader() async throws {
         // Guests must be able to browse rates/offices/tracking without ever signing in (the app-root
         // gate that used to force `AuthView` on every launch has been removed) — this locks in that
@@ -304,11 +333,85 @@ final class RateCacheTests: XCTestCase {
         XCTAssertTrue(AdminRateInputValidator.isValidDecimalOrAbsent("3.675"))
         XCTAssertTrue(AdminRateInputValidator.isValidDecimalOrAbsent("1500"))
         XCTAssertTrue(AdminRateInputValidator.isValidDecimalOrAbsent("0.00000001"))
+        XCTAssertEqual(AdminRateInputValidator.normalizedDecimalInput("٣٫٦٧٥"), "3.675")
+        XCTAssertEqual(AdminRateInputValidator.normalizedDecimalInput("۳.۶۷۵"), "3.675")
+        XCTAssertEqual(AdminRateInputValidator.normalizedDecimalInput("١٥٠٠"), "1500")
+        XCTAssertTrue(AdminRateInputValidator.isValidDecimalOrAbsent("  "))
         XCTAssertFalse(AdminRateInputValidator.isValidDecimalOrAbsent("-1.5"))
         XCTAssertFalse(AdminRateInputValidator.isValidDecimalOrAbsent("1,500"))
         XCTAssertFalse(AdminRateInputValidator.isValidDecimalOrAbsent("abc"))
         XCTAssertFalse(AdminRateInputValidator.isValidDecimalOrAbsent("1.234567890"))
-        XCTAssertFalse(AdminRateInputValidator.isValidDecimalOrAbsent(""))
+        XCTAssertNil(AdminRateInputValidator.normalizedDecimalInput("3٫6.75"))
+        XCTAssertNil(AdminRateInputValidator.normalizedDecimalInput(""))
+    }
+
+    func testAdminLoginUnauthorizedIsReportedAsInvalidCredentialsNotExpiredSession() {
+        let loginError = AdminAPIError.loginFailure(for: .unauthorized)
+        let dashboardError = AdminAPIError.loginFailure(for: .requestFailed)
+
+        XCTAssertEqual(loginError.errorDescription, "بيانات الدخول غير صحيحة أو الحساب غير متاح.")
+        XCTAssertEqual(dashboardError.errorDescription, AdminAPIError.requestFailed.errorDescription)
+        XCTAssertEqual(AdminAPIError.unauthorized.errorDescription, "انتهت جلسة الإدارة. سجّل الدخول مجدداً.")
+    }
+
+    func testAdminRateDraftIgnoresDecimalFormattingOnlyChanges() {
+        let rate = makeRate(
+            id: UUID(),
+            arabic: "بغداد إلى دبي",
+            english: "Baghdad to Dubai",
+            sourceCurrency: "USD",
+            destinationCurrency: "AED"
+        )
+
+        XCTAssertTrue(
+            AdminRateDraft.changes(for: rate, buy: "1.5000", sell: "", feeFixed: "").isEmpty
+        )
+    }
+
+    func testAdminRateDraftSummarizesChangedAndClearedValuesBeforeSaving() {
+        let rate = makeRate(
+            id: UUID(),
+            arabic: "بغداد إلى دبي",
+            english: "Baghdad to Dubai",
+            sourceCurrency: "USD",
+            destinationCurrency: "AED"
+        )
+
+        let changes = AdminRateDraft.changes(for: rate, buy: "1.75", sell: "", feeFixed: "")
+
+        XCTAssertEqual(changes, [
+            AdminRateChange(title: "شراء", previousValue: "1.5", newValue: "1.75")
+        ])
+        XCTAssertEqual(AdminRateDraft.summary(of: changes), "شراء: 1.5 ← 1.75")
+    }
+
+    func testAdminRateDraftRejectsRemovingEveryRateValueButKeepsPercentageFeeRatesValid() {
+        let rate = makeRate(
+            id: UUID(),
+            arabic: "بغداد إلى دبي",
+            english: "Baghdad to Dubai",
+            sourceCurrency: "USD",
+            destinationCurrency: "AED"
+        )
+
+        XCTAssertFalse(AdminRateDraft.hasAnyValue(for: rate, buy: "", sell: "", feeFixed: ""))
+
+        let percentageFeeRate = Rate(
+            id: rate.id,
+            routeNameArabic: rate.routeNameArabic,
+            routeNameEnglish: rate.routeNameEnglish,
+            sourceCurrency: rate.sourceCurrency,
+            destinationCurrency: rate.destinationCurrency,
+            buy: nil,
+            sell: nil,
+            feeFixed: nil,
+            feePercent: Decimal(string: "1.5"),
+            updatedAt: rate.updatedAt,
+            sourceTimestamp: rate.sourceTimestamp,
+            version: rate.version,
+            staleAfter: rate.staleAfter
+        )
+        XCTAssertTrue(AdminRateDraft.hasAnyValue(for: percentageFeeRate, buy: "", sell: "", feeFixed: ""))
     }
 
     /// Regression guard: `debugBaseURL` (mobile routes) and `adminBaseURL` (admin routes) must target
