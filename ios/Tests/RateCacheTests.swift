@@ -231,6 +231,21 @@ final class RateCacheTests: XCTestCase {
         )
     }
 
+    /// Guards the in-app admin rate editor's client-side format check against drifting from the
+    /// backend's `decimal` Zod schema (`backend/src/admin-routes.ts`): up to 16 integer digits, up to
+    /// 8 fractional digits, no sign, no thousands separators.
+    func testAdminRateInputValidatorAcceptsBackendDecimalFormatAndRejectsMalformedInput() {
+        XCTAssertTrue(AdminRateInputValidator.isValidDecimalOrAbsent(nil))
+        XCTAssertTrue(AdminRateInputValidator.isValidDecimalOrAbsent("3.675"))
+        XCTAssertTrue(AdminRateInputValidator.isValidDecimalOrAbsent("1500"))
+        XCTAssertTrue(AdminRateInputValidator.isValidDecimalOrAbsent("0.00000001"))
+        XCTAssertFalse(AdminRateInputValidator.isValidDecimalOrAbsent("-1.5"))
+        XCTAssertFalse(AdminRateInputValidator.isValidDecimalOrAbsent("1,500"))
+        XCTAssertFalse(AdminRateInputValidator.isValidDecimalOrAbsent("abc"))
+        XCTAssertFalse(AdminRateInputValidator.isValidDecimalOrAbsent("1.234567890"))
+        XCTAssertFalse(AdminRateInputValidator.isValidDecimalOrAbsent(""))
+    }
+
     /// Regression guard: `debugBaseURL` (mobile routes) and `adminBaseURL` (admin routes) must target
     /// the same host+port, since both are served by the single local backend process. A drift here
     /// previously left rates/tracking silently unreachable on the Simulator while admin login still
