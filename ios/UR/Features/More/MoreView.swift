@@ -49,9 +49,9 @@ struct MoreView: View {
                     Divider(); NavigationLink { SecurityCenterView() } label: { MoreRow("مركز الأمان", "lock.shield.fill") }
                 }
                 MoreGroup(title: "حول UR") {
-                    Link(destination: URL(string: "https://urremit.com/privacy")!) { MoreRow("سياسة الخصوصية", "hand.raised.fill") }
-                    Divider(); Link(destination: URL(string: "https://urremit.com/terms")!) { MoreRow("الشروط والأحكام", "doc.text.fill") }
-                    Divider(); Link(destination: URL(string: "https://urremit.com/contact")!) { MoreRow("اتصل بنا", "phone.fill") }
+                    Link(destination: URL(string: "https://www.urremit.com/privacy")!) { MoreRow("سياسة الخصوصية", "hand.raised.fill") }
+                    Divider(); Link(destination: URL(string: "https://www.urremit.com/terms")!) { MoreRow("الشروط والأحكام", "doc.text.fill") }
+                    Divider(); Link(destination: URL(string: "https://www.urremit.com/contact")!) { MoreRow("اتصل بنا", "phone.fill") }
                 }
                 MoreGroup(title: "تطبيق UR Global") {
                     Link(destination: URAnalytics.websiteURL) { MoreRow("الموقع الرسمي", "globe") }
@@ -258,7 +258,7 @@ struct SecurityCenterView: View {
             SafetyRow("الأسعار المعروضة إرشادية وليست عرضًا ملزمًا", "chart.line.uptrend.xyaxis")
             SafetyRow("قد تتغير الأسعار حسب السوق والوقت", "clock.fill")
             SafetyRow("التطبيق لا ينفذ أو يعالج معاملات مالية", "checkmark.shield.fill")
-            Link(destination: URL(string: "https://urremit.com/contact")!) { Label("الإبلاغ عن حساب مزيف", systemImage: "exclamationmark.bubble.fill").frame(maxWidth: .infinity, minHeight: 48).background(Color.red.opacity(0.10), in: RoundedRectangle(cornerRadius: 14)).foregroundStyle(.red).font(.subheadline.weight(.bold)) }
+            Link(destination: URL(string: "https://www.urremit.com/contact")!) { Label("الإبلاغ عن حساب مزيف", systemImage: "exclamationmark.bubble.fill").frame(maxWidth: .infinity, minHeight: 48).background(Color.red.opacity(0.10), in: RoundedRectangle(cornerRadius: 14)).foregroundStyle(.red).font(.subheadline.weight(.bold)) }
         }.padding(14) }.background(URColor.ivory.ignoresSafeArea()).navigationBarTitleDisplayMode(.inline)
     }
 }

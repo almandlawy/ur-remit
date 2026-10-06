@@ -99,7 +99,7 @@ struct AuthView: View {
 
                     URPageTitle(
                         title: "مرحباً بك",
-                        subtitle: "سجّل الدخول للوصول إلى خدمات التحويل",
+                        subtitle: "سجّل الدخول لحفظ تفضيلاتك ومتابعة معلومات UR",
                         symbol: "lock.shield.fill"
                     )
 

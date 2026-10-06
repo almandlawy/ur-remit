@@ -61,7 +61,7 @@ struct HomeView: View {
             Image("DubaiSkyline").resizable().scaledToFit().opacity(0.22).offset(y: 18)
             VStack(alignment: .trailing, spacing: 8) {
                 Text("معكم في كل وجهة").font(.title2.weight(.black))
-                Text("أسعار عملات واضحة ومعلومات إرشادية تساعدك على المقارنة.").font(.subheadline).foregroundStyle(.white.opacity(0.78)).multilineTextAlignment(.trailing)
+                Text("أسعار صرف ومعلومات تحويلات عالمية بين يديك").font(.subheadline).foregroundStyle(.white.opacity(0.78)).multilineTextAlignment(.trailing)
                 HStack(spacing: 6) { Circle().fill(.green).frame(width: 7, height: 7); Text("الأسعار متاحة الآن").font(.caption.weight(.semibold)) }
                 HStack(spacing: 8) {
                     NavigationLink { RatesView(repository: repository).analyticsScreen(.ratesViewed) } label: {

@@ -41,6 +41,8 @@ final class URAnalyticsTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(700))
         XCTAssertTrue(analytics.pendingEventNames.contains("app_first_open"))
         XCTAssertFalse(defaults.bool(forKey: "ur.analytics.firstOpenSent"))
+        analytics.setCollectionEnabled(false)
+        XCTAssertTrue(analytics.pendingEventNames.isEmpty)
     }
     func testExternalContactsAndDownloadsStayDistinct() {
         let suite = "ur.analytics.tests.\(UUID())"
@@ -58,5 +60,6 @@ final class URAnalyticsTests: XCTestCase {
         XCTAssertFalse(analytics.pendingEventNames.contains("app_first_open"))
         let persisted = String(decoding: defaults.data(forKey: "ur.analytics.outbox")!, as: UTF8.self)
         XCTAssertFalse(persisted.contains("12345"))
+        analytics.setCollectionEnabled(false)
     }
 }

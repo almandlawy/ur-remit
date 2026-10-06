@@ -16,8 +16,8 @@ struct SupportView: View {
                         Text("تحتاج مساعدة مباشرة؟").font(.headline.weight(.black)).foregroundStyle(URColor.deepNavy)
                         Text("فريق UR جاهز للإجابة عن استفسارات الأسعار والمعلومات العامة.").font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
                         HStack(spacing: 10) {
-                            Link(destination: URL(string: "https://urremit.com/contact")!) { Label("راسلنا", systemImage: "message.fill").frame(maxWidth: .infinity, minHeight: 43).background(URColor.deepNavy, in: RoundedRectangle(cornerRadius: 12)).foregroundStyle(.white) }
-                            Link(destination: URL(string: "https://urremit.com/contact")!) { Label("اتصل بنا", systemImage: "phone.fill").frame(maxWidth: .infinity, minHeight: 43).background(URColor.premiumGold, in: RoundedRectangle(cornerRadius: 12)).foregroundStyle(.white) }
+                            Link(destination: URL(string: "https://www.urremit.com/contact")!) { Label("راسلنا", systemImage: "message.fill").frame(maxWidth: .infinity, minHeight: 43).background(URColor.deepNavy, in: RoundedRectangle(cornerRadius: 12)).foregroundStyle(.white) }
+                            Link(destination: URL(string: "https://www.urremit.com/contact")!) { Label("اتصل بنا", systemImage: "phone.fill").frame(maxWidth: .infinity, minHeight: 43).background(URColor.premiumGold, in: RoundedRectangle(cornerRadius: 12)).foregroundStyle(.white) }
                         }.font(.caption.weight(.bold))
                     }
                 }
