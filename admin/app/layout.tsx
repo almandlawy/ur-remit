@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./styles.css";
+import "@/components/analytics/analytics.css";
 
 export const metadata: Metadata = { title: "UR Admin", robots: { index: false, follow: false } };
 

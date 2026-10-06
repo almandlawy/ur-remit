@@ -1,0 +1,10 @@
+{
+  "ios/UR/Features/Rates/Presentation/RatesView.swift": "126bb1ae46f0b7f8b97e60078c720b65a1c03ed49e297c235c8f5e01a5b202a1",
+  "ios/UR/Features/Rates/Presentation/RatesViewModel.swift": "dbbef238e860322d516e9a619626e0c4f08a54a77085e41dcad5934b10ba8f61",
+  "ios/UR/Features/Rates/Data/FileRatesCache.swift": "99c431cda07dc25b92e2bd9032d2fb6603ce8e85473d1e1151ca7d87993e9c9c",
+  "ios/UR/Features/Rates/Domain/RatesRepository.swift": "43619a3651eda90f10a296ec923580a945ac40dc64421ebc87c98e67e8e1264d",
+  "ios/UR/Features/Rates/Domain/Rate.swift": "5c669eb7a209bd4c7ccaf878aa421a6ff83953f80bd02e821902e99aeb60c6f2",
+  "ios/UR/Core/Networking/APIClient.swift": "5a80d9ab9bd782590934f8c2a0bd1e95186555fa7574405c46b168d0ddb07c18",
+  "supabase/functions/mobile-api/index.ts": "0bd30c1a3e2793092b99b7bce82edb58eae596dd548f8885b71dbb0db192c956",
+  "backend/src/public-routes.ts": "6558f82e657003c487c3c0e78f83dbda2b45d43afe7085fd8f8e898dfa9b9e17"
+}

@@ -1,0 +1,8 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {validateEvent,permitted,period} from '../supabase/functions/app-analytics/contract.ts';
+const good = {id:'6e9722b4-2f52-4bdc-933e-7e929d345a31',anonymous_id:'217a7ff3-52ab-4a9f-b03c-ed7d6830cc96',session_id:'2a8128b2-39bc-435d-8307-40a686df36ec',event_name:'app_open',platform:'ios',app_version:'1.1',build_number:'12',device_type:'iPhone',os_version:'18.0',locale:'ar_IQ',metadata:{},created_at:new Date().toISOString()};
+test('accepts bounded anonymous product event',()=>assert.equal(validateEvent(good).event_name,'app_open'));
+test('rejects secrets, personal data and client identity',()=>{for(const metadata of [{password:'secret'},{otp:'123456'},{email:'private@example.com'},{url:'https://private.example'},{error_code:'token-secret'}])assert.throws(()=>validateEvent({...good,metadata}));assert.throws(()=>validateEvent({...good,user_id:good.id}));});
+test('rejects unsupported events, malformed IDs and stale/future events',()=>{for(const patch of [{event_name:'payment_sent'},{anonymous_id:'device-fingerprint'},{created_at:'2020-01-01'},{created_at:new Date(Date.now()+600000).toISOString()}])assert.throws(()=>validateEvent({...good,...patch}));});
+test('admin scope is explicit and periods are bounded',()=>{assert.ok(permitted({role:'SUPER_ADMIN'}));assert.ok(permitted({role:'MANAGER',permissions:['analytics.read']}));assert.equal(permitted({role:'ADMIN'}),false);assert.equal(permitted(null),false);for(const p of ['1','7','30','90','0'])assert.equal(period(p),Number(p));assert.throws(()=>period('365'));});

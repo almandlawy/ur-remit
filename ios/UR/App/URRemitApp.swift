@@ -5,6 +5,7 @@ import OSLog
 @main
 struct URRemitApp: App {
     private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "URRemit", category: "PriceAlerts")
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var auth = URAuthService.live
     @State private var favorites = FavoritesStore.shared
     @State private var showSplash = true
@@ -60,6 +61,10 @@ struct URRemitApp: App {
                         .zIndex(1)
                 }
             }
+            .onChange(of: scenePhase, initial: true) { _, phase in
+                if phase == .active { URAnalytics.shared.activated() }
+                else if phase == .background { URAnalytics.shared.backgrounded() }
+            }
             .task {
                 do {
                     try await Task.sleep(for: .seconds(1.2))
@@ -94,7 +99,7 @@ struct AuthView: View {
 
                     URPageTitle(
                         title: "مرحباً بك",
-                        subtitle: "سجّل الدخول للوصول إلى خدمات التحويل",
+                        subtitle: "سجّل الدخول لحفظ تفضيلاتك ومتابعة معلومات UR",
                         symbol: "lock.shield.fill"
                     )
 

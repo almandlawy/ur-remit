@@ -46,13 +46,17 @@ struct RootView: View {
                 .tag(URTab.home)
             NavigationStack { OfficesView(api: container.apiClient) }
                 .tag(URTab.offices)
-            NavigationStack { RatesView(repository: container.ratesRepository) }
+            NavigationStack { RatesView(repository: container.ratesRepository).analyticsScreen(.ratesViewed) }
                 .tag(URTab.rates)
             NavigationStack { SupportView(repository: container.ratesRepository, api: container.apiClient) }
                 .tag(URTab.support)
             NavigationStack { MoreView(api: container.apiClient) }
                 .tag(URTab.more)
         }
+        .environment(\.openURL, OpenURLAction { url in
+            URAnalytics.shared.external(url)
+            return .systemAction(url)
+        })
         .toolbar(.hidden, for: .tabBar)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             URBottomNavigation(selection: $selection)
