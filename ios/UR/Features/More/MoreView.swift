@@ -5,6 +5,8 @@ struct MoreView: View {
     @EnvironmentObject private var auth: URAuthService
     @State private var adminTapCount = 0
     @State private var showAdminLogin = false
+    @State private var showShare = false
+    @AppStorage("ur.analytics.enabled") private var analyticsEnabled = true
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -51,10 +53,24 @@ struct MoreView: View {
                     Divider(); Link(destination: URL(string: "https://urremit.com/terms")!) { MoreRow("الشروط والأحكام", "doc.text.fill") }
                     Divider(); Link(destination: URL(string: "https://urremit.com/contact")!) { MoreRow("اتصل بنا", "phone.fill") }
                 }
+                MoreGroup(title: "تطبيق UR Global") {
+                    Link(destination: URAnalytics.websiteURL) { MoreRow("الموقع الرسمي", "globe") }
+                    Divider(); Link(destination: URAnalytics.appStoreURL) { MoreRow("التطبيق على App Store", "apple.logo") }
+                    Divider(); Button {
+                        URAnalytics.shared.track(.shareAppClicked)
+                        showShare = true
+                    } label: { MoreRow("شارك التطبيق", "square.and.arrow.up") }.buttonStyle(.plain)
+                }
+                MoreGroup(title: "خصوصية الاستخدام") {
+                    Toggle("مشاركة بيانات الاستخدام", isOn: $analyticsEnabled).font(.subheadline).padding(.vertical, 12)
+                    Text("تحليلات داخلية لتحسين التطبيق، دون بيانات مالية أو تتبع إعلاني.").font(.caption2).foregroundStyle(.secondary).padding(.bottom, 12)
+                }
                 Text("UR Remit  •  الإصدار \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")").font(.caption2).foregroundStyle(.secondary).padding(.top, 8)
             }.padding(.horizontal, 14).padding(.top, 10).padding(.bottom, 14)
         }
         .background(URColor.ivory.ignoresSafeArea()).toolbar(.hidden, for: .navigationBar)
+        .onChange(of: analyticsEnabled) { _, value in URAnalytics.shared.setCollectionEnabled(value) }
+        .sheet(isPresented: $showShare) { URShareSheet() }
         .sheet(isPresented: $showAdminLogin) {
             NavigationStack {
                 AdminEntryView()
@@ -126,6 +142,7 @@ struct OfficesView: View {
             }.padding(14)
         }
         .background(URColor.ivory.ignoresSafeArea()).toolbar(.hidden, for: .navigationBar)
+        .analyticsScreen(.officesViewed)
         .task { await loadOffices() }
     }
 
@@ -139,6 +156,7 @@ struct OfficesView: View {
         } catch {
             if offices.isEmpty { offices = Self.fallbackOffices }
             isOffline = true
+            URAnalytics.shared.track(.errorOccurred, metadata: ["error_code":"offices_unavailable"])
         }
     }
 }
@@ -168,6 +186,12 @@ private struct OfficeCard: View {
                     if let phone = office.phone, let url = URL(string: "tel:\(phone)") {
                         Link(destination: url) { Label("اتصال", systemImage: "phone.fill").frame(maxWidth: .infinity, minHeight: 40).background(URColor.deepNavy, in: RoundedRectangle(cornerRadius: 11)).foregroundStyle(.white) }
                     }
+                    if let whatsapp = office.whatsapp {
+                        let digits = whatsapp.filter(\.isNumber)
+                        if !digits.isEmpty, let url = URL(string: "https://wa.me/\(digits)") {
+                            Link(destination: url) { Label("WhatsApp", systemImage: "message.fill").frame(maxWidth: .infinity, minHeight: 40).background(URColor.success, in: RoundedRectangle(cornerRadius: 11)).foregroundStyle(.white) }
+                        }
+                    }
                     if let latitude = office.latitude, let longitude = office.longitude,
                        let mapURL = URL(string: "https://maps.apple.com/?ll=\(latitude),\(longitude)") {
                         Link(destination: mapURL) { Label("الخريطة", systemImage: "map.fill").frame(maxWidth: .infinity, minHeight: 40).background(URColor.premiumGold, in: RoundedRectangle(cornerRadius: 11)).foregroundStyle(URColor.deepNavy) }
@@ -175,6 +199,7 @@ private struct OfficeCard: View {
                 }.font(.caption.weight(.bold))
             }
         }
+        .simultaneousGesture(TapGesture().onEnded { URAnalytics.shared.track(.officeClicked, metadata: ["office_id":office.id.uuidString]) })
     }
 }
 

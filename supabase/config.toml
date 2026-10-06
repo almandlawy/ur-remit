@@ -2,3 +2,7 @@ project_id = "yqvcoomjunwokyxwofvt"
 
 [functions.mobile-api]
 verify_jwt = false
+
+# Custom authentication: publishable key for ingestion; existing admin session for reports.
+[functions.app-analytics]
+verify_jwt = false

@@ -3,6 +3,7 @@ import { LogoutButton } from "@/components/layout/LogoutButton";
 import { adminData } from "@/lib/admin-data";
 
 const navigation = [
+  ["analytics", "/analytics", "مراقبة التطبيق"],
   ["dashboard", "/dashboard", "نظرة عامة"],
   ["rates", "/rates", "أسعار الصرف"],
   ["offices", "/offices", "المكاتب"],
@@ -18,7 +19,8 @@ export async function AdminShell({ active, title, subtitle, children }: {
   subtitle: string;
   children: ReactNode;
 }) {
-  await adminData<{ id: string; role: string }>("me");
+  const actor = await adminData<{ id: string; role: string; permissions?: string[] }>("me");
+  const canAnalytics = actor.data?.role === "SUPER_ADMIN" || actor.data?.permissions?.includes("analytics.read");
   return <main className="adminFrame">
     <aside className="adminSidebar" aria-label="التنقل الإداري">
       <div className="adminBrand">
@@ -26,7 +28,7 @@ export async function AdminShell({ active, title, subtitle, children }: {
         <div><strong>أور</strong><small>مركز التحكم</small></div>
       </div>
       <nav>
-        {navigation.map(([key, href, label]) =>
+        {navigation.filter(([key]) => key !== "analytics" || canAnalytics).map(([key, href, label]) =>
           <a className={active === key ? "active" : ""} href={href} key={key}>{label}</a>
         )}
       </nav>

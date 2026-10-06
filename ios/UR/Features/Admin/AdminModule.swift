@@ -317,6 +317,7 @@ private struct AdminLoginView: View {
 
 private struct AdminDashboardView: View {
     let auth: AdminAuth
+    @State private var canViewAnalytics = false
     @State private var dashboard: AdminDashboard?
     @State private var rates: [Rate] = []
     @State private var errorMessage: String?
@@ -328,6 +329,11 @@ private struct AdminDashboardView: View {
             VStack(spacing: 14) {
                 URPageTitle(title: "لوحة الإدارة", subtitle: "إدارة الأسعار على الخادم", symbol: "slider.horizontal.3")
 
+                if canViewAnalytics, let token = auth.sessionToken {
+                    NavigationLink { AdminAnalyticsView(token: token) } label: {
+                        Label("مراقبة التطبيق", systemImage: "chart.xyaxis.line").font(.headline).frame(maxWidth: .infinity, minHeight: 48)
+                    }.buttonStyle(.bordered)
+                }
                 if let dashboard {
                     HStack(spacing: 8) {
                         metric("المسارات", value: dashboard.activeRoutes)
@@ -383,6 +389,7 @@ private struct AdminDashboardView: View {
             .padding(14)
         }
         .task { await reload() }
+        .task { if let token = auth.sessionToken { canViewAnalytics = await URAdminAnalyticsAPI.canAccess(token: token) } }
     }
 
     private func metric(_ title: String, value: Int?) -> some View {

@@ -13,7 +13,7 @@ private struct URAuthSession: Codable {
     }
 }
 
-private struct URAuthUser: Decodable { let email: String? }
+private struct URAuthUser: Decodable { let id: UUID; let email: String?; let created_at: String }
 
 @MainActor
 final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresentationContextProviding {
@@ -27,6 +27,7 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
     private let projectURL: URL
     private let publishableKey: String
     private let sessionKey = "com.urremit.mobile.supabase.session"
+    private var signupAttemptStarted: Date?
     private var webSession: ASWebAuthenticationSession?
 
     private override init() {
@@ -41,6 +42,8 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
     }
 
     func prepareAppleRequest(_ request: ASAuthorizationAppleIDRequest, nonce: String) {
+        signupAttemptStarted = Date()
+        URAnalytics.shared.track(.signupStarted, metadata: ["provider":"apple"])
         request.requestedScopes = [.fullName, .email]
         request.nonce = Self.sha256(nonce)
     }
@@ -58,11 +61,14 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
             let body = try JSONSerialization.data(withJSONObject: ["provider": "apple", "id_token": token, "nonce": nonce])
             let authSession: URAuthSession = try await request(endpoint, method: "POST", body: body)
             try save(authSession)
-            try await loadUser(using: authSession)
+            let user = try await loadUser(using: authSession)
+            recordCompletion(user, provider: "apple")
         }
     }
 
     func signInWithGoogle() async {
+        signupAttemptStarted = Date()
+        URAnalytics.shared.track(.signupStarted, metadata: ["provider":"google"])
         guard var components = URLComponents(url: projectURL.appending(path: "auth/v1/authorize"), resolvingAgainstBaseURL: false) else { return }
         components.queryItems = [.init(name: "provider", value: "google"), .init(name: "redirect_to", value: "urremit://auth/callback")]
         guard let url = components.url else { return }
@@ -84,11 +90,13 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
         }
         do {
             try save(authSession)
-            try await loadUser(using: authSession)
-        } catch { message = "تعذر حفظ جلسة الدخول بأمان." }
+            let user = try await loadUser(using: authSession)
+            recordCompletion(user, provider: "google")
+        } catch { message = "تعذر حفظ جلسة الدخول بأمان."; URAnalytics.shared.track(.errorOccurred, metadata: ["error_code":"auth_failed"]) }
     }
 
     func signOut() async {
+        if isAuthenticated { URAnalytics.shared.track(.logout) }
         if let current = try? load() {
             var urlRequest = URLRequest(url: projectURL.appending(path: "auth/v1/logout"))
             urlRequest.httpMethod = "POST"
@@ -96,6 +104,7 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
             urlRequest.setValue("Bearer \(current.accessToken)", forHTTPHeaderField: "Authorization")
             _ = try? await URLSession.shared.data(for: urlRequest)
         }
+        URAnalytics.shared.identify(accessToken: nil)
         deleteSession()
         isAuthenticated = false
         email = nil
@@ -132,11 +141,22 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
         do { try await loadUser(using: authSession) } catch { deleteSession() }
     }
 
-    private func loadUser(using authSession: URAuthSession) async throws {
+    @discardableResult
+    private func loadUser(using authSession: URAuthSession) async throws -> URAuthUser {
         let user: URAuthUser = try await request(projectURL.appending(path: "auth/v1/user"), bearer: authSession.accessToken)
+        URAnalytics.shared.identify(accessToken: authSession.accessToken)
         isAuthenticated = true
         email = user.email
         message = nil
+        return user
+    }
+
+    private func recordCompletion(_ user: URAuthUser, provider: String) {
+        URAnalytics.shared.track(.loginCompleted, metadata: ["provider":provider])
+        if let attempt = signupAttemptStarted, let created = ISO8601DateParser.date(from: user.created_at), created >= attempt.addingTimeInterval(-5) {
+            URAnalytics.shared.track(.signupCompleted, metadata: ["provider":provider])
+        }
+        signupAttemptStarted = nil
     }
 
     private func request<T: Decodable>(_ url: URL, method: String = "GET", body: Data? = nil, bearer: String? = nil) async throws -> T {
@@ -156,7 +176,7 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
         isLoading = true
         message = nil
         defer { isLoading = false }
-        do { try await operation() } catch { message = "تعذر إكمال تسجيل الدخول الآن. حاول لاحقاً." }
+        do { try await operation() } catch { message = "تعذر إكمال تسجيل الدخول الآن. حاول لاحقاً."; URAnalytics.shared.track(.errorOccurred, metadata: ["error_code":"auth_failed"]) }
     }
 
     private func save(_ value: URAuthSession) throws {

@@ -17,7 +17,7 @@ struct HomeView: View {
                     NavigationLink { CalculatorView(repository: repository) } label: {
                         QuickService(title: "حاسبة العملات", subtitle: "قارن القيمة تقديريًا", symbol: "function", color: URColor.premiumGold)
                     }
-                    NavigationLink { RatesView(repository: repository) } label: {
+                    NavigationLink { RatesView(repository: repository).analyticsScreen(.ratesViewed) } label: {
                         QuickService(title: "أسعار السوق", subtitle: "تصفح كل الأسعار", symbol: "chart.line.uptrend.xyaxis", color: URColor.royalBlue)
                     }
                     NavigationLink { OfficesView(api: api) } label: {
@@ -33,6 +33,7 @@ struct HomeView: View {
             }
             .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 18)
         }
+        .analyticsScreen(.homeViewed)
         .background(URColor.ivory.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .task {
@@ -63,7 +64,7 @@ struct HomeView: View {
                 Text("أسعار عملات واضحة ومعلومات إرشادية تساعدك على المقارنة.").font(.subheadline).foregroundStyle(.white.opacity(0.78)).multilineTextAlignment(.trailing)
                 HStack(spacing: 6) { Circle().fill(.green).frame(width: 7, height: 7); Text("الأسعار متاحة الآن").font(.caption.weight(.semibold)) }
                 HStack(spacing: 8) {
-                    NavigationLink { RatesView(repository: repository) } label: {
+                    NavigationLink { RatesView(repository: repository).analyticsScreen(.ratesViewed) } label: {
                         Label("الأسعار", systemImage: "chart.bar.fill").frame(maxWidth: .infinity, minHeight: 36).background(.white.opacity(0.13), in: RoundedRectangle(cornerRadius: 10))
                     }
                     NavigationLink { CalculatorView(repository: repository) } label: {
