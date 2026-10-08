@@ -1,10 +1,12 @@
 import SwiftUI
+import SafariServices
 
 struct MoreView: View {
     let api: any APIClient
     @EnvironmentObject private var auth: URAuthService
     @State private var adminTapCount = 0
     @State private var showAdminLogin = false
+    @State private var showTransferCheckout = false
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -41,6 +43,8 @@ struct MoreView: View {
                     }.padding(16).foregroundStyle(URColor.deepNavy).background(.white.opacity(0.85), in: RoundedRectangle(cornerRadius: 17)).overlay(RoundedRectangle(cornerRadius: 17).stroke(URColor.hairline))
                 }
                 MoreGroup(title: "الخدمات") {
+                    Button { showTransferCheckout = true } label: { MoreRow("طلب حوالة والدفع والوصولات", "arrow.left.arrow.right.circle.fill") }
+                    Divider()
                     NavigationLink { OfficesView(api: api) } label: { MoreRow("المراكز المعتمدة", "building.2.fill") }
                     Divider(); NavigationLink { DailyReminderView() } label: { MoreRow("تذكير يومي بالأسعار", "bell.badge.fill") }
                     Divider(); NavigationLink { SecurityCenterView() } label: { MoreRow("عن الأسعار", "info.circle.fill") }
@@ -55,6 +59,9 @@ struct MoreView: View {
             }.padding(.horizontal, 14).padding(.top, 10).padding(.bottom, 14)
         }
         .background(URColor.ivory.ignoresSafeArea()).toolbar(.hidden, for: .navigationBar)
+        .sheet(isPresented: $showTransferCheckout) {
+            URCustomerTransferBrowser().ignoresSafeArea()
+        }
         .sheet(isPresented: $showAdminLogin) {
             NavigationStack {
                 AdminEntryView()
@@ -242,4 +249,12 @@ private struct SafetyRow: View {
     let title: String; let symbol: String
     init(_ title: String, _ symbol: String) { self.title = title; self.symbol = symbol }
     var body: some View { HStack { Spacer(); Text(title).font(.subheadline.weight(.semibold)).multilineTextAlignment(.trailing); Image(systemName: symbol).font(.title3).foregroundStyle(URColor.success).frame(width: 42, height: 42).background(URColor.success.opacity(0.10), in: RoundedRectangle(cornerRadius: 12)) }.foregroundStyle(URColor.deepNavy).padding(14).background(.white.opacity(0.85), in: RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(URColor.hairline)) }
+}
+
+
+private struct URCustomerTransferBrowser: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        SFSafariViewController(url: URL(string: "https://www.urremit.com/customer/transfers")!)
+    }
+    func updateUIViewController(_ controller: SFSafariViewController, context: Context) {}
 }
