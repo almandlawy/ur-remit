@@ -1,7 +1,7 @@
 import SwiftUI
 
 private enum URTab: String, CaseIterable, Identifiable {
-    case home, offices, rates, support, more
+    case home, offices, rates, transfers, support, more
 
     var id: Self { self }
     var title: String {
@@ -9,6 +9,7 @@ private enum URTab: String, CaseIterable, Identifiable {
         case .home: "الرئيسية"
         case .offices: "مراكزنا"
         case .rates: "الأسعار"
+        case .transfers: "حوالاتي"
         case .support: "الدعم"
         case .more: "المزيد"
         }
@@ -19,6 +20,7 @@ private enum URTab: String, CaseIterable, Identifiable {
         case .home: "house.fill"
         case .offices: "mappin.circle"
         case .rates: "chart.bar.fill"
+        case .transfers: "arrow.left.arrow.right.circle.fill"
         case .support: "headphones"
         case .more: "ellipsis"
         }
@@ -36,7 +38,7 @@ struct RootView: View {
             : arguments.contains("-showOffices") ? .offices
             : arguments.contains("-showSupport") ? .support
             : arguments.contains("-showMore") ? .more
-            : .home
+            : .rates
         _selection = State(initialValue: initial)
     }
 
@@ -48,6 +50,8 @@ struct RootView: View {
                 .tag(URTab.offices)
             NavigationStack { RatesView(repository: container.ratesRepository) }
                 .tag(URTab.rates)
+            NavigationStack { CustomerRemittanceView() }
+                .tag(URTab.transfers)
             NavigationStack { SupportView(repository: container.ratesRepository, api: container.apiClient) }
                 .tag(URTab.support)
             NavigationStack { MoreView(api: container.apiClient) }
