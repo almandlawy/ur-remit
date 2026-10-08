@@ -14,10 +14,10 @@ struct URRemitApp: App {
         WindowGroup {
             ZStack {
                 Group {
-                    if auth.isAuthenticated {
+                    if auth.isAuthenticated || auth.isGuest {
                         RootView(container: container)
                     } else {
-                        AuthView()
+                        WelcomeView()
                     }
                 }
                 .environmentObject(auth)
