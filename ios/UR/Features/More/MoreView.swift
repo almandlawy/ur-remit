@@ -1,4 +1,5 @@
 import SwiftUI
+import SafariServices
 
 struct MoreView: View {
     let api: any APIClient
@@ -41,6 +42,8 @@ struct MoreView: View {
                     }.padding(16).foregroundStyle(URColor.deepNavy).background(.white.opacity(0.85), in: RoundedRectangle(cornerRadius: 17)).overlay(RoundedRectangle(cornerRadius: 17).stroke(URColor.hairline))
                 }
                 MoreGroup(title: "الخدمات") {
+                    NavigationLink { CustomerRemittanceView() } label: { MoreRow("طلب حوالة والدفع والوصولات", "arrow.left.arrow.right.circle.fill") }
+                    Divider()
                     NavigationLink { OfficesView(api: api) } label: { MoreRow("المراكز المعتمدة", "building.2.fill") }
                     Divider(); NavigationLink { DailyReminderView() } label: { MoreRow("تذكير يومي بالأسعار", "bell.badge.fill") }
                     Divider(); NavigationLink { SecurityCenterView() } label: { MoreRow("عن الأسعار", "info.circle.fill") }
@@ -243,3 +246,95 @@ private struct SafetyRow: View {
     init(_ title: String, _ symbol: String) { self.title = title; self.symbol = symbol }
     var body: some View { HStack { Spacer(); Text(title).font(.subheadline.weight(.semibold)).multilineTextAlignment(.trailing); Image(systemName: symbol).font(.title3).foregroundStyle(URColor.success).frame(width: 42, height: 42).background(URColor.success.opacity(0.10), in: RoundedRectangle(cornerRadius: 12)) }.foregroundStyle(URColor.deepNavy).padding(14).background(.white.opacity(0.85), in: RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(URColor.hairline)) }
 }
+
+
+private struct URCustomerTransferBrowser: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        SFSafariViewController(url: URL(string: "https://www.urremit.com/customer/transfers")!)
+    }
+    func updateUIViewController(_ controller: SFSafariViewController, context: Context) {}
+}
+
+struct CustomerRemittanceView: View {
+    @State private var showCheckout = false
+    @State private var methods: [URCustomerPaymentMethod] = []
+    @State private var loadFailed = false
+    @State private var loading = true
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                URPageTitle(title: "حوالاتي", subtitle: "إرسال حوالة ومتابعة الوصولات", symbol: "arrow.left.arrow.right.circle.fill")
+                URCard {
+                    VStack(alignment: .trailing, spacing: 12) {
+                        Text("حوالتك من الطلب إلى التسليم").font(.title3.weight(.bold))
+                        Text("حدّد المبلغ والمستفيد ونقطة التسليم. راجع السعر والرسوم، ثم اختر طريقة الدفع المتوفرة.").font(.body)
+                        Button { showCheckout = true } label: {
+                            Label("إنشاء حوالة أو متابعة حوالاتي", systemImage: "arrow.left.arrow.right")
+                        }.buttonStyle(URPrimaryButtonStyle())
+                        Text("التصفح بدون حساب. تسجيل الدخول مطلوب عند إنشاء الطلب أو عرض الوصولات الخاصة.").font(.callout).foregroundStyle(.secondary)
+                    }.frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                URCard {
+                    VStack(alignment: .trailing, spacing: 12) {
+                        Text("طرق الدفع").font(.headline)
+                        if loading { ProgressView("جارٍ تحميل التوفر…") }
+                        else if loadFailed {
+                            Text("تعذر تحميل طرق الدفع. ما نعرض طريقة على أنها متوفرة بدون تأكيد.").font(.callout)
+                            Button("إعادة المحاولة") { Task { await loadMethods() } }
+                        } else {
+                            ForEach(methods) { method in
+                                HStack {
+                                    Text(method.available ? "متوفر" : "غير متوفر")
+                                        .font(.callout.weight(.semibold))
+                                        .foregroundStyle(method.available ? URColor.success : .secondary)
+                                    Spacer()
+                                    Text(method.name).font(.body).multilineTextAlignment(.trailing)
+                                }
+                            }
+                        }
+                    }.frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                URCard {
+                    VStack(alignment: .trailing, spacing: 10) {
+                        Label("وصل قبض بعد تأكيد وصول المبلغ", systemImage: "doc.text.fill")
+                        Label("رقم حوالة ومتابعة حالة التنفيذ", systemImage: "clock.arrow.circlepath")
+                        Label("وصل المستفيد بعد التسليم الفعلي", systemImage: "checkmark.seal.fill")
+                        Text("تأكيد الدفع يتم بعد مراجعة أور، ومرجع التحويل وحده لا يثبت وصول الفلوس.").font(.callout).foregroundStyle(.secondary)
+                    }.font(.body).frame(maxWidth: .infinity, alignment: .trailing)
+                }
+            }.padding(16)
+        }
+        .background(URColor.ivory.ignoresSafeArea())
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await loadMethods() }
+        .sheet(isPresented: $showCheckout) { URCustomerTransferBrowser().ignoresSafeArea() }
+    }
+    @MainActor private func loadMethods() async {
+        loading = true
+        loadFailed = false
+        defer { loading = false }
+        do {
+            var request = URLRequest(url: URL(string: "https://www.urremit.com/api/payment-methods")!)
+            request.cachePolicy = .reloadIgnoringLocalCacheData
+            request.timeoutInterval = 15
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
+                throw URCustomerCheckoutError.unavailable
+            }
+            methods = try JSONDecoder().decode(URCustomerPaymentMethodsResponse.self, from: data).methods
+        } catch is CancellationError {
+            return
+        } catch {
+            loadFailed = true
+        }
+    }
+}
+private struct URCustomerPaymentMethod: Decodable, Identifiable {
+    let id: String
+    let name: String
+    let available: Bool
+}
+private struct URCustomerPaymentMethodsResponse: Decodable {
+    let methods: [URCustomerPaymentMethod]
+}
+private enum URCustomerCheckoutError: Error { case unavailable }

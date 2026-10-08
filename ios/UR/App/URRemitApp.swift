@@ -13,13 +13,7 @@ struct URRemitApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                Group {
-                    if auth.isAuthenticated {
-                        RootView(container: container)
-                    } else {
-                        AuthView()
-                    }
-                }
+                RootView(container: container)
                 .environmentObject(auth)
                 .environment(favorites)
                 .onOpenURL { url in
