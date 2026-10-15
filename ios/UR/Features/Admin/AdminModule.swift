@@ -21,17 +21,29 @@ private struct AdminDashboard: Decodable, Sendable {
 }
 
 private enum AdminAPIError: LocalizedError {
+    case invalidInput
+    case invalidCredentials
+    case accountLocked
     case unauthorized
     case forbidden
     case invalidResponse
+    case serviceUnavailable
+    case offline
+    case timedOut
     case requestFailed
     case secureStorage
 
     var errorDescription: String? {
         switch self {
+        case .invalidInput: "تحقق من اسم المستخدم وكلمة المرور ثم حاول مرة أخرى."
+        case .invalidCredentials: "اسم المستخدم أو كلمة المرور غير صحيحة."
+        case .accountLocked: "تم إيقاف محاولات الدخول مؤقتاً لحماية الحساب. انتظر 15 دقيقة أو تواصل مع الدعم."
         case .unauthorized: "انتهت جلسة الإدارة. سجّل الدخول مجدداً."
         case .forbidden: "لا تملك صلاحية تنفيذ هذا الإجراء."
         case .invalidResponse: "استجابة الخادم غير صالحة."
+        case .serviceUnavailable: "خدمة الإدارة غير متاحة حالياً. حاول بعد قليل."
+        case .offline: "لا يوجد اتصال بالإنترنت. تحقق من الشبكة ثم حاول مرة أخرى."
+        case .timedOut: "استغرق الاتصال وقتاً طويلاً. تحقق من الشبكة ثم أعد المحاولة."
         case .requestFailed: "تعذّر الاتصال بخدمة الإدارة."
         case .secureStorage: "تعذّر حفظ جلسة الإدارة بأمان."
         }
@@ -57,11 +69,11 @@ private actor AdminAPI {
         }
     }
 
-    func login(username: String, password: String, mfaCode: String) async throws -> AdminSession {
+    func login(username: String, password: String) async throws -> AdminSession {
         try await send(
-            to: configuration.adminBaseURL.appending(path: "auth/login"),
+            to: URL(string: "https://yqvcoomjunwokyxwofvt.supabase.co/functions/v1/admin-password-auth")!,
             method: "POST",
-            body: ["username": username, "password": password, "mfaCode": mfaCode],
+            body: ["username": username, "password": password],
             token: nil
         )
     }
@@ -120,14 +132,30 @@ private actor AdminAPI {
             request.httpBody = try JSONEncoder().encode(body)
         }
 
-        let (data, response) = try await session.data(for: request)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch let error as URLError {
+            switch error.code {
+            case .notConnectedToInternet, .networkConnectionLost: throw AdminAPIError.offline
+            case .timedOut: throw AdminAPIError.timedOut
+            default: throw AdminAPIError.requestFailed
+            }
+        }
         guard let http = response as? HTTPURLResponse else { throw AdminAPIError.invalidResponse }
+
         switch http.statusCode {
         case 200..<300:
             do { return try decoder.decode(AdminEnvelope<Value>.self, from: data).data }
             catch { throw AdminAPIError.invalidResponse }
-        case 401: throw AdminAPIError.unauthorized
+        case 401:
+            if url.lastPathComponent == "admin-password-auth" { throw AdminAPIError.invalidCredentials }
+            throw AdminAPIError.unauthorized
         case 403: throw AdminAPIError.forbidden
+        case 400: throw AdminAPIError.invalidInput
+        case 423, 429: throw AdminAPIError.accountLocked
+        case 503: throw AdminAPIError.serviceUnavailable
         default: throw AdminAPIError.requestFailed
         }
     }
@@ -168,8 +196,8 @@ private final class AdminAuth {
         sessionToken = Self.readToken(account: keychainAccount)
     }
 
-    func login(username: String, password: String, mfaCode: String) async throws {
-        let session = try await AdminAPI.shared.login(username: username, password: password, mfaCode: mfaCode)
+    func login(username: String, password: String) async throws {
+        let session = try await AdminAPI.shared.login(username: username, password: password)
         try Self.storeToken(session.token, account: keychainAccount)
         sessionToken = session.token
     }
@@ -237,6 +265,7 @@ struct AdminEntryView: View {
         }
         .background(URColor.ivory.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
+        .environment(\.layoutDirection, .rightToLeft)
     }
 }
 
@@ -244,9 +273,13 @@ private struct AdminLoginView: View {
     let auth: AdminAuth
     @State private var username = ""
     @State private var password = ""
-    @State private var mfaCode = ""
     @State private var errorMessage: String?
     @State private var isLoggingIn = false
+    @FocusState private var focusedField: Field?
+
+    private enum Field { case username, password }
+    private var cleanUsername: String { username.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var canSubmit: Bool { cleanUsername.count >= 4 && password.count >= 12 && !isLoggingIn }
 
     var body: some View {
         ScrollView {
@@ -255,9 +288,15 @@ private struct AdminLoginView: View {
 
                 URCard {
                     VStack(alignment: .trailing, spacing: 14) {
-                        TextField("اسم المستخدم", text: $username)
+                        TextField("اسم المستخدم أو البريد", text: $username)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
+                            .textContentType(.username)
+                            .keyboardType(.emailAddress)
+                            .submitLabel(.next)
+                            .focused($focusedField, equals: .username)
+                            .onSubmit { focusedField = .password }
+                            .foregroundStyle(URColor.deepNavy)
                             .multilineTextAlignment(.trailing)
                             .padding(14)
                             .background(URColor.ivory, in: RoundedRectangle(cornerRadius: 12))
@@ -265,16 +304,22 @@ private struct AdminLoginView: View {
                         SecureField("كلمة المرور", text: $password)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
+                            .textContentType(.password)
+                            .focused($focusedField, equals: .password)
+                            .foregroundStyle(URColor.deepNavy)
+                            .submitLabel(.go)
+                            .onSubmit {
+                                guard canSubmit else { return }
+                                Task { await login() }
+                            }
                             .multilineTextAlignment(.trailing)
                             .padding(14)
                             .background(URColor.ivory, in: RoundedRectangle(cornerRadius: 12))
 
-                        TextField("رمز المصادقة (6 أرقام)", text: $mfaCode)
-                            .keyboardType(.numberPad)
-                            .textContentType(.oneTimeCode)
-                            .multilineTextAlignment(.center)
-                            .padding(14)
-                            .background(URColor.ivory, in: RoundedRectangle(cornerRadius: 12))
+                        Label("يمكن استخدام التعبئة التلقائية المحفوظة لهذا الحساب. لا تُشارك كلمة المرور أو رمز الجلسة.", systemImage: "info.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(URColor.deepNavy.opacity(0.65))
+                            .frame(maxWidth: .infinity, alignment: .trailing)
 
                         if let errorMessage {
                             Text(errorMessage)
@@ -292,28 +337,49 @@ private struct AdminLoginView: View {
                                 Label("دخول آمن", systemImage: "arrow.right.circle.fill")
                             }
                         }
-                        .buttonStyle(URPrimaryButtonStyle(isEnabled: !username.isEmpty && !password.isEmpty && mfaCode.count == 6))
-                        .disabled(username.isEmpty || password.isEmpty || mfaCode.count != 6 || isLoggingIn)
+                        .buttonStyle(URPrimaryButtonStyle(isEnabled: canSubmit))
+                        .disabled(!canSubmit)
+
+                        Link(destination: URL(string: "https://urremit.com/contact")!) {
+                            Label("استرجاع حساب الإدارة عبر الدعم المعتمد", systemImage: "person.crop.circle.badge.questionmark")
+                                .font(.footnote.weight(.semibold))
+                        }
                     }
                 }
             }
             .padding(14)
         }
+        .scrollDismissesKeyboard(.interactively)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("تم") { focusedField = nil }
+            }
+        }
     }
 
     private func login() async {
+        guard canSubmit else {
+            errorMessage = cleanUsername.count < 4
+                ? "أدخل اسم مستخدم أو بريداً صحيحاً."
+                : "كلمة المرور أقصر من الحد المطلوب."
+            return
+        }
         isLoggingIn = true
         errorMessage = nil
         defer { isLoggingIn = false }
         do {
-            try await auth.login(username: username, password: password, mfaCode: mfaCode)
+            try await auth.login(username: cleanUsername, password: password)
             password = ""
-            mfaCode = ""
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 }
+
+// ═══════════════════════════════════════════════════
+//  Admin Dashboard — مع زر النشرة
+// ═══════════════════════════════════════════════════
 
 private struct AdminDashboardView: View {
     let auth: AdminAuth
@@ -322,11 +388,48 @@ private struct AdminDashboardView: View {
     @State private var errorMessage: String?
     @State private var isLoading = false
     @State private var isLoggingOut = false
+    @State private var showNewsletterSheet = false
+    @State private var search = ""
+    @State private var selectedCategory = "all"
+    @State private var workspace = "overview"
+
+    private var filteredRates: [Rate] {
+        rates.filter { rate in
+            let categoryMatches = selectedCategory == "all" || rate.category == selectedCategory
+            let searchMatches = search.isEmpty
+                || rate.routeNameArabic.localizedCaseInsensitiveContains(search)
+                || rate.routeNameEnglish.localizedCaseInsensitiveContains(search)
+                || rate.destinationCurrency.localizedCaseInsensitiveContains(search)
+            return categoryMatches && searchMatches
+        }
+    }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 14) {
-                URPageTitle(title: "لوحة الإدارة", subtitle: "إدارة الأسعار على الخادم", symbol: "slider.horizontal.3")
+                ZStack(alignment: .bottomTrailing) {
+                    LinearGradient(colors: [URColor.deepNavy, URColor.royalBlue], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    Circle().fill(URColor.premiumGold.opacity(0.18)).frame(width: 150).offset(x: -210, y: -45)
+                    VStack(alignment: .trailing, spacing: 6) {
+                        HStack {
+                            Image(systemName: "lock.shield.fill")
+                            Text("جلسة إدارية آمنة").font(.caption.weight(.bold))
+                        }.foregroundStyle(URColor.premiumGold)
+                        Text("مركز إدارة UR").font(.title2.weight(.black)).foregroundStyle(.white)
+                        Text("الأسعار، العمليات والنشرة اليومية في مكان واحد")
+                            .font(.caption).foregroundStyle(.white.opacity(0.82))
+                    }.padding(18).frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                .frame(height: 145)
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+
+                Picker("قسم الإدارة", selection: $workspace) {
+                    Label("الرئيسية", systemImage: "square.grid.2x2.fill").tag("overview")
+                    Label("الأسعار", systemImage: "chart.line.uptrend.xyaxis").tag("rates")
+                    Label("العمليات", systemImage: "arrow.left.arrow.right.circle.fill").tag("operations")
+                }
+                .pickerStyle(.segmented)
+                .accessibilityLabel("أقسام لوحة الإدارة")
 
                 if let dashboard {
                     HStack(spacing: 8) {
@@ -343,19 +446,94 @@ private struct AdminDashboardView: View {
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
 
-                if isLoading && rates.isEmpty {
-                    ProgressView().padding(30)
-                } else if rates.isEmpty {
-                    Text("لا توجد أسعار متاحة.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .padding(24)
-                } else {
-                    ForEach(rates) { rate in
+                if workspace == "overview" {
+                    VStack(alignment: .trailing, spacing: 12) {
+                        Text("اختصارات الإدارة").font(.headline.weight(.black)).foregroundStyle(URColor.deepNavy)
+                        HStack(spacing: 10) {
+                            Button { withAnimation { workspace = "rates" } } label: {
+                                adminShortcut("تعديل الأسعار", "chart.line.uptrend.xyaxis")
+                            }
+                            Button { withAnimation { workspace = "operations" } } label: {
+                                adminShortcut("العمليات", "chart.bar.doc.horizontal.fill")
+                            }
+                            Button { showNewsletterSheet = true } label: {
+                                adminShortcut("نشرة اليوم", "doc.text.fill")
+                            }.disabled(rates.isEmpty)
+                        }
+                        Text("اختَر القسم من الأعلى؛ كل أدوات الإدارة أصبحت ضمن مركز واحد.")
+                            .font(.caption).foregroundStyle(URColor.deepNavy.opacity(0.62))
+                    }
+                    .padding(14)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 18))
+                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(URColor.hairline))
+                }
+
+                if workspace == "rates" {
+                  VStack(alignment: .trailing, spacing: 10) {
+                    Text("إدارة الأسعار").font(.headline.weight(.black)).foregroundStyle(URColor.deepNavy)
+                    Text("ابحث، راجع ثم عدّل سعر الشراء أو البيع من نفس المكان.")
+                        .font(.caption).foregroundStyle(URColor.deepNavy.opacity(0.62))
+                    TextField("ابحث باسم الدولة أو العملة", text: $search)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled()
+                        .padding(12).background(.white, in: RoundedRectangle(cornerRadius: 12))
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            categoryButton("الكل", value: "all")
+                            categoryButton("العراق", value: "iraq")
+                            categoryButton("الخليج", value: "gulf")
+                            categoryButton("إيران وتركيا", value: "iran_turkey")
+                            categoryButton("التحويلات", value: "transfers")
+                            categoryButton("البنوك", value: "uae_banks")
+                            categoryButton("دولي", value: "international")
+                        }
+                    }
+                  }
+
+                  if isLoading && rates.isEmpty {
+                    ProgressView("جاري تحميل الأسعار الفعلية…").padding(30)
+                  } else if rates.isEmpty {
+                    ContentUnavailableView("لا توجد أسعار متاحة", systemImage: "wifi.exclamationmark", description: Text(errorMessage ?? "اسحب للأسفل أو اضغط تحديث البيانات."))
+                  } else if filteredRates.isEmpty {
+                    ContentUnavailableView.search(text: search)
+                  } else {
+                    ForEach(filteredRates) { rate in
                         AdminRateEditor(rate: rate, token: auth.sessionToken ?? "") {
                             await reload()
                         }
                     }
+                  }
+                }
+
+                if workspace == "operations" {
+                    VStack(alignment: .trailing, spacing: 14) {
+                        HStack {
+                            Image(systemName: "waveform.path.ecg.rectangle.fill")
+                                .font(.title2).foregroundStyle(URColor.premiumGold)
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: 3) {
+                                Text("مساحة العمليات").font(.headline.weight(.black))
+                                Text("الحوالات، العملاء، الإيداعات والإشعارات")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        NavigationLink { URNativeOperationsView() } label: {
+                            Label("فتح مركز العمليات الكامل", systemImage: "arrow.up.left.circle.fill")
+                                .font(.headline.weight(.bold))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity, minHeight: 50)
+                                .background(LinearGradient(colors: [URColor.premiumGold, URColor.royalBlue], startPoint: .leading, endPoint: .trailing), in: RoundedRectangle(cornerRadius: 14))
+                        }
+                        HStack(spacing: 8) {
+                            operationBadge("الحوالات", "arrow.left.arrow.right")
+                            operationBadge("الإيداعات", "creditcard.fill")
+                            operationBadge("الدعم", "bell.badge.fill")
+                        }
+                        Text("بعد ربط حساب المالك أول مرة تبقى أدوات العمليات متاحة من داخل مركز الإدارة.")
+                            .font(.caption).foregroundStyle(URColor.deepNavy.opacity(0.62))
+                    }
+                    .padding(16)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 20))
+                    .overlay(RoundedRectangle(cornerRadius: 20).stroke(URColor.hairline))
                 }
 
                 Button {
@@ -382,7 +560,38 @@ private struct AdminDashboardView: View {
             }
             .padding(14)
         }
+        .refreshable { await reload() }
         .task { await reload() }
+        .sheet(isPresented: $showNewsletterSheet) {
+            NewsletterSheet(rates: rates)
+        }
+    }
+
+    private func adminShortcut(_ title: String, _ symbol: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol).font(.title2)
+            Text(title).font(.caption.weight(.bold))
+        }
+        .foregroundStyle(URColor.deepNavy)
+        .frame(maxWidth: .infinity, minHeight: 82)
+        .background(.white, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(URColor.hairline))
+    }
+
+    private func operationBadge(_ title: String, _ symbol: String) -> some View {
+        Label(title, systemImage: symbol)
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(URColor.deepNavy)
+            .frame(maxWidth: .infinity, minHeight: 42)
+            .background(URColor.ivory, in: RoundedRectangle(cornerRadius: 11))
+    }
+
+    private func categoryButton(_ title: String, value: String) -> some View {
+        Button(title) { selectedCategory = value }
+            .font(.caption.weight(.bold))
+            .foregroundStyle(selectedCategory == value ? .white : URColor.deepNavy)
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .background(selectedCategory == value ? URColor.royalBlue : .white, in: Capsule())
     }
 
     private func metric(_ title: String, value: Int?) -> some View {
@@ -521,5 +730,169 @@ private struct AdminRateEditor: View {
     private func normalized(_ value: String) -> String? {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
+// ═══════════════════════════════════════════════════
+//  Newsletter Generator — مُنشئ النشرة التلقائي
+// ═══════════════════════════════════════════════════
+
+@Observable
+@MainActor
+final class NewsletterGenerator {
+    private(set) var generatedText: String = ""
+    private(set) var isGenerating: Bool = false
+
+    func generate(from rates: [Rate]) {
+        isGenerating = true
+        defer { isGenerating = false }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ar_SA")
+        formatter.dateFormat = "EEEE yyyy-MM-dd"
+        let today = formatter.string(from: Date())
+
+        var text = "📢 نشرة أسعار الحوالات اليومية\n"
+        text += "🏢 شركة أُور للحوالات العالمية\n"
+        text += "📅 \(today)\n\n"
+
+        text += "━━━━━━━━━━━━━━━━━━\n"
+        text += "💵 أسعار صرف الدولار\n"
+        text += "━━━━━━━━━━━━━━━━━━\n"
+        if let mainRate = rates.first(where: {
+            $0.sourceCurrency == "USD" && $0.destinationCurrency == "IQD"
+        }) {
+            text += "🟢 شراء: \(formatNumber(mainRate.buy)) دينار\n"
+            text += "🔴 بيع:  \(formatNumber(mainRate.sell)) دينار\n"
+        }
+        text += "\n"
+
+        if let rmb = rates.first(where: {
+            $0.routeNameArabic.contains("الصين") || $0.routeNameArabic.contains("يوان")
+        }), let buy = rmb.buy {
+            text += "🇨🇳 رمبي (RMB): \(formatNumber(buy))\n\n"
+        }
+
+        let categories: [(String, String, String)] = [
+            ("iraq", "🏛 داخل العراق", "📍"),
+            ("gulf", "🏙 دول الخليج", "🌐"),
+            ("iran_turkey", "🕌 إيران وتركيا", "🕌"),
+            ("europe", "🏛 أوروبا وكندا", "🌍"),
+            ("arab", "🌍 الدول العربية", "🌍"),
+            ("transfers", "💸 التحويلات العالمية", "💸"),
+            ("uae_banks", "🏦 بنوك الإمارات", "🏦"),
+            ("india", "🇮🇳 الهند", "🇮🇳"),
+            ("international", "🌐 أسعار دولية", "🌐"),
+        ]
+
+        for (cat, header, prefix) in categories {
+            let catRates = rates.filter { $0.category == cat && !($0.sourceCurrency == "USD" && $0.destinationCurrency == "IQD") }
+            guard !catRates.isEmpty else { continue }
+
+            text += "━━━━━━━━━━━━━━━━━━\n"
+            text += "\(header)\n"
+            text += "━━━━━━━━━━━━━━━━━━\n"
+
+            for rate in catRates.sorted(by: { ($0.categoryOrder ?? 999) < ($1.categoryOrder ?? 999) }) {
+                let amount = rate.feeFixed ?? rate.buy ?? rate.sell
+                guard let value = amount else { continue }
+                let sign = value >= 0 ? "+" : ""
+                let suffix = rate.feeFixed != nil ? "$" : ""
+                text += "\(prefix) \(rate.routeNameArabic): \(sign)\(formatNumber(value))\(suffix)\n"
+            }
+            text += "\n"
+        }
+
+        text += """
+        ━━━━━━━━━━━━━━━━━━
+        📞 تواصل معنا
+        ━━━━━━━━━━━━━━━━━━
+        🇮🇶 بغداد: +964 770 458 3730
+        🇬🇧 لندن: +44 7915 387858
+        💬 واتساب: +971 55 175 4032
+
+        ✨ أموالك تصل أبعد في كل مكان ✨
+        """
+
+        generatedText = text
+    }
+
+    private func formatNumber(_ value: Decimal?) -> String {
+        guard let value else { return "—" }
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = 2
+        formatter.minimumFractionDigits = 0
+        return formatter.string(from: NSNumber(value: Double(truncating: value as NSNumber))) ?? "\(value)"
+    }
+}
+
+// ═══════════════════════════════════════════════════
+//  Newsletter Sheet — عرض + نسخ + مشاركة
+// ═══════════════════════════════════════════════════
+
+struct NewsletterSheet: View {
+    let rates: [Rate]
+    @State private var text = ""
+    @State private var copied = false
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                Text(text)
+                    .font(.system(size: 13, design: .monospaced))
+                    .textSelection(.enabled)
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .background(URColor.ivory)
+            .navigationTitle("النشرة الجاهزة")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("إغلاق") { dismiss() }
+                }
+                ToolbarItem(placement: .bottomBar) {
+                    HStack(spacing: 12) {
+                        Button {
+                            UIPasteboard.general.string = text
+                            copied = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
+                        } label: {
+                            Label(copied ? "✓ تم النسخ" : "📋 نسخ",
+                                  systemImage: copied ? "checkmark.circle.fill" : "doc.on.doc")
+                                .font(.subheadline.weight(.bold))
+                        }
+                        .tint(URColor.premiumGold)
+
+                        Spacer()
+
+                        Button {
+                            shareNewsletter(text)
+                        } label: {
+                            Label("📱 مشاركة", systemImage: "square.and.arrow.up")
+                                .font(.subheadline.weight(.bold))
+                        }
+                        .tint(URColor.deepNavy)
+                    }
+                    .padding(.horizontal)
+                }
+            }
+            .onAppear {
+                let gen = NewsletterGenerator()
+                gen.generate(from: rates)
+                text = gen.generatedText
+            }
+        }
+    }
+
+    private func shareNewsletter(_ text: String) {
+        let av = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let root = windowScene.windows.first?.rootViewController {
+            av.popoverPresentationController?.sourceView = root.view
+            root.present(av, animated: true)
+        }
     }
 }

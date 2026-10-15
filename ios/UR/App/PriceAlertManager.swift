@@ -30,6 +30,11 @@ final class PriceAlertManager {
         }
     }
 
+    func refreshAuthorizationStatus() async {
+        let status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+        isAuthorized = status == .authorized || status == .provisional || status == .ephemeral
+    }
+
     // MARK: - CRUD
     func setAlert(for id: UUID, threshold: Decimal) {
         alerts[id] = threshold

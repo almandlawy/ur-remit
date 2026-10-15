@@ -15,6 +15,15 @@ struct Rate: Codable, Identifiable, Hashable, Sendable {
     let version: Int
     let staleAfter: Date
 
+    // ✨ الحقول الجديدة
+    let category: String?
+    let categoryOrder: Int?
+    let icon: String?
+    let logoUrl: String?
+    let serviceType: String?
+    let deliverySpeed: String?
+    let isFeatured: Bool?
+
     func displayName(locale: Locale) -> String {
         locale.language.languageCode?.identifier == "ar" ? routeNameArabic : routeNameEnglish
     }

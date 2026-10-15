@@ -1,11 +1,11 @@
 import SwiftUI
+import Charts
 
 struct RatesView: View {
     @StateObject private var model: RatesViewModel
     @Environment(FavoritesStore.self) private var favorites
-    @State private var query = ""
+    @Environment(\.openURL) private var openURL
     @State private var collapsedSections: Set<String> = []
-    @State private var showOnlyFavorites = false
 
     init(repository: any RatesRepository) { _model = StateObject(wrappedValue: RatesViewModel(repository: repository)) }
 
@@ -32,8 +32,7 @@ struct RatesView: View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 6 * scale) {
                 BrandHeader(scale: scale)
-                SearchBar(query: $query, scale: scale)
-                favoriteFilterChip(scale: scale)
+                FeaturedServicesStrip(rates: featuredRates(snapshot.rates), scale: scale)
                 HStack(spacing: 6) {
                     Image(systemName: "banknote.fill")
                     Text("العمولة محسوبة لكل 10,000$")
@@ -42,8 +41,8 @@ struct RatesView: View {
                 .foregroundStyle(Palette.gold)
                 .frame(maxWidth: .infinity, alignment: .trailing)
                 .padding(.horizontal, 4)
-                HeroRateCard(rate: snapshot.rates.first { $0.sourceCurrency == "USD" && $0.destinationCurrency == "IQD" }, isCached: snapshot.isFromCache, scale: scale)
-                ForEach(filteredSections(snapshot.rates), id: \.title) { section in
+                HeroRateCard(rate: snapshot.rates.first { $0.sourceCurrency == "USD" && $0.destinationCurrency == "IQD" }, isCached: snapshot.isFromCache, fetchedAt: snapshot.fetchedAt, scale: scale)
+                ForEach(orderedSections(snapshot.rates), id: \.title) { section in
                     RateSectionCard(
                         section: section,
                         collapsed: collapsedSections.contains(section.title),
@@ -57,57 +56,38 @@ struct RatesView: View {
                         }
                     }
                 }
+                WhatsAppSupportButton(scale: scale) {
+                    guard let url = URL(string: "https://wa.me/971551754032?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%AF%D8%B9%D9%85%20UR%20Global") else { return }
+                    openURL(url)
+                }
             }
-            .padding(.horizontal, 11 * scale).padding(.top, 2).padding(.bottom, 8)
+            .padding(.horizontal, 11 * scale).padding(.top, 2).padding(.bottom, 100 * scale)
         }
         .refreshable { await model.load() }
     }
 
-    @ViewBuilder
-    private func favoriteFilterChip(scale: CGFloat) -> some View {
-        HStack {
-            Button {
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    showOnlyFavorites.toggle()
-                }
-            } label: {
-                Label("المفضلة", systemImage: showOnlyFavorites ? "star.fill" : "star")
-                    .font(.system(size: 11 * scale, weight: .bold))
-                    .padding(.horizontal, 12 * scale)
-                    .frame(height: 30 * scale)
-                    .background(showOnlyFavorites ? Palette.gold : .white, in: Capsule())
-                    .foregroundStyle(showOnlyFavorites ? .white : Palette.navy)
-                    .overlay(Capsule().stroke(Palette.line))
-            }
-            .buttonStyle(.plain)
-            Spacer()
+    private func featuredRates(_ rates: [Rate]) -> [Rate] {
+        let brandWords = ["المشرق", "Mashreq", "ويسترن", "Western", "موني", "MoneyGram"]
+        return rates.filter { rate in
+            rate.isFeatured == true || brandWords.contains { rate.routeNameArabic.localizedCaseInsensitiveContains($0) || rate.routeNameEnglish.localizedCaseInsensitiveContains($0) }
         }
-        .padding(.horizontal, 4)
+        .sorted { ($0.categoryOrder ?? 999) < ($1.categoryOrder ?? 999) }
     }
 
-    private func filteredSections(_ rates: [Rate]) -> [DisplaySection] {
-        var sections = makeSections(rates)
-
-        if showOnlyFavorites {
-            sections = sections.compactMap { section in
-                let rows = section.rows.filter { favorites.favoriteIDs.contains($0.id) }
-                return rows.isEmpty ? nil : DisplaySection(title: section.title, icon: section.icon, rows: rows)
-            }
-        }
-
-        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedQuery.isEmpty else { return sections }
-        return sections.compactMap { section in
-            let rows = section.rows.filter {
-                $0.name.localizedCaseInsensitiveContains(trimmedQuery) ||
-                $0.code.localizedCaseInsensitiveContains(trimmedQuery)
-            }
-            return rows.isEmpty ? nil : DisplaySection(title: section.title, icon: section.icon, rows: rows)
-        }
+    private func orderedSections(_ rates: [Rate]) -> [DisplaySection] {
+        let featuredIDs = Set(featuredRates(rates).map(\.id))
+        let sections = makeSections(rates.filter { !featuredIDs.contains($0.id) })
+        return sections.filter { !$0.title.contains("العراق") } + sections.filter { $0.title.contains("العراق") }
     }
 
     private func makeSections(_ rates: [Rate]) -> [DisplaySection] {
         let visible = rates.filter { !($0.sourceCurrency == "USD" && $0.destinationCurrency == "IQD") }
+
+        // ترتيب حسب category إذا متوفر، وإلا fallback على القائمة اليدوية
+        if visible.contains(where: { $0.category != nil && $0.category != "" }) {
+            return makeSectionsFromCategories(visible)
+        }
+
         let definitions: [(String, String, [String])] = [
             ("العراق — المدن الرئيسية", "🇮🇶", ["بغداد", "أربيل", "السليمانية", "البصرة"]),
             ("بقية مدن العراق", "🗺️", ["دهوك", "الموصل", "زاخو", "كركوك", "تكريت", "كربلاء", "النجف", "الناصرية", "العمارة", "الكوت", "الحلة", "الديوانية"]),
@@ -115,11 +95,16 @@ struct RatesView: View {
             ("إيران وتركيا", "🕌", ["طهران", "مشهد", "قم", "تومان", "تركيا"]),
             ("أوروبا وكندا", "🏛️", ["فرنسا", "بريطانيا", "كندا", "ألمانيا", "إيطاليا", "كرواتيا"]),
             ("الدول العربية", "🌍", ["الأردن", "لبنان", "مصر"]),
+            ("التحويلات العالمية", "💸", ["ويسترن يونين", "Western Union", "موني غرام", "MoneyGram", "ويو بنك", "Wio", "المشرق", "Mashreq"]),
+            ("بنوك الإمارات", "🏦", ["بنك دبي", "بنك أبو ظبي الإسلامي", "ADIB"]),
+            ("الهند", "🇮🇳", ["الهند"]),
             ("أسعار دولية", "🌐", ["الحوالات البنكية", "الصين"])
         ]
         var used = Set<UUID>()
         var sections: [DisplaySection] = definitions.compactMap { title, icon, names in
-            let matched = names.compactMap { name in visible.first { !used.contains($0.id) && $0.routeNameArabic.contains(name) } }.map { rate -> DisplayRow in
+            let matched = names.compactMap { name in
+                visible.first { !used.contains($0.id) && $0.routeNameArabic.contains(name) }
+            }.map { rate -> DisplayRow in
                 used.insert(rate.id); return DisplayRow(rate: rate)
             }
             return matched.isEmpty ? nil : DisplaySection(title: title, icon: icon, rows: matched)
@@ -128,16 +113,139 @@ struct RatesView: View {
         if !remaining.isEmpty { sections.append(.init(title: "أسعار أخرى", icon: "✨", rows: remaining)) }
         return sections
     }
+
+    private func makeSectionsFromCategories(_ rates: [Rate]) -> [DisplaySection] {
+        let categoryNames: [String: (String, String)] = [
+            "iraq": ("العراق", "🇮🇶"),
+            "gulf": ("الخليج", "🏙️"),
+            "iran_turkey": ("إيران وتركيا", "🕌"),
+            "europe": ("أوروبا وكندا", "🏛️"),
+            "arab": ("الدول العربية", "🌍"),
+            "transfers": ("التحويلات العالمية", "💸"),
+            "uae_banks": ("بنوك الإمارات", "🏦"),
+            "india": ("الهند", "🇮🇳"),
+            "international": ("أسعار دولية", "🌐"),
+            "other": ("أسعار أخرى", "✨")
+        ]
+
+        let grouped = Dictionary(grouping: rates) { $0.category ?? "other" }
+
+        let sortedCategories: [String] = grouped.keys.sorted { a, b in
+                let orderA = rates.first { ($0.category ?? "other") == a }?.categoryOrder ?? 999
+                let orderB = rates.first { ($0.category ?? "other") == b }?.categoryOrder ?? 999
+                return orderA < orderB
+            }
+        var sections: [DisplaySection] = []
+        for category in sortedCategories {
+            let categoryRates: [Rate] = grouped[category] ?? []
+            let sortedRates = categoryRates.sorted { ($0.categoryOrder ?? 999) < ($1.categoryOrder ?? 999) }
+            let rows: [DisplayRow] = sortedRates.map { DisplayRow(rate: $0) }
+            guard !rows.isEmpty else { continue }
+            let meta: (String, String) = categoryNames[category] ?? (category, "✨")
+            sections.append(DisplaySection(title: meta.0, icon: meta.1, rows: rows))
+        }
+        let nonIraq: [DisplaySection] = sections.filter { $0.title != "العراق" }
+        let iraq: [DisplaySection] = sections.filter { $0.title == "العراق" }
+        return nonIraq + iraq
+    }
 }
 
 private enum Palette {
-    static let navy = Color(red: 0.012, green: 0.08, blue: 0.21)
-    static let blue = Color(red: 0.015, green: 0.18, blue: 0.31)
-    static let gold = Color(red: 0.67, green: 0.49, blue: 0.16)
-    static let ivory = Color(red: 0.993, green: 0.985, blue: 0.963)
-    static let line = Color(red: 0.80, green: 0.77, blue: 0.68).opacity(0.48)
-    static let green = Color(red: 0.00, green: 0.50, blue: 0.27)
-    static let red = Color(red: 0.78, green: 0.08, blue: 0.15)
+    static let navy = URColor.deepNavy
+    static let blue = URColor.royalBlue
+    static let gold = URColor.premiumGold
+    static let ivory = URColor.ivory
+    static let line = URColor.hairline
+    static let green = URColor.success
+    static let red = URColor.error
+}
+
+// ═══════════════════════════════════════════════════
+//  Brand Badge — يعرض الشعار الحقيقي أو fallback
+// ═══════════════════════════════════════════════════
+
+private struct BrandBadge: View {
+    let name: String
+    let logoUrl: String?
+    let size: CGFloat
+
+    var body: some View {
+        Group {
+            if let logoUrl, let url = URL(string: logoUrl) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: size * 0.72, height: size * 0.72)
+                    case .failure, .empty:
+                        fallbackView
+                    @unknown default:
+                        fallbackView
+                    }
+                }
+                .frame(width: size, height: size)
+                .background(URColor.surface, in: Circle())
+                .overlay(Circle().stroke(Palette.gold.opacity(0.25), lineWidth: 1))
+            } else {
+                fallbackView
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var fallbackView: some View {
+        ZStack {
+            Circle()
+                .fill(brandColor.opacity(0.14))
+                .frame(width: size, height: size)
+            if let text = brandText {
+                Text(text)
+                    .font(.system(size: size * 0.30, weight: .black, design: .rounded))
+                    .foregroundStyle(brandColor)
+            } else {
+                Text(emoji)
+                    .font(.system(size: size * 0.45))
+            }
+        }
+        .overlay(Circle().stroke(brandColor.opacity(0.28), lineWidth: 1))
+    }
+
+    private var brandColor: Color {
+        if name.contains("ويسترن") || name.contains("Western") { return Color(red: 1.0, green: 0.78, blue: 0.0) }
+        if name.contains("موني") || name.contains("Money") { return Color(red: 0.90, green: 0.15, blue: 0.15) }
+        if name.contains("ويو") || name.contains("Wio") { return Color(red: 0.55, green: 0.30, blue: 0.95) }
+        if name.contains("المشرق") || name.contains("Mashreq") { return Color(red: 0.85, green: 0.10, blue: 0.15) }
+        if name.contains("أبو ظبي") || name.contains("ADIB") { return Color(red: 0.60, green: 0.00, blue: 0.40) }
+        if name.contains("دبي الإسلامي") { return Color(red: 0.00, green: 0.55, blue: 0.35) }
+        if name.contains("بنك دبي") { return Color(red: 0.00, green: 0.35, blue: 0.70) }
+        if name.contains("الهند") { return Color(red: 1.0, green: 0.55, blue: 0.0) }
+        return Palette.gold
+    }
+
+    private var brandText: String? {
+        if name.contains("ويسترن") || name.contains("Western") { return "WU" }
+        if name.contains("موني") || name.contains("Money") { return "MG" }
+        if name.contains("ويو") || name.contains("Wio") { return "WIO" }
+        if name.contains("المشرق") || name.contains("Mashreq") { return "MQ" }
+        if name.contains("أبو ظبي") || name.contains("ADIB") { return "ADIB" }
+        if name.contains("دبي الإسلامي") { return "DIB" }
+        if name.contains("بنك دبي") { return "BD" }
+        return nil
+    }
+
+    private var emoji: String {
+        let flags: [(String, String)] = [
+            ("السعود", "🇸🇦"), ("قطر", "🇶🇦"), ("دبي", "🇦🇪"), ("الكويت", "🇰🇼"),
+            ("عمان", "🇴🇲"), ("البحرين", "🇧🇭"), ("طهران", "🇮🇷"), ("مشهد", "🇮🇷"),
+            ("قم", "🇮🇷"), ("تومان", "🇮🇷"), ("تركيا", "🇹🇷"), ("فرنسا", "🇫🇷"),
+            ("بريطانيا", "🇬🇧"), ("كندا", "🇨🇦"), ("ألمانيا", "🇩🇪"), ("إيطاليا", "🇮🇹"),
+            ("كرواتيا", "🇭🇷"), ("الأردن", "🇯🇴"), ("لبنان", "🇱🇧"), ("مصر", "🇪🇬"),
+            ("الصين", "🇨🇳"), ("الحوالات", "🌐"), ("الهند", "🇮🇳")
+        ]
+        return flags.first { name.contains($0.0) }?.1 ?? "🇮🇶"
+    }
 }
 
 private struct BrandHeader: View {
@@ -151,14 +259,16 @@ private struct BrandHeader: View {
                     Image(systemName: "globe"); Text("العربية").fontWeight(.bold); Image(systemName: "chevron.down").font(.system(size: 10 * scale, weight: .bold))
                 }
                 .font(.system(size: 14 * scale)).foregroundStyle(Palette.navy).padding(.horizontal, 12 * scale).frame(height: 38 * scale)
-                .background(.white.opacity(0.90), in: Capsule()).overlay(Capsule().stroke(Palette.line))
+                .background(URColor.surface.opacity(0.90), in: Capsule()).overlay(Capsule().stroke(Palette.line))
             }
             .environment(\.layoutDirection, .leftToRight).offset(x: 4 * scale, y: 7 * scale)
             VStack(alignment: .trailing, spacing: -1) {
                 HStack(spacing: 5 * scale) {
-                    Text("UR").font(.system(size: 34 * scale, weight: .black, design: .rounded))
-                    Rectangle().fill(Palette.gold).frame(width: 1, height: 27 * scale)
-                    Text("أور").font(.system(size: 27 * scale, weight: .black))
+                    VStack(alignment: .trailing, spacing: 0) {
+                        Text("أور جلوبال").font(.system(size: 21 * scale, weight: .black))
+                        Text("UR GLOBAL").font(.system(size: 7 * scale, weight: .black)).tracking(0.7)
+                    }
+                    URBrandLogo(size: 38 * scale)
                 }
                 Text("لأسعار العملات العالمية").font(.system(size: 10 * scale, weight: .bold))
                 Text("GLOBAL REMITTANCES").font(.system(size: 6.5 * scale, weight: .bold)).tracking(0.8)
@@ -184,7 +294,90 @@ private struct CircleButton: View {
     let symbol: String; let scale: CGFloat
     var body: some View {
         Image(systemName: symbol).font(.system(size: 15 * scale, weight: .semibold)).foregroundStyle(Palette.navy)
-            .frame(width: 38 * scale, height: 38 * scale).background(.white.opacity(0.90), in: Circle()).overlay(Circle().stroke(Palette.line))
+            .frame(width: 38 * scale, height: 38 * scale).background(URColor.surface.opacity(0.90), in: Circle()).overlay(Circle().stroke(Palette.line))
+    }
+}
+
+private struct FeaturedServicesStrip: View {
+    let rates: [Rate]
+    let scale: CGFloat
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 8 * scale) {
+            HStack {
+                Text("خدمات مميزة").font(.system(size: 15 * scale, weight: .black))
+                Image(systemName: "sparkles").foregroundStyle(Palette.gold)
+            }
+            .foregroundStyle(Palette.navy)
+
+            if rates.isEmpty {
+                HStack(spacing: 8 * scale) {
+                    fallbackBrand("المشرق", "MQ", .red)
+                    fallbackBrand("Western Union", "WU", .yellow)
+                    fallbackBrand("MoneyGram", "MG", .red)
+                }
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8 * scale) {
+                        ForEach(rates) { rate in
+                            VStack(alignment: .trailing, spacing: 4 * scale) {
+                                HStack(spacing: 7 * scale) {
+                                    VStack(alignment: .trailing, spacing: 1) {
+                                        Text(rate.routeNameArabic).font(.system(size: 11 * scale, weight: .black)).lineLimit(1)
+                                        Text(rate.destinationCurrency).font(.system(size: 8 * scale, weight: .bold)).foregroundStyle(.secondary)
+                                    }
+                                    BrandBadge(name: rate.routeNameArabic, logoUrl: rate.logoUrl, size: 35 * scale)
+                                }
+                                Text(featuredValue(rate)).font(.system(size: 16 * scale, weight: .black, design: .rounded)).monospacedDigit()
+                                    .foregroundStyle((rate.feeFixed ?? rate.sell ?? rate.buy ?? 0) < 0 ? Palette.red : Palette.green)
+                                Text(rate.feeFixed == nil ? "سعر الصرف" : "لكل 10,000$").font(.system(size: 8 * scale)).foregroundStyle(.secondary)
+                            }
+                            .frame(width: 126 * scale, height: 88 * scale, alignment: .trailing)
+                            .padding(.horizontal, 10 * scale)
+                            .background(URColor.surface, in: RoundedRectangle(cornerRadius: 15 * scale))
+                            .overlay(RoundedRectangle(cornerRadius: 15 * scale).stroke(Palette.gold.opacity(0.28)))
+                        }
+                    }
+                }
+                .environment(\.layoutDirection, .rightToLeft)
+            }
+        }
+        .padding(11 * scale)
+        .background(LinearGradient(colors: [Palette.navy.opacity(0.08), Palette.gold.opacity(0.10)], startPoint: .topTrailing, endPoint: .bottomLeading), in: RoundedRectangle(cornerRadius: 18 * scale))
+    }
+
+    private func fallbackBrand(_ name: String, _ letters: String, _ color: Color) -> some View {
+        VStack(spacing: 5) {
+            Text(letters).font(.system(size: 15 * scale, weight: .black)).foregroundStyle(color)
+            Text(name).font(.system(size: 8 * scale, weight: .bold)).lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, minHeight: 56 * scale)
+        .background(URColor.surface, in: RoundedRectangle(cornerRadius: 12 * scale))
+    }
+
+    private func featuredValue(_ rate: Rate) -> String {
+        guard let value = rate.feeFixed ?? rate.sell ?? rate.buy else { return "—" }
+        let prefix = rate.feeFixed != nil && value > 0 ? "+" : ""
+        return prefix + value.formatted(.number.grouping(.automatic)) + (rate.feeFixed == nil ? "" : "$")
+    }
+}
+
+private struct WhatsAppSupportButton: View {
+    let scale: CGFloat
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle().fill(Color(red: 0.05, green: 0.68, blue: 0.36))
+                Image(systemName: "message.fill").font(.system(size: 25 * scale, weight: .bold)).foregroundStyle(.white)
+                Image(systemName: "phone.fill").font(.system(size: 10 * scale, weight: .black)).foregroundStyle(Color(red: 0.05, green: 0.68, blue: 0.36)).offset(y: -1)
+            }
+            .frame(width: 46 * scale, height: 46 * scale)
+            .shadow(color: Color.green.opacity(0.24), radius: 8, y: 4)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("التواصل مع دعم أور عبر واتساب دبي")
     }
 }
 
@@ -196,12 +389,13 @@ private struct SearchBar: View {
             Image(systemName: "magnifyingglass").font(.system(size: 20 * scale, weight: .medium))
         }
         .environment(\.layoutDirection, .leftToRight).foregroundStyle(Palette.navy.opacity(0.72)).padding(.horizontal, 13 * scale).frame(height: 39 * scale)
-        .background(.white.opacity(0.86), in: RoundedRectangle(cornerRadius: 11 * scale)).overlay(RoundedRectangle(cornerRadius: 11 * scale).stroke(Palette.line))
+        .background(URColor.surface.opacity(0.86), in: RoundedRectangle(cornerRadius: 11 * scale)).overlay(RoundedRectangle(cornerRadius: 11 * scale).stroke(Palette.line))
     }
 }
 
 private struct HeroRateCard: View {
-    let rate: Rate?; let isCached: Bool; let scale: CGFloat
+    let rate: Rate?; let isCached: Bool; let fetchedAt: Date; let scale: CGFloat
+    private var isStale: Bool { rate.map { $0.staleAfter <= Date() } ?? true }
     var body: some View {
         ZStack {
             LinearGradient(colors: [Palette.blue, Palette.navy], startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -215,14 +409,19 @@ private struct HeroRateCard: View {
                     }
                     Spacer(minLength: 2)
                     VStack(alignment: .trailing, spacing: 2) {
-                        HStack(spacing: 5) { Text(isCached ? "بيانات محفوظة" : "محدث الآن"); Circle().fill(isCached ? .orange : .green).frame(width: 7 * scale, height: 7 * scale) }
-                        Text("24 سبتمبر 2026   10:30 ص").font(.system(size: 7.5 * scale))
+                        HStack(spacing: 5) {
+                            Text(isCached ? "بيانات محفوظة" : isStale ? "بيانات المصدر قديمة" : "من المصدر")
+                            Circle().fill(isCached || isStale ? .orange : .green).frame(width: 7 * scale, height: 7 * scale)
+                        }
+                        Text("تحديث السعر: " + (rate?.sourceTimestamp.formatted(date: .abbreviated, time: .shortened) ?? "—"))
+                        Text("آخر جلب: " + fetchedAt.formatted(date: .abbreviated, time: .shortened))
+                            .font(.system(size: 7.5 * scale))
                     }.font(.system(size: 9 * scale, weight: .semibold)).foregroundStyle(.white.opacity(0.78))
                 }
                 HStack(spacing: 0) {
-                    value(title: "سعر البيع", number: rate?.sell ?? 1573)
+                    value(title: "سعر البيع", number: rate?.sell)
                     Rectangle().fill(.white.opacity(0.22)).frame(width: 1, height: 58 * scale)
-                    value(title: "سعر الشراء", number: rate?.buy ?? 1568)
+                    value(title: "سعر الشراء", number: rate?.buy)
                     Image("DollarStack")
                         .resizable().scaledToFill()
                         .frame(width: 122 * scale, height: 76 * scale)
@@ -234,11 +433,11 @@ private struct HeroRateCard: View {
         .foregroundStyle(.white).frame(height: 145 * scale).clipShape(RoundedRectangle(cornerRadius: 13 * scale))
         .overlay(RoundedRectangle(cornerRadius: 13 * scale).stroke(Palette.gold.opacity(0.45)))
     }
-    private func value(title: String, number: Decimal) -> some View {
+    private func value(title: String, number: Decimal?) -> some View {
         VStack(spacing: 0) {
             Text(title).font(.system(size: 12 * scale, weight: .semibold))
-            Text(number.formatted(.number.grouping(.automatic))).font(.system(size: 34 * scale, weight: .black, design: .rounded)).monospacedDigit().minimumScaleFactor(0.7)
-            Text("دينار لكل دولار").font(.system(size: 9 * scale)).foregroundStyle(.white.opacity(0.72))
+            Text(number?.formatted(.number.grouping(.automatic)) ?? "—").font(.system(size: 34 * scale, weight: .black, design: .rounded)).monospacedDigit().minimumScaleFactor(0.7)
+            Text("حسب وحدة النشرة المنشورة").font(.system(size: 8.5 * scale)).foregroundStyle(.white.opacity(0.72))
         }.frame(maxWidth: .infinity)
     }
     private var decorativeLines: some View {
@@ -256,7 +455,12 @@ private struct DisplayRow: Hashable {
     let code: String
     let flag: String
     let amount: Decimal?
+    let buy: Decimal?
+    let sell: Decimal?
+    let sourceCode: String
     let isFee: Bool
+    let logoUrl: String?
+    let deliverySpeed: String?
 
     init(rate: Rate) {
         id = rate.id
@@ -264,7 +468,12 @@ private struct DisplayRow: Hashable {
         code = rate.destinationCurrency
         flag = Self.flag(for: rate.routeNameArabic)
         amount = rate.feeFixed ?? rate.sell ?? rate.buy
+        buy = rate.buy
+        sell = rate.sell
+        sourceCode = rate.sourceCurrency
         isFee = rate.feeFixed != nil
+        logoUrl = rate.logoUrl
+        deliverySpeed = rate.deliverySpeed
     }
 
     private static func flag(for name: String) -> String {
@@ -272,6 +481,7 @@ private struct DisplayRow: Hashable {
         return flags.first { name.contains($0.0) }?.1 ?? "🇮🇶"
     }
 }
+
 private struct DisplaySection: Hashable {
     let title: String; let icon: String; let rows: [DisplayRow]
 }
@@ -283,6 +493,12 @@ private struct RateSectionCard: View {
     let favoriteIDs: Set<UUID>
     let onToggleFavorite: (UUID) -> Void
     let onToggle: () -> Void
+    private var bestID: UUID? {
+        let priced = section.rows.filter { $0.amount != nil }
+        let feeRows = priced.filter(\.isFee)
+        if feeRows.count == priced.count { return feeRows.min { ($0.amount ?? 0) < ($1.amount ?? 0) }?.id }
+        return priced.filter { !$0.isFee }.max { ($0.amount ?? 0) < ($1.amount ?? 0) }?.id
+    }
     var body: some View {
         VStack(spacing: 0) {
             Button(action: onToggle) {
@@ -307,21 +523,29 @@ private struct RateSectionCard: View {
                         .buttonStyle(.plain)
 
                         NavigationLink { DestinationRouteView(row: row) } label: {
-                            RateRow(row: row, scale: scale)
+                            RateRow(row: row, scale: scale, isBest: row.id == bestID)
                         }
                         .buttonStyle(.plain)
                     }
                 }
             }
         }
-        .background(.white.opacity(0.80), in: RoundedRectangle(cornerRadius: 10 * scale)).overlay(RoundedRectangle(cornerRadius: 10 * scale).stroke(Palette.line))
+        .background(URColor.surface.opacity(0.88), in: RoundedRectangle(cornerRadius: 10 * scale)).overlay(RoundedRectangle(cornerRadius: 10 * scale).stroke(Palette.line))
     }
 }
+
+// ═══════════════════════════════════════════════════
+//  Destination Route View — حاسبة فاخرة
+// ═══════════════════════════════════════════════════
 
 private struct DestinationRouteView: View {
     let row: DisplayRow
     @State private var amount = ""
     @State private var showAlertSheet = false
+    @State private var chartScale: CGFloat = 1
+
+    private var history: [RateSnapshot] { RateHistoryStore.shared.history(for: row.id) }
+    private var prediction: Double? { RateHistoryStore.shared.linearPrediction(for: row.id) }
 
     private var numericAmount: Decimal { Decimal(string: amount) ?? 0 }
     private var validAmount: Bool { numericAmount > 0 }
@@ -330,6 +554,7 @@ private struct DestinationRouteView: View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 16) {
                 URPageTitle(title: "تفاصيل السعر", subtitle: "مقارنة العراق مع \(row.name)", symbol: "chart.line.uptrend.xyaxis")
+
                 HStack(spacing: 12) {
                     location(title: row.name, subtitle: "السوق المقارن", flag: row.flag)
                     Image(systemName: "arrow.left").font(.title3.weight(.black)).foregroundStyle(URColor.premiumGold)
@@ -339,11 +564,67 @@ private struct DestinationRouteView: View {
 
                 URCard {
                     VStack(alignment: .trailing, spacing: 12) {
-                        Text("مبلغ المقارنة").font(.caption.weight(.bold)).foregroundStyle(.secondary)
+                        HStack {
+                            Image(systemName: "function").foregroundStyle(URColor.premiumGold)
+                            Text("حاسبة التحويل").font(.headline.weight(.bold)).foregroundStyle(URColor.deepNavy)
+                            Spacer()
+                        }
                         HStack { Text("USD").font(.headline.weight(.black)).foregroundStyle(URColor.premiumGold); TextField("0", text: $amount).keyboardType(.decimalPad).font(.title2.weight(.black)).multilineTextAlignment(.trailing) }
-                        Text("العمولة أدناه تُحتسب نسبيًا على أساس كل 10,000 دولار").font(.caption2).foregroundStyle(validAmount || amount.isEmpty ? Color.gray : Color.red)
+
+                        HStack(spacing: 8) {
+                            quickAmount(1000)
+                            quickAmount(5000)
+                            quickAmount(10000)
+                            quickAmount(50000)
+                        }
+
+                        Text("العمولة أدناه تُحتسب نسبيًا على أساس كل 10,000 دولار")
+                            .font(.caption2)
+                            .foregroundStyle(validAmount || amount.isEmpty ? Color.gray : Color.red)
+
                         Divider()
-                        HStack { Text(formattedAdjustment).font(.title3.weight(.black)).foregroundStyle((row.amount ?? 0) < 0 ? Palette.red : Palette.green); Spacer(); Text(row.isFee ? "فرق السعر / الرسوم" : "سعر الصرف").foregroundStyle(.secondary) }
+
+                        HStack {
+                            Text(formattedAdjustment).font(.title3.weight(.black))
+                                .foregroundStyle((row.amount ?? 0) < 0 ? Palette.red : Palette.green)
+                            Spacer()
+                            Text(row.isFee ? "فرق السعر / الرسوم" : "سعر الصرف")
+                                .foregroundStyle(.secondary)
+                        }
+
+                        if validAmount && row.isFee {
+                            Divider()
+                            breakdownRow("المبلغ المُرسل", "$\(amount)")
+                            breakdownRow("العمولة", formattedAdjustment, highlight: false)
+                            breakdownRow("الإجمالي المدفوع", totalPaid, highlight: true)
+                        }
+                    }
+                }
+
+                URCard {
+                    VStack(alignment: .trailing, spacing: 10) {
+                        HStack {
+                            if let prediction {
+                                Text("توقع 24 ساعة: \(prediction, specifier: "%.2f")").font(.caption.weight(.bold)).foregroundStyle(URColor.premiumGold)
+                            }
+                            Spacer()
+                            Text("اتجاه السعر").font(.headline.weight(.black)).foregroundStyle(URColor.deepNavy)
+                        }
+                        if history.count >= 2 {
+                            Chart(history) { point in
+                                LineMark(x: .value("الوقت", point.date), y: .value("السعر", point.value))
+                                    .foregroundStyle(URColor.royalBlue)
+                                PointMark(x: .value("الوقت", point.date), y: .value("السعر", point.value))
+                                    .foregroundStyle(URColor.premiumGold)
+                            }
+                            .frame(height: 190 * chartScale)
+                            .chartYAxis { AxisMarks(position: .leading) }
+                            .gesture(MagnifyGesture().onChanged { chartScale = min(max($0.magnification, 0.8), 2.2) })
+                            Text("قرّب بإصبعين · التوقع إحصائي وليس سعراً مضموناً").font(.caption2).foregroundStyle(.secondary)
+                        } else {
+                            ContentUnavailableView("لا يوجد تاريخ كافٍ", systemImage: "chart.xyaxis.line", description: Text("يظهر الرسم بعد تسجيل تحديثين حقيقيين على الأقل."))
+                                .frame(height: 180)
+                        }
                     }
                 }
 
@@ -398,6 +679,43 @@ private struct DestinationRouteView: View {
         }
     }
 
+    private func quickAmount(_ value: Double) -> some View {
+        Button {
+            amount = String(format: "%.0f", value)
+        } label: {
+            Text("\(Int(value / 1000))K")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(Palette.navy)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    amount == String(format: "%.0f", value) ? Palette.gold.opacity(0.2) : Palette.ivory,
+                    in: Capsule()
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func breakdownRow(_ label: String, _ value: String, highlight: Bool = false) -> some View {
+        HStack {
+            Text(value)
+                .font(highlight ? .headline.weight(.black) : .subheadline.weight(.semibold))
+                .foregroundStyle(highlight ? Palette.gold : Palette.navy)
+                .monospacedDigit()
+            Spacer()
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var totalPaid: String {
+        guard let value = row.amount else { return "—" }
+        let fee = row.isFee ? value * numericAmount / 10_000 : 0
+        let total = numericAmount + fee
+        return "$" + total.formatted(.number.precision(.fractionLength(0...2)).grouping(.automatic))
+    }
+
     private var shareText: String {
         let priceText = row.amount?.formatted(.number.grouping(.automatic)) ?? "—"
         return """
@@ -409,7 +727,7 @@ private struct DestinationRouteView: View {
 
     private func location(title: String, subtitle: String, flag: String) -> some View {
         VStack(spacing: 6) { Text(flag).font(.system(size: 34)); Text(title).font(.subheadline.weight(.black)).lineLimit(1); Text(subtitle).font(.caption2).foregroundStyle(.secondary) }
-            .foregroundStyle(URColor.deepNavy).frame(maxWidth: .infinity, minHeight: 112).background(.white.opacity(0.86), in: RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(URColor.hairline))
+            .foregroundStyle(URColor.deepNavy).frame(maxWidth: .infinity, minHeight: 112).background(URColor.surface.opacity(0.90), in: RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(URColor.hairline))
     }
 
     private var formattedAdjustment: String {
@@ -419,23 +737,63 @@ private struct DestinationRouteView: View {
     }
 }
 
+// ═══════════════════════════════════════════════════
+//  RateRow — يعرض الشعار + شارة السرعة
+// ═══════════════════════════════════════════════════
+
 private struct RateRow: View {
-    let row: DisplayRow; let scale: CGFloat
+    let row: DisplayRow; let scale: CGFloat; let isBest: Bool
     var body: some View {
         HStack(spacing: 8 * scale) {
-            Text(row.flag).font(.system(size: 25 * scale)).frame(width: 34 * scale)
+            BrandBadge(name: row.name, logoUrl: row.logoUrl, size: 34 * scale)
+                .frame(width: 34 * scale)
+
             VStack(alignment: .leading, spacing: -1) {
-                Text(row.name).font(.system(size: 12.5 * scale, weight: .bold)).lineLimit(1)
-                Text(row.code).font(.system(size: 8.5 * scale, weight: .medium)).opacity(0.62)
+                HStack(spacing: 4) {
+                    Text(row.name).font(.system(size: 12.5 * scale, weight: .bold)).lineLimit(1)
+                    if isBest {
+                        Label("الأفضل سعرًا", systemImage: "crown.fill")
+                            .font(.system(size: 7 * scale, weight: .black))
+                            .foregroundStyle(Palette.gold)
+                    }
+                }
+                HStack(spacing: 3) {
+                    if row.deliverySpeed == "instant" {
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 7 * scale))
+                            .foregroundStyle(.green)
+                    } else if row.deliverySpeed == "same_day" {
+                        Image(systemName: "clock.fill")
+                            .font(.system(size: 7 * scale))
+                            .foregroundStyle(.orange)
+                    }
+                    Text(row.code).font(.system(size: 8.5 * scale, weight: .medium)).opacity(0.62)
+                }
             }
             Spacer(minLength: 2)
             VStack(alignment: .trailing, spacing: -1) {
-                Text(formattedAmount).font(.system(size: 16 * scale, weight: .black)).monospacedDigit().foregroundStyle((row.amount ?? 0) < 0 ? Palette.red : Palette.green)
-                Text(row.isFee ? "لكل 10,000$" : "سعر الصرف").font(.system(size: 8.5 * scale)).foregroundStyle(Palette.navy.opacity(0.62))
+                if !row.isFee, row.buy != nil || row.sell != nil {
+                    HStack(spacing: 7 * scale) {
+                        rateValue("بيع", row.sell, Palette.red)
+                        rateValue("شراء", row.buy, Palette.green)
+                    }
+                    Text("\(row.code) / \(row.sourceCode)").font(.system(size: 7.5 * scale, weight: .semibold)).foregroundStyle(Palette.navy.opacity(0.55))
+                } else {
+                    Text(formattedAmount).font(.system(size: 16 * scale, weight: .black)).monospacedDigit().foregroundStyle((row.amount ?? 0) < 0 ? Palette.red : Palette.green)
+                    Text(row.isFee ? "لكل 10,000$" : "سعر الصرف").font(.system(size: 8.5 * scale)).foregroundStyle(Palette.navy.opacity(0.62))
+                }
             }
             Image(systemName: "chevron.right").font(.system(size: 12 * scale, weight: .bold)).foregroundStyle(Palette.navy.opacity(0.78))
         }
-        .environment(\.layoutDirection, .leftToRight).foregroundStyle(Palette.navy).padding(.horizontal, 10 * scale).frame(height: 39 * scale)
+        .environment(\.layoutDirection, .leftToRight).foregroundStyle(Palette.navy).padding(.horizontal, 10 * scale).frame(minHeight: 49 * scale)
+    }
+
+    private func rateValue(_ title: String, _ value: Decimal?, _ color: Color) -> some View {
+        VStack(alignment: .trailing, spacing: -1) {
+            Text(title).font(.system(size: 7 * scale, weight: .bold)).foregroundStyle(Palette.navy.opacity(0.58))
+            Text(value?.formatted(.number.grouping(.automatic)) ?? "—")
+                .font(.system(size: 12 * scale, weight: .black)).monospacedDigit().foregroundStyle(color).lineLimit(1).minimumScaleFactor(0.72)
+        }
     }
 
     private var formattedAmount: String {

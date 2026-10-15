@@ -12,7 +12,7 @@ struct HomeView: View {
                 welcomeCard
                 sectionTitle("مكتب الصيرفة", subtitle: "العملات الرئيسية بتجربة بصرية فاخرة")
                 CurrencyDeskShowcase()
-                sectionTitle("معلوماتك السريعة", subtitle: "الأسعار وأدوات المقارنة في مكان واحد")
+                sectionTitle("معلوماتك السريعة", subtitle: "الأسعار والمعلومات في مكان واحد")
                 LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: 10) {
                     NavigationLink { CalculatorView(repository: repository) } label: {
                         QuickService(title: "حاسبة العملات", subtitle: "قارن القيمة تقديريًا", symbol: "function", color: URColor.premiumGold)
@@ -43,11 +43,13 @@ struct HomeView: View {
 
     private var homeHeader: some View {
         HStack(spacing: 10) {
-            Button(action: {}) { Image(systemName: "bell").frame(width: 40, height: 40).background(.white, in: Circle()).overlay(Circle().stroke(URColor.hairline)) }
-            Button(action: {}) { Label("العربية", systemImage: "globe").font(.subheadline.weight(.bold)).padding(.horizontal, 13).frame(height: 40).background(.white, in: Capsule()).overlay(Capsule().stroke(URColor.hairline)) }
+            NavigationLink { URNativeNotificationView(api: URNativeAPI.customer) } label: {
+                Image(systemName: "bell").frame(width: 40, height: 40).background(.white, in: Circle()).overlay(Circle().stroke(URColor.hairline))
+            }
+            Label("العربية", systemImage: "globe").font(.subheadline.weight(.bold)).padding(.horizontal, 13).frame(height: 40).background(.white, in: Capsule()).overlay(Capsule().stroke(URColor.hairline))
             Spacer()
             VStack(alignment: .trailing, spacing: -2) {
-                HStack(spacing: 5) { Text("UR").font(.system(size: 31, weight: .black)); Rectangle().fill(URColor.premiumGold).frame(width: 1, height: 25); Text("أور").font(.system(size: 25, weight: .black)) }
+                HStack(spacing: 7) { Text("أور جلوبال").font(.system(size: 22, weight: .black)); URBrandLogo(size: 39) }
                 Text("لأسعار العملات العالمية").font(.caption2.weight(.bold))
             }
         }
@@ -88,7 +90,7 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 2) { Text("USD / IQD").font(.caption).foregroundStyle(.secondary); Text("الدولار ← الدينار العراقي").font(.subheadline.weight(.bold)) }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 1) {
-                    Text((heroRate?.sell ?? 1573).formatted(.number.grouping(.automatic))).font(.title2.weight(.black)).monospacedDigit().foregroundStyle(URColor.deepNavy)
+                    Text(heroRate?.sell?.formatted(.number.grouping(.automatic)) ?? "—").font(.title2.weight(.black)).monospacedDigit().foregroundStyle(URColor.deepNavy)
                     Text("سعر البيع").font(.caption2).foregroundStyle(.secondary)
                 }
             }.environment(\.layoutDirection, .leftToRight)

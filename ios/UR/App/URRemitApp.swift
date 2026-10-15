@@ -1,6 +1,7 @@
 import SwiftUI
 import AuthenticationServices
 import OSLog
+import WidgetKit
 
 @main
 struct URRemitApp: App {
@@ -8,17 +9,14 @@ struct URRemitApp: App {
     @StateObject private var auth = URAuthService.live
     @State private var favorites = FavoritesStore.shared
     @State private var showSplash = true
+    @AppStorage("ur.onboarding.completed") private var onboardingCompleted = false
     private let container = AppContainer.live
 
     var body: some Scene {
         WindowGroup {
             ZStack {
                 Group {
-                    if auth.isAuthenticated || auth.isGuest {
-                        RootView(container: container)
-                    } else {
-                        WelcomeView()
-                    }
+                    RootView(container: container)
                 }
                 .environmentObject(auth)
                 .environment(favorites)
@@ -27,14 +25,57 @@ struct URRemitApp: App {
                 }
                 .task {
                     let alertManager = PriceAlertManager.shared
-                    await alertManager.requestPermissionIfNeeded()
+                    await alertManager.refreshAuthorizationStatus()
                     alertManager.resetFiredIfNewDay()
-                    await DailyReminderManager.shared.reschedule()
+                    await SmartNotificationService.shared.scheduleDailySummaries()
 
                     do {
                         let snapshot = try await container.ratesRepository.loadRates()
                         let usdIqd = snapshot.rates.first {
                             $0.sourceCurrency == "USD" && $0.destinationCurrency == "IQD"
+                        }
+                        RateHistoryStore.shared.record(rates: snapshot.rates)
+                        if let usdIqd {
+                            let shared = UserDefaults(suiteName: "group.com.urremit.shared")
+                            if let buy = usdIqd.buy { shared?.set(NSDecimalNumber(decimal: buy).stringValue, forKey: "usd_iqd_buy") }
+                            if let sell = usdIqd.sell { shared?.set(NSDecimalNumber(decimal: sell).stringValue, forKey: "usd_iqd_sell") }
+                            shared?.set(usdIqd.sourceTimestamp, forKey: "usd_iqd_source_timestamp")
+
+                            let widgetGroups: [String] = [
+                                "دبي", "عُمان", "الصين", "تركيا", "التحويلات"
+                            ]
+                            let widgetRows: [[String: String]] = widgetGroups.compactMap { group in
+                                guard let rate = snapshot.rates.first(where: { rate in
+                                    let ar = rate.routeNameArabic
+                                    let en = rate.routeNameEnglish
+                                    switch group {
+                                    case "دبي": return ar.contains("دبي") || en.localizedCaseInsensitiveContains("Dubai")
+                                    case "عُمان": return ar.contains("سلطنة عمان") || en.compare("Oman", options: .caseInsensitive) == .orderedSame
+                                    case "الصين": return ar.contains("الصين") || en.localizedCaseInsensitiveContains("China")
+                                    case "تركيا": return ar.contains("تركيا") || en.localizedCaseInsensitiveContains("Türkiye") || en.compare("Turkey", options: .caseInsensitive) == .orderedSame
+                                    default: return ar.contains("الحوالات البنكية") || ar.contains("ويسترن") || ar.contains("موني") || en.localizedCaseInsensitiveContains("Transfer") || en.localizedCaseInsensitiveContains("Western") || en.localizedCaseInsensitiveContains("MoneyGram")
+                                    }
+                                }) else { return nil }
+                                let value: Decimal?
+                                let unit: String
+                                if let fee = rate.feeFixed {
+                                    value = fee
+                                    unit = "عمولة/10K"
+                                } else {
+                                    value = rate.sell ?? rate.buy
+                                    unit = "\(rate.destinationCurrency)/\(rate.sourceCurrency)"
+                                }
+                                guard let value else { return nil }
+                                return [
+                                    "name": group,
+                                    "value": NSDecimalNumber(decimal: value).stringValue,
+                                    "code": unit
+                                ]
+                            }
+                            if let data = try? JSONSerialization.data(withJSONObject: widgetRows) {
+                                shared?.set(data, forKey: "widget_featured_routes")
+                            }
+                            WidgetCenter.shared.reloadTimelines(ofKind: "URUSD-IQD")
                         }
                         await DailyReminderManager.shared.refreshContent(usdIqd: usdIqd)
 
@@ -60,9 +101,18 @@ struct URRemitApp: App {
                         .zIndex(1)
                 }
             }
+            .fullScreenCover(isPresented: Binding(
+                get: { !onboardingCompleted && !showSplash },
+                set: { if !$0 { onboardingCompleted = true } }
+            )) {
+                OnboardingView(isPresented: Binding(
+                    get: { !onboardingCompleted },
+                    set: { if !$0 { onboardingCompleted = true } }
+                ))
+            }
             .task {
                 do {
-                    try await Task.sleep(for: .seconds(1.2))
+                    try await Task.sleep(for: .seconds(5))
                 } catch is CancellationError {
                     return
                 } catch {

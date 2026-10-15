@@ -1,3 +1,5 @@
+import Foundation
+
 protocol RatesRepository: Sendable {
     func loadRates() async throws -> RatesSnapshot
 }
@@ -5,5 +7,5 @@ protocol RatesRepository: Sendable {
 struct RatesSnapshot: Sendable {
     let rates: [Rate]
     let isFromCache: Bool
+    let fetchedAt: Date
 }
-

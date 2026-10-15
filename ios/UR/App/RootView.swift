@@ -1,7 +1,7 @@
 import SwiftUI
 
 private enum URTab: String, CaseIterable, Identifiable {
-    case home, offices, rates, support, more
+    case home, offices, rates, transfers, support, more
 
     var id: Self { self }
     var title: String {
@@ -9,6 +9,7 @@ private enum URTab: String, CaseIterable, Identifiable {
         case .home: "الرئيسية"
         case .offices: "مراكزنا"
         case .rates: "الأسعار"
+        case .transfers: "حوالاتي"
         case .support: "الدعم"
         case .more: "المزيد"
         }
@@ -19,6 +20,7 @@ private enum URTab: String, CaseIterable, Identifiable {
         case .home: "house.fill"
         case .offices: "mappin.circle"
         case .rates: "chart.bar.fill"
+        case .transfers: "arrow.left.arrow.right.circle.fill"
         case .support: "headphones"
         case .more: "ellipsis"
         }
@@ -26,17 +28,20 @@ private enum URTab: String, CaseIterable, Identifiable {
 }
 
 struct RootView: View {
+    @Environment(\.scenePhase) private var nativeScenePhase
     let container: AppContainer
     @State private var selection: URTab
 
     init(container: AppContainer) {
         self.container = container
         let arguments = ProcessInfo.processInfo.arguments
-        let initial: URTab = arguments.contains("-showRates") ? .rates
+        let initial: URTab = arguments.contains("-showHome") ? .home
+            : arguments.contains("-showRates") ? .rates
             : arguments.contains("-showOffices") ? .offices
+            : arguments.contains("-showTransfers") ? .transfers
             : arguments.contains("-showSupport") ? .support
             : arguments.contains("-showMore") ? .more
-            : .home
+            : .rates
         _selection = State(initialValue: initial)
     }
 
@@ -46,14 +51,18 @@ struct RootView: View {
                 .tag(URTab.home)
             NavigationStack { OfficesView(api: container.apiClient) }
                 .tag(URTab.offices)
-            NavigationStack { RatesView(repository: container.ratesRepository) }
+            NavigationStack { URRatesWorkspace { RatesView(repository: container.ratesRepository) } }
                 .tag(URTab.rates)
+            NavigationStack { CustomerRemittanceView() }
+                .tag(URTab.transfers)
             NavigationStack { SupportView(repository: container.ratesRepository, api: container.apiClient) }
                 .tag(URTab.support)
             NavigationStack { MoreView(api: container.apiClient) }
                 .tag(URTab.more)
         }
         .toolbar(.hidden, for: .tabBar)
+        .task { await URNativeTelemetry.launch() }
+        .onChange(of: nativeScenePhase) { _, phase in if phase == .active { Task { await URNativeTelemetry.send("app_open") } } }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             URBottomNavigation(selection: $selection)
         }
@@ -117,5 +126,6 @@ private struct URBottomNavigation: View {
             Divider()
                 .background(URColor.hairline)
         }
+        .sensoryFeedback(.selection, trigger: selection)
     }
 }

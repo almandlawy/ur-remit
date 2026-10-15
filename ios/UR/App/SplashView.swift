@@ -2,10 +2,14 @@ import SwiftUI
 
 /// شاشة الترحيب — تظهر عند فتح التطبيق لمدة ~1.2 ثانية
 struct SplashView: View {
-    @State private var logoScale: CGFloat = 0.7
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var logoScale: CGFloat = 0.58
     @State private var logoOpacity: Double = 0
     @State private var taglineOpacity: Double = 0
-    @State private var glowOpacity: Double = 0.3
+    @State private var glowOpacity: Double = 0.18
+    @State private var logoOffset: CGFloat = 38
+    @State private var orbitRotation = -24.0
+    @State private var titleTracking: CGFloat = 8
 
     var body: some View {
         ZStack {
@@ -21,10 +25,8 @@ struct SplashView: View {
             )
             .ignoresSafeArea()
 
-            // نقشة ذهبية خفيفة
             decorativeLines
 
-            // هالة ذهبية متحركة
             Circle()
                 .fill(
                     RadialGradient(
@@ -34,55 +36,78 @@ struct SplashView: View {
                         endRadius: 200
                     )
                 )
-                .frame(width: 400, height: 400)
+                .frame(width: 460, height: 460)
                 .opacity(glowOpacity)
 
-            VStack(spacing: 20) {
-                // الشعار
-                HStack(spacing: 12) {
-                    Text("UR")
-                        .font(.system(size: 90, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
+            Ellipse()
+                .stroke(
+                    AngularGradient(colors: [.clear, URColor.premiumGold.opacity(0.75), .clear, .white.opacity(0.25), .clear], center: .center),
+                    lineWidth: 1.2
+                )
+                .frame(width: 430, height: 170)
+                .rotationEffect(.degrees(orbitRotation))
+                .blur(radius: 0.2)
 
-                    Rectangle()
-                        .fill(URColor.premiumGold)
-                        .frame(width: 3, height: 70)
+            launchParticles
 
-                    Text("أور")
-                        .font(.system(size: 72, weight: .black))
-                        .foregroundStyle(.white)
-                }
+            VStack(spacing: 22) {
+                Image("URLaunch3DStrong")
+                    .resizable().scaledToFit()
+                    .frame(maxWidth: 370)
+                    .shadow(color: Color.blue.opacity(0.48), radius: 28, y: 12)
+                    .shadow(color: URColor.premiumGold.opacity(0.28), radius: 18, x: 10, y: -2)
                 .scaleEffect(logoScale)
                 .opacity(logoOpacity)
+                .offset(y: logoOffset)
+                .rotation3DEffect(.degrees(reduceMotion ? 0 : Double(logoOffset) * 0.20), axis: (x: 1, y: -0.25, z: 0))
 
-                // النص تحت الشعار
-                VStack(spacing: 6) {
-                    Text("معكم في كل وجهة")
-                        .font(.title3.weight(.bold))
+                VStack(spacing: 8) {
+                    Text("UR GLOBAL")
+                        .font(.system(size: 24, weight: .black, design: .rounded))
+                        .tracking(titleTracking)
+                        .foregroundStyle(.white)
+                    Rectangle().fill(LinearGradient(colors: [.clear, URColor.premiumGold, .clear], startPoint: .leading, endPoint: .trailing)).frame(width: 190, height: 1)
+                    Text("أور جلوبال · معكم في كل وجهة")
+                        .font(.subheadline.weight(.bold))
                         .foregroundStyle(.white.opacity(0.92))
 
-                    Text("WITH YOU EVERYWHERE")
-                        .font(.caption2.weight(.bold))
-                        .tracking(2.5)
+                    Text("TRUST CONNECTS THE WORLD")
+                        .font(.system(size: 9, weight: .bold))
+                        .tracking(2.2)
                         .foregroundStyle(URColor.premiumGold)
                 }
                 .opacity(taglineOpacity)
             }
         }
         .onAppear {
-            // حركة ظهور الشعار
-            withAnimation(.spring(response: 0.7, dampingFraction: 0.65)) {
+            withAnimation(.spring(response: 1.15, dampingFraction: 0.76)) {
                 logoScale = 1.0
                 logoOpacity = 1.0
+                logoOffset = 0
             }
-            withAnimation(.easeOut(duration: 0.9).delay(0.25)) {
+            withAnimation(.easeOut(duration: 1.0).delay(0.65)) {
                 taglineOpacity = 1.0
+                titleTracking = 3.2
             }
-            // نبض الهالة
-            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
-                glowOpacity = 0.7
+            if !reduceMotion {
+                withAnimation(.linear(duration: 5.0)) { orbitRotation = 336 }
+                withAnimation(.easeInOut(duration: 1.7).repeatForever(autoreverses: true)) { glowOpacity = 0.72 }
             }
         }
+    }
+
+    private var launchParticles: some View {
+        Canvas { context, size in
+            let points: [(Double, Double, Double)] = [
+                (0.12, 0.20, 2.2), (0.83, 0.17, 1.7), (0.91, 0.38, 2.5),
+                (0.18, 0.68, 1.5), (0.76, 0.74, 2.0), (0.31, 0.84, 1.2),
+                (0.67, 0.28, 1.1), (0.07, 0.46, 1.4), (0.88, 0.87, 1.6)
+            ]
+            for point in points {
+                let rect = CGRect(x: size.width * point.0, y: size.height * point.1, width: point.2, height: point.2)
+                context.fill(Path(ellipseIn: rect), with: .color(URColor.premiumGold.opacity(0.62)))
+            }
+        }.ignoresSafeArea().accessibilityHidden(true)
     }
 
     // نقشة ذهبية على الخلفية

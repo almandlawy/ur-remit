@@ -55,18 +55,16 @@ async function sha256(value: string) {
     .map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-async function verifyPassword(password: string, encoded: string) {
-  const [algorithm, costText, blockText, parallelText, saltText, expectedText] = encoded.split("$");
-  if (algorithm !== "scrypt" || !saltText || !expectedText) return false;
-  const { scryptAsync } = await import("npm:@noble/hashes@1.8.0/scrypt");
-  const expected = decodeBase64URL(expectedText);
-  const actual = await scryptAsync(new TextEncoder().encode(password), decodeBase64URL(saltText), {
-    N: Number(costText), r: Number(blockText), p: Number(parallelText), dkLen: expected.length,
-  });
-  if (actual.length !== expected.length) return false;
-  let difference = 0;
-  for (let index = 0; index < actual.length; index += 1) difference |= actual[index]! ^ expected[index]!;
-  return difference === 0;
+async function verifyPassword(password: string, encoded: string): Promise<boolean> {
+  try {
+    const result = await rest("rpc/verify_password", {
+      method: "POST",
+      body: JSON.stringify({ p_password: password, p_hash: encoded }),
+    });
+    return result === true;
+  } catch {
+    return false;
+  }
 }
 
 function decodeBase32(value: string) {
@@ -181,8 +179,11 @@ Deno.serve(async (request) => {
       const users = await rest(`admin_users?select=id,password_hash,mfa_required,mfa_secret_ciphertext,failed_login_count,locked_until&or=(username.ilike.${encodeURIComponent(username)},email.ilike.${encodeURIComponent(username)})&disabled_at=is.null&limit=1`) as Array<Record<string, unknown>>;
       const user = users[0];
       const isLocked = Boolean(user?.locked_until && Date.parse(String(user.locked_until)) > Date.now());
-      let valid = Boolean(user && !isLocked && user.mfa_required === true && await verifyPassword(password, String(user.password_hash)));
-      if (valid && user) {
+      const verifyResult = user && !isLocked
+        ? await verifyPassword(password, String(user.password_hash))
+        : false;
+      let valid = Boolean(user && !isLocked && verifyResult);
+      if (valid && user?.mfa_required === true) {
         try {
           const secret = await decryptMFASecret(user.mfa_secret_ciphertext);
           valid = await verifyTOTP(secret, mfaCode);
@@ -253,10 +254,24 @@ Deno.serve(async (request) => {
     }
 
     if (route === "rates" && request.method === "GET") {
-      const rows = await rest("rates?select=id,buy,sell,fee_fixed,fee_percent,created_at,source_timestamp,version,valid_from,valid_until,rate_routes!inner(name_ar,name_en,source_currency,destination_currency,is_active)&is_active=eq.true&rate_routes.is_active=eq.true&order=source_timestamp.desc");
+      const rows = await rest("rates?select=id,buy,sell,fee_fixed,fee_percent,created_at,source_timestamp,version,valid_from,valid_until,rate_routes!inner(name_ar,name_en,source_currency,destination_currency,is_active,category,category_order,icon,logo_url,service_type,delivery_speed,is_featured)&is_active=eq.true&rate_routes.is_active=eq.true&order=source_timestamp.desc");
       return response(rows.map((row: any) => ({
         id: row.id,
         routeNameArabic: row.rate_routes.name_ar,
+
+        category: row.rate_routes.category,
+
+        categoryOrder: row.rate_routes.category_order,
+
+        icon: row.rate_routes.icon,
+
+        logoUrl: row.rate_routes.logo_url,
+
+        serviceType: row.rate_routes.service_type,
+
+        deliverySpeed: row.rate_routes.delivery_speed,
+
+        isFeatured: row.rate_routes.is_featured,
         routeNameEnglish: row.rate_routes.name_en,
         sourceCurrency: row.rate_routes.source_currency,
         destinationCurrency: row.rate_routes.destination_currency,

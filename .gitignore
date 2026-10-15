@@ -24,3 +24,14 @@ DerivedData/
 *.pcm
 *.modulevalidation
 *.sdkstatcache
+/outputs/
+/artifacts/
+/.codex-preservation/
+/ios.backup/
+/ios/.backup_*/
+*.bak
+*.backup
+*.backup_*
+*.before-native.bak
+*.pre_fix
+*.bak2

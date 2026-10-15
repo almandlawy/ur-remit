@@ -23,6 +23,7 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
     @Published private(set) var email: String?
     @Published private(set) var isLoading = false
     @Published var message: String?
+    @Published private(set) var isGuest: Bool = false
 
     private let projectURL: URL
     private let publishableKey: String
@@ -39,6 +40,8 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
         super.init()
         Task { await restoreSession() }
     }
+
+    // MARK: - Apple Sign In
 
     func prepareAppleRequest(_ request: ASAuthorizationAppleIDRequest, nonce: String) {
         request.requestedScopes = [.fullName, .email]
@@ -61,6 +64,8 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
             try await loadUser(using: authSession)
         }
     }
+
+    // MARK: - Google Sign In
 
     func signInWithGoogle() async {
         guard var components = URLComponents(url: projectURL.appending(path: "auth/v1/authorize"), resolvingAgainstBaseURL: false) else { return }
@@ -88,6 +93,21 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
         } catch { message = "تعذر حفظ جلسة الدخول بأمان." }
     }
 
+    // MARK: - Guest Mode
+
+    /// يسمح للمستخدم باستخدام التطبيق بدون إنشاء حساب
+    func continueAsGuest() {
+        isGuest = true
+        message = nil
+    }
+
+    /// خروج من نمط الزائر
+    func leaveGuestMode() {
+        isGuest = false
+    }
+
+    // MARK: - Sign Out
+
     func signOut() async {
         if let current = try? load() {
             var urlRequest = URLRequest(url: projectURL.appending(path: "auth/v1/logout"))
@@ -99,7 +119,10 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
         deleteSession()
         isAuthenticated = false
         email = nil
+        isGuest = false
     }
+
+    // MARK: - Delete Account
 
     func deleteAccount() async throws {
         isLoading = true
@@ -107,12 +130,37 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
         defer { isLoading = false }
 
         do {
+            // 1. احذف الحساب من السيرفر
             try await DeleteAccountService.shared.deleteAccount()
+
+            // 2. نظّف الجلسة المحلية وأرجع المستخدم لشاشة الدخول
+            signOutCompletely()
         } catch {
             message = error.localizedDescription
             throw error
         }
     }
+
+    /// تنظيف كامل بعد حذف الحساب — يمسح الجلسة المحلية ويحدّث الحالة
+    func signOutCompletely() {
+        deleteSession()
+        isAuthenticated = false
+        email = nil
+        message = nil
+        isGuest = false
+
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: "user_email")
+        defaults.removeObject(forKey: "user_preferences")
+        defaults.synchronize()
+    }
+
+    /// يرجّع التوكن الحالي (للعمليات اللي تحتاج مصادقة)
+    func currentAccessToken() -> String? {
+        try? load().accessToken
+    }
+
+    // MARK: - URL Handling
 
     func handle(url: URL) {
         guard let authSession = Self.session(from: url) else { return }
@@ -126,6 +174,8 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
         UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
             .flatMap(\.windows).first(where: \.isKeyWindow) ?? ASPresentationAnchor()
     }
+
+    // MARK: - Private
 
     private func restoreSession() async {
         guard let authSession = try? load() else { return }
@@ -162,19 +212,32 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
     private func save(_ value: URAuthSession) throws {
         let data = try JSONEncoder().encode(value)
         deleteSession()
-        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrAccount as String: sessionKey, kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly, kSecValueData as String: data]
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: sessionKey,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+            kSecValueData as String: data
+        ]
         guard SecItemAdd(query as CFDictionary, nil) == errSecSuccess else { throw URAuthError.keychain }
     }
 
     private func load() throws -> URAuthSession {
-        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrAccount as String: sessionKey, kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: sessionKey,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
         var item: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess, let data = item as? Data else { throw URAuthError.keychain }
         return try JSONDecoder().decode(URAuthSession.self, from: data)
     }
 
     private func deleteSession() {
-        SecItemDelete([kSecClass as String: kSecClassGenericPassword, kSecAttrAccount as String: sessionKey] as CFDictionary)
+        SecItemDelete([
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: sessionKey
+        ] as CFDictionary)
     }
 
     static func randomNonce(length: Int = 32) -> String {

@@ -11,13 +11,35 @@ struct URCard<Content: View>: View {
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                .white.opacity(0.88),
+                URColor.surface.opacity(0.92),
                 in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(URColor.hairline, lineWidth: 1)
             )
+            .shadow(color: URColor.deepNavy.opacity(0.045), radius: 10, y: 4)
+    }
+}
+
+// MARK: - URBrandLogo
+struct URBrandLogo: View {
+    var size: CGFloat = 44
+    var showsBorder = true
+
+    var body: some View {
+        Image("URBrandLogo")
+            .resizable().scaledToFill()
+            .frame(width: size, height: size)
+            .clipShape(RoundedRectangle(cornerRadius: size * 0.24, style: .continuous))
+            .overlay {
+                if showsBorder {
+                    RoundedRectangle(cornerRadius: size * 0.24, style: .continuous)
+                        .stroke(URColor.premiumGold.opacity(0.55), lineWidth: 1)
+                }
+            }
+            .shadow(color: URColor.deepNavy.opacity(0.13), radius: 6, y: 3)
+            .accessibilityLabel("شعار أور جلوبال")
     }
 }
 
@@ -45,9 +67,7 @@ struct URPageTitle: View {
 
             Spacer()
 
-            Text("UR")
-                .font(.title.weight(.black))
-                .foregroundStyle(URColor.deepNavy)
+            URBrandLogo(size: 42)
         }
     }
 }

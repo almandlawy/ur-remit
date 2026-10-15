@@ -7,22 +7,16 @@ struct APIConfiguration: Sendable {
     let timeout: Duration
 
     var adminBaseURL: URL {
-        #if DEBUG
-        URL(string: "http://127.0.0.1:8080/api/v1/admin/")!
-        #else
         URL(string: "https://yqvcoomjunwokyxwofvt.supabase.co/functions/v1/mobile-api/admin/")!
-        #endif
     }
 
     static var current: APIConfiguration {
-        #if DEBUG
-        APIConfiguration(baseURL: URL(string: "http://127.0.0.1:8080/api/v1/mobile/")!, timeout: .seconds(15))
-        #else
-        APIConfiguration(baseURL: URL(string: "https://yqvcoomjunwokyxwofvt.supabase.co/functions/v1/mobile-api/")!, timeout: .seconds(15))
-        #endif
+        APIConfiguration(
+            baseURL: URL(string: "https://yqvcoomjunwokyxwofvt.supabase.co/functions/v1/mobile-api/")!,
+            timeout: .seconds(15)
+        )
     }
 }
-
 enum NetworkError: Error, Equatable {
     case invalidResponse
     case httpStatus(Int)
