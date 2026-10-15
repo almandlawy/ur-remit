@@ -777,6 +777,10 @@ private func urDigits(_ text: String) -> String {
 private func urPhone(_ text: String) -> String {
     urDigits(text).filter { !$0.isWhitespace && !"()-.".contains($0) }
 }
+private func urGroupedAmount(_ value: String) -> String {
+    guard let number = Decimal(string: value, locale: Locale(identifier: "en_US_POSIX")) else { return value }
+    return number.formatted(.number.precision(.fractionLength(0...2)).grouping(.automatic).locale(Locale(identifier: "en_US")))
+}
 @MainActor
 private func urReceiptDate(_ value: Any?) -> String {
     guard let value, !(value is NSNull), let timestamp = Double(String(describing: value)) else { return "—" }
@@ -993,7 +997,7 @@ private struct URNativeInlinePaymentCompletion: View {
             Text("إكمال الدفع").font(.title2.weight(.black)).foregroundStyle(URColor.deepNavy)
             VStack(alignment: .trailing, spacing: 5) {
                 Text("المبلغ المطلوب دفعه").font(.subheadline.weight(.bold)).foregroundStyle(.white.opacity(0.82))
-                Text(urText(quote, "total") + " " + urText(quote, "paymentCurrency"))
+                Text(urGroupedAmount(urText(quote, "total")) + " " + urText(quote, "paymentCurrency"))
                     .font(.system(size: 34, weight: .black, design: .rounded)).foregroundStyle(.yellow)
                     .environment(\.layoutDirection, .leftToRight).textSelection(.enabled)
             }
@@ -1013,6 +1017,10 @@ private struct URNativeInlinePaymentCompletion: View {
             }
             .padding(13).background(Color.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 14))
             paymentDetails
+            if urText(quote, "paymentCurrency") == "IQD" {
+                LabeledContent("سعر شراء الدولار المعتمد", value: urGroupedAmount(urText(quote, "paymentRate")) + " IQD / USD")
+                    .font(.subheadline.weight(.bold))
+            }
             if ["awaiting_payment", "needs_payment_info", "payment_rejected"].contains(orderStatus) {
                 if !urText(order, "review_reason", fallback: "").isEmpty { Text("ملاحظة الإدارة: " + urText(order, "review_reason")).foregroundStyle(.red) }
                 Toggle("راجعت المبلغ وبيانات الحساب وأوافق عليها", isOn: $accepted)
@@ -1146,7 +1154,10 @@ private struct URNativeOrderView: View {
                 if !urText(order, "review_reason", fallback: "").isEmpty { Text("ملاحظة الإدارة: " + urText(order, "review_reason")).foregroundStyle(.red) }
                 Section("تفاصيل الإيداع") {
                     LabeledContent("طريقة الدفع", value: urText(paymentMethod, "name", fallback: urText(order, "method")))
-                    legacyPaymentCard(title: "المبلغ المطلوب دفعه", value: urText(quote, "total") + " " + urText(quote, "paymentCurrency"), color: URColor.deepNavy, valueColor: .yellow, icon: "dollarsign.circle.fill")
+                    legacyPaymentCard(title: "المبلغ المطلوب دفعه", value: urGroupedAmount(urText(quote, "total")) + " " + urText(quote, "paymentCurrency"), color: URColor.deepNavy, valueColor: .yellow, icon: "dollarsign.circle.fill")
+                    if urText(quote, "paymentCurrency") == "IQD" {
+                        LabeledContent("سعر شراء الدولار المعتمد", value: urGroupedAmount(urText(quote, "paymentRate")) + " IQD / USD").font(.subheadline.weight(.bold))
+                    }
                     if urText(order, "method") == "superqi" {
                         let beneficiary = urText(paymentMethod, "beneficiary", fallback: "")
                         let account = urText(paymentMethod, "account", fallback: "")
