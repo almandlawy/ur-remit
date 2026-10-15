@@ -22,7 +22,7 @@ struct AgentJoinView: View {
     @State private var email = ""
     @State private var whatsapp = ""
     @State private var location = ""
-    @State private var businessType = "حوالات وصرافة"
+    private let businessType = "حوالات وصرافة"
     @State private var busy = false
     @State private var message = ""
     var body: some View {
@@ -35,7 +35,6 @@ struct AgentJoinView: View {
                     field("البريد الإلكتروني", text: $email, keyboard: .emailAddress)
                     field("واتساب مع رمز الدولة", text: $whatsapp, keyboard: .phonePad)
                     field("الدولة، المدينة", text: $location)
-                    field("الخدمات المطلوبة", text: $businessType)
                     Button(busy ? "جاري الإرسال…" : "إرسال طلب الانضمام") { Task { await submit() } }
                         .buttonStyle(.borderedProminent).tint(URColor.premiumGold).foregroundStyle(URColor.deepNavy).disabled(busy)
                     if !message.isEmpty { Text(message).font(.footnote.weight(.semibold)).foregroundStyle(message.hasPrefix("تم") ? URColor.success : .red) }

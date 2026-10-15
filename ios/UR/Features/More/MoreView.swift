@@ -1600,16 +1600,31 @@ struct URRatesWorkspace<Content: View>: View {
     init(@ViewBuilder content: () -> Content) { self.content = content() }
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 10) {
+            HStack(spacing: 0) {
                 NavigationLink { AgentJoinView() } label: {
-                    Label("انضم كوكيل", systemImage: "building.2.crop.circle.fill").frame(maxWidth: .infinity, minHeight: 42)
+                    HStack(spacing: 10) {
+                        Image(systemName: "arrow.left.circle.fill").font(.title3)
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("مطلوب وكلاء في العراق وكل دول العالم").font(.subheadline.weight(.black)).lineLimit(1).minimumScaleFactor(0.76)
+                            Text("انضم ويانا كوكيل").font(.caption2.weight(.bold)).opacity(0.88)
+                        }
+                        Spacer(minLength: 2)
+                        Image(systemName: "building.2.fill").font(.title2)
+                    }.padding(.horizontal, 12).frame(maxWidth: .infinity, minHeight: 62)
                 }
                 NavigationLink { AgentPortalEntryView() } label: {
-                    Label("دخول الوكلاء", systemImage: "person.badge.key.fill").frame(maxWidth: .infinity, minHeight: 42)
-                }
+                    VStack(spacing: 3) {
+                        Image(systemName: "person.badge.key.fill").font(.headline)
+                        Text("دخول").font(.caption2.weight(.black))
+                    }.frame(width: 66).frame(minHeight: 62).background(.black.opacity(0.14))
+                }.accessibilityLabel("دخول الوكلاء الحاليين")
             }
-            .font(.caption.weight(.black)).foregroundStyle(URColor.deepNavy).padding(.horizontal, 12).padding(.vertical, 8)
-            .background(URColor.ivory).overlay(alignment: .bottom) { Divider() }
+            .foregroundStyle(.white)
+            .background(LinearGradient(colors: [Color(red: 0.86, green: 0.08, blue: 0.12), Color(red: 0.62, green: 0.02, blue: 0.08)], startPoint: .topTrailing, endPoint: .bottomLeading))
+            .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 15).stroke(.white.opacity(0.25)))
+            .shadow(color: Color.red.opacity(0.18), radius: 8, y: 4)
+            .padding(.horizontal, 11).padding(.vertical, 7)
             content
         }.background(URColor.ivory).tint(URColor.royalBlue)
     }

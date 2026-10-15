@@ -373,12 +373,16 @@ private struct WhatsAppSupportButton: View {
     var body: some View {
         Button(action: action) {
             ZStack {
-                Circle().fill(Color(red: 0.05, green: 0.68, blue: 0.36))
-                Image(systemName: "message.fill").font(.system(size: 25 * scale, weight: .bold)).foregroundStyle(.white)
-                Image(systemName: "phone.fill").font(.system(size: 10 * scale, weight: .black)).foregroundStyle(Color(red: 0.05, green: 0.68, blue: 0.36)).offset(y: -1)
+                Circle().fill(Color(red: 0.145, green: 0.827, blue: 0.400))
+                Circle().stroke(.white, lineWidth: 2.2 * scale).padding(8 * scale)
+                Image(systemName: "phone.fill")
+                    .font(.system(size: 20 * scale, weight: .bold))
+                    .foregroundStyle(.white)
+                    .rotationEffect(.degrees(-12))
             }
-            .frame(width: 46 * scale, height: 46 * scale)
-            .shadow(color: Color.green.opacity(0.24), radius: 8, y: 4)
+            .frame(width: 54 * scale, height: 54 * scale)
+            .overlay(Circle().stroke(.white.opacity(0.9), lineWidth: 1.5))
+            .shadow(color: Color.green.opacity(0.30), radius: 10, y: 5)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("التواصل مع دعم أور عبر واتساب دبي")
