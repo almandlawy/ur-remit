@@ -1,11 +1,14 @@
 # Third-party visual assets
 
-## AgentMoneyBackground
+The following images are decorative only. They do not depict UR Global offices,
+employees, partners, or service locations. All labels and actions remain native
+text for accessibility and localization.
 
-- Source: Wikimedia Commons, `US Dollar banknotes I.jpg`
-- Source URL: https://commons.wikimedia.org/wiki/File:US_Dollar_banknotes_I.jpg
-- Author: Milad Mosapoor
-- License on source page: Public domain (United States currency image); currency illustration and anti-counterfeiting rules still apply.
-- App treatment: cropped only as a dark, non-printable background; compressed to 1400 px / JPEG quality 78. No textual claims or UR office identity are embedded in the image.
+| Asset | Source | Author | License | App use |
+| --- | --- | --- | --- | --- |
+| `AgentMoneyBackground` | [US Dollar banknotes I](https://commons.wikimedia.org/wiki/File:US_Dollar_banknotes_I.jpg) | Milad Mosapoor | Public domain (United States currency image) | Dark cropped background for the agent-join page; currency illustration rules still apply |
+| `OfficesHero` | [Office interior 2022 queue](https://commons.wikimedia.org/wiki/File:Office_interior_2022_queue.jpg) | Rakoon | CC0 1.0 | Decorative background for the verified office directory |
+| `SupportHero` | [Telephone Headset](https://commons.wikimedia.org/wiki/File:Telephone_Headset.jpg) | Panelxf | CC0 1.0 | Decorative background for in-app support |
 
-The transfer, exchange, building, and currency marks layered over the photo are Apple SF Symbols rendered by the app, not third-party raster assets.
+Both files are locally resized and JPEG-compressed. The original source pages
+are the authority for provenance and license metadata.

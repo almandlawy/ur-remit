@@ -21,7 +21,18 @@ struct SupportView: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .trailing, spacing: 14) {
-                HStack { Spacer(); VStack(alignment: .trailing, spacing: 2) { Text("بشنو نساعدك؟").font(.title2.weight(.black)); Text("اختر الموضوع حتى توصل المشكلة للفريق الصحيح").font(.caption).foregroundStyle(.secondary) }; URBrandLogo(size: 42) }
+                ZStack(alignment: .bottomTrailing) {
+                    Image("SupportHero").resizable().scaledToFill().frame(height: 170).clipped()
+                    LinearGradient(colors: [.clear, URColor.deepNavy.opacity(0.96)], startPoint: .top, endPoint: .bottom)
+                    HStack(alignment: .bottom) {
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 3) {
+                            Text("بشنو نساعدك؟").font(.title2.weight(.black))
+                            Text("تذكرتك توصل للفريق الصحيح وتبقى مرتبطة بطلبك").font(.caption).foregroundStyle(.white.opacity(0.82))
+                        }
+                        URBrandLogo(size: 42)
+                    }.foregroundStyle(.white).padding(15)
+                }.frame(height: 170).clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 if customerAPI.profile.isEmpty {
                     NavigationLink { URNativeAccountView() } label: { Label("سجّل الدخول لإنشاء ومتابعة تذكرة", systemImage: "person.crop.circle.badge.checkmark").font(.headline.weight(.black)).frame(maxWidth: .infinity, minHeight: 54).background(URColor.premiumGold, in: RoundedRectangle(cornerRadius: 15)).foregroundStyle(URColor.deepNavy) }
                     supportFallback

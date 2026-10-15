@@ -18,6 +18,18 @@ struct MoreView: View {
                     Spacer()
                     Button { adminTapCount += 1; if adminTapCount == 5 { adminTapCount = 0; showAdminLogin = true } } label: { Image(systemName: "gearshape.fill").frame(width: 44, height: 44).background(.white, in: Circle()) }.buttonStyle(.plain).accessibilityLabel("الإعدادات")
                 }.foregroundStyle(URColor.deepNavy)
+                ZStack(alignment: .bottomTrailing) {
+                    LinearGradient(colors: [URColor.deepNavy, URColor.royalBlue], startPoint: .topTrailing, endPoint: .bottomLeading)
+                    HStack(spacing: -18) {
+                        Image("EuroStack").resizable().scaledToFit().frame(width: 88).rotationEffect(.degrees(-7))
+                        Image("DollarStack").resizable().scaledToFit().frame(width: 106).rotationEffect(.degrees(5))
+                        Image("PoundStack").resizable().scaledToFit().frame(width: 84).rotationEffect(.degrees(9))
+                    }.opacity(0.72).offset(x: -12, y: 17)
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text("كل خدمات أور بمكان واحد").font(.headline.weight(.black))
+                        Text("حسابك، أدواتك، التحقق والمساعدة").font(.caption).foregroundStyle(.white.opacity(0.78))
+                    }.foregroundStyle(.white).padding(16).frame(maxWidth: .infinity, alignment: .trailing)
+                }.frame(height: 112).clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 MoreGroup(title: "حسابي") {
                     NavigationLink { URNativeAccountView() } label: { MoreRow("بياناتي والحساب", "person.crop.circle.fill") }
                     Divider(); NavigationLink { URNativeNotificationView(api: URNativeAPI.customer) } label: { MoreRow("التنبيهات", "bell.badge.fill") }
@@ -70,25 +82,29 @@ struct OfficesView: View {
     @State private var offices: [Office] = []
     @State private var isLoading = true
     @State private var isOffline = false
+    @State private var lastUpdated: Date?
+
+    private var groupedOffices: [(country: String, offices: [Office])] {
+        Dictionary(grouping: offices, by: \.countryArabic)
+            .map { country, rows in (country, rows.sorted { ($0.cityArabic, $0.nameArabic) < ($1.cityArabic, $1.nameArabic) }) }
+            .sorted { $0.country.localizedStandardCompare($1.country) == .orderedAscending }
+    }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 12) {
-                URPageTitle(title: "مراكزنا", subtitle: "مراكز ووكلاء UR المعتمدون", symbol: "mappin.and.ellipse")
-                HStack(spacing: 12) {
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("الدليل الرسمي المباشر").font(.subheadline.weight(.black))
-                        Text(isOffline ? "تعذّر تحميل الدليل؛ لا نعرض مكاتب غير موثقة" : "أي مكتب يُضاف إلى نظام UR يظهر هنا تلقائياً").font(.caption).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    VStack(spacing: 5) {
-                        URIconBadge(symbol: "building.2.crop.circle.fill", size: 48)
-                        Text("\(offices.count) مراكز")
-                            .font(.caption2.weight(.black))
-                            .foregroundStyle(URColor.deepNavy)
-                    }
-                }
-                .padding(14).background(URColor.premiumGold.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
+                ZStack(alignment: .bottomTrailing) {
+                    Image("OfficesHero").resizable().scaledToFill().frame(height: 190).clipped()
+                    LinearGradient(colors: [.clear, URColor.deepNavy.opacity(0.96)], startPoint: .top, endPoint: .bottom)
+                    VStack(alignment: .trailing, spacing: 5) {
+                        Label("مراكزنا المعتمدة", systemImage: "checkmark.seal.fill").font(.title2.weight(.black))
+                        Text("دليل مباشر من نظام أور — الصورة للعرض فقط").font(.caption).foregroundStyle(.white.opacity(0.82))
+                        HStack(spacing: 8) {
+                            Text("\(offices.count) مركز").font(.caption.weight(.black)).padding(.horizontal, 10).padding(.vertical, 5).background(URColor.premiumGold, in: Capsule()).foregroundStyle(URColor.deepNavy)
+                            if let lastUpdated { Text("حُدّث " + lastUpdated.formatted(date: .omitted, time: .shortened)).font(.caption2).foregroundStyle(.white.opacity(0.78)) }
+                        }
+                    }.foregroundStyle(.white).padding(16).frame(maxWidth: .infinity, alignment: .trailing)
+                }.frame(height: 190).clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 if isOffline {
                     HStack(spacing: 10) {
                         Button("إعادة المحاولة") { Task { await loadOffices() } }.font(.caption.weight(.bold)).foregroundStyle(URColor.royalBlue)
@@ -102,8 +118,10 @@ struct OfficesView: View {
                 } else if isLoading {
                     HStack { ProgressView(); Text("تحديث دليل المراكز…").font(.caption).foregroundStyle(.secondary) }.padding(.vertical, 4)
                 }
-                ForEach(offices) { office in
-                    OfficeCard(office: office)
+                ForEach(groupedOffices, id: \.country) { group in
+                    HStack { Spacer(); Text(group.country).font(.title3.weight(.black)); Image(systemName: "globe.asia.australia.fill").foregroundStyle(URColor.premiumGold) }
+                        .foregroundStyle(URColor.deepNavy).padding(.top, 5)
+                    ForEach(group.offices) { office in OfficeCard(office: office) }
                 }
                 if !isLoading && offices.isEmpty {
                     ContentUnavailableView("لا توجد مراكز موثقة متاحة", systemImage: "building.2.crop.circle", description: Text("لا نعرض بيانات احتياطية غير صادرة من نظام UR."))
@@ -123,8 +141,9 @@ struct OfficesView: View {
         defer { isLoading = false }
         do {
             let remote = try await api.offices()
-            if !remote.isEmpty { offices = remote }
+            offices = remote.filter(\.verified)
             isOffline = false
+            lastUpdated = .now
         } catch {
             isOffline = true
         }
@@ -1603,10 +1622,14 @@ private struct URNativeOwnerOrderView: View {
 
 struct URRatesWorkspace<Content: View>: View {
     let content: Content
+    @State private var tomanRate: Decimal?
+    @State private var tomanSourceDate: Date?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     init(@ViewBuilder content: () -> Content) { self.content = content() }
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 0) {
+            VStack(spacing: 0) {
+              HStack(spacing: 0) {
                 NavigationLink { AgentJoinView() } label: {
                     HStack(spacing: 10) {
                         Image(systemName: "arrow.left.circle.fill").font(.title3)
@@ -1624,9 +1647,11 @@ struct URRatesWorkspace<Content: View>: View {
                         Text("دخول").font(.caption2.weight(.black))
                     }.frame(width: 66).frame(minHeight: 62).background(.black.opacity(0.14))
                 }.accessibilityLabel("دخول الوكلاء الحاليين")
+              }
+              AgentRecruitmentTicker(reduceMotion: reduceMotion)
             }
             .foregroundStyle(.white)
-            .background(LinearGradient(colors: [Color(red: 0.86, green: 0.08, blue: 0.12), Color(red: 0.62, green: 0.02, blue: 0.08)], startPoint: .topTrailing, endPoint: .bottomLeading))
+            .background(LinearGradient(colors: [Color(red: 0.74, green: 0.02, blue: 0.08), Color(red: 0.43, green: 0.00, blue: 0.05)], startPoint: .topTrailing, endPoint: .bottomLeading))
             .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 15).stroke(.white.opacity(0.25)))
             .shadow(color: Color.red.opacity(0.18), radius: 8, y: 4)
@@ -1639,13 +1664,63 @@ struct URRatesWorkspace<Content: View>: View {
                         Text("سعر مباشر · عمولة الخدمة 0 · بوابات الدفع المتاحة").font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.78))
                     }
                     Spacer()
-                    Text("IRT").font(.caption.weight(.black)).padding(.horizontal, 9).padding(.vertical, 5).background(.white.opacity(0.12), in: Capsule())
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(tomanRate.map { urFormatTomanRate($0) } ?? "السعر غير متاح").font(.subheadline.weight(.black)).monospacedDigit()
+                        Text(tomanRateSubtitle).font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.72))
+                    }.environment(\.layoutDirection, .leftToRight).padding(.horizontal, 10).padding(.vertical, 6).background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
                 }.foregroundStyle(.white).padding(.horizontal, 14).frame(minHeight: 62)
                     .background(LinearGradient(colors: [URColor.deepNavy, Color(red: 0.02, green: 0.28, blue: 0.30)], startPoint: .trailing, endPoint: .leading), in: RoundedRectangle(cornerRadius: 16))
             }.padding(.horizontal, 11).padding(.bottom, 7)
             content
         }.background(URColor.ivory).tint(URColor.royalBlue)
+            .task { await loadTomanRate() }
     }
+
+    private func loadTomanRate() async {
+        guard let url = URL(string: "https://www.urremit.com/api/native/prices"),
+              let (data, response) = try? await URLSession.shared.data(from: url),
+              let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let rows = payload["data"] as? [[String: Any]],
+              let row = rows.first(where: { urText($0, "sourceCurrency").uppercased() == "USD" && urText($0, "destinationCurrency").uppercased() == "IRT" }),
+              let raw = row["sell"] ?? row["buy"],
+              let value = Decimal(string: String(describing: raw)) else { return }
+        tomanRate = value
+        tomanSourceDate = ISO8601DateParser.date(from: urText(row, "sourceTimestamp"))
+    }
+
+    private var tomanRateSubtitle: String {
+        guard tomanRate != nil else { return "تعذّر التحديث" }
+        guard let source = tomanSourceDate else { return "تومان لكل 1$ · آخر سعر منشور" }
+        let formatter = RelativeDateTimeFormatter(); formatter.locale = Locale(identifier: "ar"); formatter.unitsStyle = .short
+        let age = formatter.localizedString(for: source, relativeTo: .now)
+        let freshness = Date().timeIntervalSince(source) > 60 * 30 ? "آخر سعر منشور" : "سعر محدث"
+        return "تومان لكل 1$ · \(freshness) \(age)"
+    }
+}
+
+private struct AgentRecruitmentTicker: View {
+    let reduceMotion: Bool
+    private let tickerText = "العراق  •  الخليج  •  أوروبا  •  وكل دول العالم  •  انضم إلى شبكة أور  •  "
+    var body: some View {
+        GeometryReader { proxy in
+            if reduceMotion {
+                Text(tickerText).lineLimit(1).font(.caption2.weight(.black)).frame(maxWidth: .infinity)
+            } else {
+                TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                    let progress = timeline.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 18) / 18
+                    Text(tickerText + tickerText).lineLimit(1).font(.caption2.weight(.black)).fixedSize()
+                        .offset(x: proxy.size.width - CGFloat(progress) * (proxy.size.width * 2.2))
+                }
+            }
+        }.frame(height: 24).clipped().background(.black.opacity(0.18)).accessibilityLabel("مطلوب وكلاء في العراق وكل دول العالم")
+    }
+}
+
+private func urFormatTomanRate(_ value: Decimal) -> String {
+    let number = NSDecimalNumber(decimal: value)
+    let formatter = NumberFormatter(); formatter.numberStyle = .decimal; formatter.maximumFractionDigits = 0
+    return (formatter.string(from: number) ?? number.stringValue) + " تومان"
 }
 
 private struct TomanAccountDepositView: View {
