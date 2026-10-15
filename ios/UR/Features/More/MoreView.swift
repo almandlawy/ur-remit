@@ -1600,13 +1600,17 @@ struct URRatesWorkspace<Content: View>: View {
     init(@ViewBuilder content: () -> Content) { self.content = content() }
     var body: some View {
         VStack(spacing: 0) {
-            content
             HStack(spacing: 10) {
-                NavigationLink { AgentJoinView() } label: { Label("انضم كوكيل", systemImage: "building.2.crop.circle") }
-                NavigationLink { AgentPortalEntryView() } label: { Label("دخول الوكلاء", systemImage: "person.badge.key.fill") }
+                NavigationLink { AgentJoinView() } label: {
+                    Label("انضم كوكيل", systemImage: "building.2.crop.circle.fill").frame(maxWidth: .infinity, minHeight: 42)
+                }
+                NavigationLink { AgentPortalEntryView() } label: {
+                    Label("دخول الوكلاء", systemImage: "person.badge.key.fill").frame(maxWidth: .infinity, minHeight: 42)
+                }
             }
-            .font(.caption.weight(.black)).foregroundStyle(URColor.deepNavy).padding(10)
-            .background(.white).overlay(alignment: .top) { Divider() }
+            .font(.caption.weight(.black)).foregroundStyle(URColor.deepNavy).padding(.horizontal, 12).padding(.vertical, 8)
+            .background(URColor.ivory).overlay(alignment: .bottom) { Divider() }
+            content
         }.background(URColor.ivory).tint(URColor.royalBlue)
     }
 }

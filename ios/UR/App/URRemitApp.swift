@@ -1,5 +1,6 @@
 import SwiftUI
 import AuthenticationServices
+import GoogleSignInSwift
 import OSLog
 import WidgetKit
 
@@ -170,26 +171,11 @@ struct AuthView: View {
                                 .frame(height: 50)
                                 .cornerRadius(14)
 
-                                Button {
+                                GoogleSignInButton(viewModel: GoogleSignInButtonViewModel(scheme: .light, style: .wide, state: .normal)) {
                                     Task { await auth.signInWithGoogle() }
-                                } label: {
-                                    HStack(spacing: 10) {
-                                        Image(systemName: "g.circle.fill")
-                                            .font(.title3)
-                                            .foregroundStyle(URColor.royalBlue)
-
-                                        Text("تسجيل الدخول بواسطة Google")
-                                            .font(.subheadline.weight(.bold))
-                                            .foregroundStyle(URColor.deepNavy)
-                                    }
-                                    .frame(maxWidth: .infinity, minHeight: 50)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                            .stroke(URColor.hairline, lineWidth: 1)
-                                            .background(Color.white, in: RoundedRectangle(cornerRadius: 14))
-                                    )
                                 }
-                                .buttonStyle(.plain)
+                                .frame(maxWidth: .infinity, minHeight: 50, maxHeight: 50)
+                                .accessibilityLabel("تسجيل الدخول باستخدام Google")
                             }
 
                             HStack {

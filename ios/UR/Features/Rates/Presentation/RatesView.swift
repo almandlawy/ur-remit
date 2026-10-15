@@ -56,12 +56,16 @@ struct RatesView: View {
                         }
                     }
                 }
-                WhatsAppSupportButton(scale: scale) {
-                    guard let url = URL(string: "https://wa.me/971551754032?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%AF%D8%B9%D9%85%20UR%20Global") else { return }
-                    openURL(url)
-                }
             }
             .padding(.horizontal, 11 * scale).padding(.top, 2).padding(.bottom, 100 * scale)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            WhatsAppSupportButton(scale: scale) {
+                guard let url = URL(string: "https://wa.me/971551754032?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%AF%D8%B9%D9%85%20UR%20Global") else { return }
+                openURL(url)
+            }
+            .padding(.trailing, 18 * scale)
+            .padding(.bottom, 18 * scale)
         }
         .refreshable { await model.load() }
     }

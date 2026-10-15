@@ -36,6 +36,7 @@
 		A5616FC2011F291FE04E400F /* SmartNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18D225FD4208B3DBC2A725E6 /* SmartNotificationService.swift */; };
 		A5CAFEBCDB002CE7246EA620 /* DeleteAccountService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E9F7D8925194F5736A3482C /* DeleteAccountService.swift */; };
 		AE69A7F42100D8670786DB56 /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 280667B7F029B5EFE2484D3E /* AppContainer.swift */; };
+		B5E7CA2EC40C0A93F8CDC80A /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 8891ED3249F54ACED926E8FD /* GoogleSignInSwift */; };
 		B95F008D6F5138A408D43586 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92361D0BABF7531EF45E4CA5 /* HomeView.swift */; };
 		BC1D49AA513859D2303AA8D7 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 982003CA002FFAFC6640E6CA /* PrivacyInfo.xcprivacy */; };
 		C17165212B6272A332F6C2BF /* Rate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98A47F3F61803B8D2F2B7BC6 /* Rate.swift */; };
@@ -151,6 +152,17 @@
 		F653470FC848F68D758CC689 /* AccountDeletedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountDeletedView.swift; sourceTree = "<group>"; };
 		F6A6003C031698962EEB9DAA /* URWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = URWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		FA9D9556D062C441D84D5928 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B5E7CA2EC40C0A93F8CDC80A /* GoogleSignInSwift in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		0E344DD6B6C0CB3E4870551D /* DesignSystem */ = {
@@ -415,6 +427,7 @@
 			buildPhases = (
 				2A425BDAE2CB4A040FDE7208 /* Sources */,
 				989E7E5ADE3CD800D9D50CD4 /* Resources */,
+				FA9D9556D062C441D84D5928 /* Frameworks */,
 				D429D709C304C094652C80D8 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
@@ -425,6 +438,7 @@
 			);
 			name = URRemit;
 			packageProductDependencies = (
+				8891ED3249F54ACED926E8FD /* GoogleSignInSwift */,
 			);
 			productName = URRemit;
 			productReference = 0C8D40B3DBD54C5596D36304 /* URRemit.app */;
@@ -543,6 +557,9 @@
 			);
 			mainGroup = AE2B69B9B88665EC1AFAA015;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				46ACAF47E265A392311FED9A /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2EE485F612DD2509A6CAC7A1 /* Products */;
 			projectDirPath = "";
@@ -1047,6 +1064,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		46ACAF47E265A392311FED9A /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		8891ED3249F54ACED926E8FD /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46ACAF47E265A392311FED9A /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = D4BE430BD82FFCBD0D56A72C /* Project object */;
 }
