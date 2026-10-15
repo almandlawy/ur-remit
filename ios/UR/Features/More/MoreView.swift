@@ -291,7 +291,7 @@ final class URNativeAPI: ObservableObject {
         let generation = sessionGeneration
         var request = URLRequest(url: url)
         request.httpMethod = method
-        request.timeoutInterval = 30
+        request.timeoutInterval = method == "GET" ? 12 : 30
         request.setValue(contentType, forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("URGlobal-iOS/Native", forHTTPHeaderField: "User-Agent")
@@ -319,6 +319,10 @@ final class URNativeAPI: ObservableObject {
             token = cookie.value
         }
         return json
+    }
+    func serializedRequest(_ path: String) async throws -> Data {
+        let json = try await request(path)
+        return try JSONSerialization.data(withJSONObject: json)
     }
     private func send(_ request: URLRequest) async throws -> (Data, URLResponse) {
         do { return try await session.data(for: request) }
@@ -811,6 +815,10 @@ private struct URNativeTransferForm: View {
     @State private var methods: [[String: Any]] = []
     @State private var offices: [[String: Any]] = []
     @State private var routes: [[String: Any]] = []
+    @AppStorage("URTransferCache.methods") private var cachedMethods = ""
+    @AppStorage("URTransferCache.offices") private var cachedOffices = ""
+    @AppStorage("URTransferCache.routes") private var cachedRoutes = ""
+    @State private var loadingReferences = false
     @State private var quote: [String: Any] = [:]
     @State private var message = ""
     @State private var busy = false
@@ -848,7 +856,16 @@ private struct URNativeTransferForm: View {
     }
     private var senderSection: some View {
         Section("١ · دولة الإرسال وبيانات المرسل") {
-            Picker("جهة الإرسال", selection: $senderCountry) { Text("اختر").tag(""); ForEach(origins, id: \.self) { Text($0).tag($0) } }.pickerStyle(.navigationLink)
+            if origins.isEmpty {
+                HStack(spacing: 10) {
+                    if loadingReferences { ProgressView() }
+                    Text(loadingReferences ? "جاري تحميل الدول…" : "تعذر تحميل الدول")
+                    Spacer()
+                    if !loadingReferences { Button("إعادة المحاولة") { Task { await load() } } }
+                }
+            } else {
+                Picker("جهة الإرسال", selection: $senderCountry) { Text("اختر").tag(""); ForEach(origins, id: \.self) { Text($0).tag($0) } }.pickerStyle(.navigationLink)
+            }
             TextField("اسم المرسل الكامل", text: $senderName).focused($focusedField, equals: .senderName)
             TextField("هاتف المرسل مع رمز الدولة", text: $senderPhone).keyboardType(.phonePad).focused($focusedField, equals: .senderPhone)
             TextField("عنوان المرسل", text: $senderAddress).focused($focusedField, equals: .senderAddress)
@@ -915,6 +932,7 @@ private struct URNativeTransferForm: View {
                 let owner = auth.isAuthenticated ? (auth.email?.lowercased() ?? "anonymous") : "anonymous"
                 if !draftOwner.isEmpty && draftOwner != owner { clearDraftForDifferentUser() }
                 draftOwner = owner
+                restoreReferenceCache()
                 await api.resumeCustomerAccount(appEmail: auth.isAuthenticated ? auth.email : nil); await load()
             }
             .onChange(of: amount) { _, _ in quote = [:] }
@@ -923,17 +941,48 @@ private struct URNativeTransferForm: View {
             .onChange(of: receiverCountry) { _, _ in quote = [:]; payout = 0 }
             .onChange(of: feeMode) { _, _ in quote = [:] }
     }
+    private func cachedRows(_ value: String) -> [[String: Any]] {
+        guard let data = value.data(using: .utf8) else { return [] }
+        return (try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]] ?? []
+    }
+    private func cache(_ rows: [[String: Any]]) -> String {
+        guard JSONSerialization.isValidJSONObject(rows),
+              let data = try? JSONSerialization.data(withJSONObject: rows) else { return "" }
+        return String(data: data, encoding: .utf8) ?? ""
+    }
+    private func restoreReferenceCache() {
+        if methods.isEmpty { methods = cachedRows(cachedMethods) }
+        if offices.isEmpty { offices = cachedRows(cachedOffices) }
+        if routes.isEmpty { routes = cachedRows(cachedRoutes) }
+    }
     private func load() async {
+        guard !loadingReferences else { return }
+        loadingReferences = true
+        defer { loadingReferences = false }
         do {
-            methods = try await api.request("/api/payment-methods")["methods"] as? [[String: Any]] ?? []
-            offices = try await api.request("/api/offices")["offices"] as? [[String: Any]] ?? []
-            routes = try await api.request("/api/routes")["routes"] as? [[String: Any]] ?? []
+            async let methodsResponse = api.serializedRequest("/api/payment-methods")
+            async let officesResponse = api.serializedRequest("/api/offices")
+            async let routesResponse = api.serializedRequest("/api/routes")
+            let (methodsData, officesData, routesData) = try await (methodsResponse, officesResponse, routesResponse)
+            let methodsJSON = try JSONSerialization.jsonObject(with: methodsData) as? [String: Any] ?? [:]
+            let officesJSON = try JSONSerialization.jsonObject(with: officesData) as? [String: Any] ?? [:]
+            let routesJSON = try JSONSerialization.jsonObject(with: routesData) as? [String: Any] ?? [:]
+            let freshMethods = methodsJSON["methods"] as? [[String: Any]] ?? []
+            let freshOffices = officesJSON["offices"] as? [[String: Any]] ?? []
+            let freshRoutes = routesJSON["routes"] as? [[String: Any]] ?? []
+            if !freshMethods.isEmpty { methods = freshMethods; cachedMethods = cache(freshMethods) }
+            if !freshOffices.isEmpty { offices = freshOffices; cachedOffices = cache(freshOffices) }
+            if !freshRoutes.isEmpty { routes = freshRoutes; cachedRoutes = cache(freshRoutes) }
             if !origins.contains(senderCountry) { senderCountry = ""; collection = 0 }
             if !destinations.contains(receiverCountry) { receiverCountry = ""; payout = 0 }
             if !method.isEmpty && !methods.contains(where: { urText($0, "id") == method && $0["available"] as? Bool == true }) { method = ""; message = "طريقة الإيداع السابقة غير متوفرة؛ اختر طريقة أخرى" }
             if senderName.isEmpty { senderName = api.profile["name"] ?? "" }; if senderPhone.isEmpty { senderPhone = api.profile["phone"] ?? "" }
         } catch is CancellationError { return }
-        catch { message = error.localizedDescription }
+        catch {
+            message = offices.isEmpty
+                ? "تعذر تحميل الدول خلال الوقت المحدد. تحقق من الاتصال واضغط إعادة المحاولة."
+                : "تعذر تحديث القوائم الآن؛ يمكنك المتابعة بآخر بيانات محفوظة."
+        }
     }
     private func calculate() async {
         guard !busy && !submitted else { return }
