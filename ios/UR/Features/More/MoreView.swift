@@ -820,6 +820,7 @@ private struct URNativeTransferForm: View {
     private var origins: [String] { Array(Set(offices.compactMap { $0["country"] as? String })).sorted() }
     private var destinations: [String] { origins }
     private var hasPricedRoute: Bool { routes.contains { urText($0, "origin") == senderCountry && urText($0, "destination") == receiverCountry } }
+    private var quoteWithinLimits: Bool { quote["withinLimits"] as? Bool == true }
     private var bankAccounts: [[String: Any]] { methods.first { urText($0, "id") == "bank" }?["accounts"] as? [[String: Any]] ?? [] }
     private var payoutOffice: [String: Any] { offices.first { ($0["id"] as? Int ?? 0) == payout } ?? [:] }
     private func officeLabel(_ office: [String: Any]) -> String {
@@ -854,7 +855,8 @@ private struct URNativeTransferForm: View {
             TextField("المبلغ بالدولار USD", text: $amount).keyboardType(.decimalPad).focused($focusedField, equals: .amount)
             Picker("احتساب العمولة", selection: $feeMode) { Text("فوق المبلغ").tag("added"); Text("تنخصم من المبلغ").tag("deducted") }.pickerStyle(.segmented)
             Text(feeMode == "added" ? "المستفيد يستلم قيمة المبلغ كاملة، وتدفع العمولة فوقها." : "تدفع المبلغ المحدد، وتُخصم العمولة قبل تحويل الصافي للمستفيد.").font(.footnote).foregroundStyle(.secondary)
-            Button("احسب السعر والرسوم") { Task { await calculate() } }.buttonStyle(.borderedProminent).controlSize(.large).disabled(busy || !hasPricedRoute || payout == 0 || senderCountry.isEmpty)
+            if !senderCountry.isEmpty && !receiverCountry.isEmpty && !hasPricedRoute { Text("هذا المسار غير موجود في قائمة الأسعار المعتمدة حالياً؛ لا يمكن إنشاء مبلغ أو طلب دفع له.").font(.footnote).foregroundStyle(.red) }
+            Button("احسب السعر والرسوم") { focusedField = nil; Task { await calculate() } }.buttonStyle(.borderedProminent).controlSize(.large).disabled(busy || payout == 0 || senderCountry.isEmpty || receiverCountry.isEmpty || urDigits(amount).isEmpty)
             if !quote.isEmpty {
                 LabeledContent("سعر الصرف", value: urText(quote, "rate"))
                 LabeledContent("عمولة المسار لكل 10,000$", value: urText(quote, "routeCommission") + " USD")
@@ -865,13 +867,16 @@ private struct URNativeTransferForm: View {
                 Text("السعر بتاريخ " + urText(quote, "sourceTimestamp")).font(.footnote)
                 Text("هذا عرض الخادم المعتمد؛ عند التأكيد ينتقل الطلب مباشرة إلى انتظار الدفع.").font(.footnote)
                 Text("حدود التنفيذ المباشر: " + urText(quote, "minAmount") + " — " + urText(quote, "maxAmount") + " USD").font(.caption)
+                if !quoteWithinLimits { Text("المبلغ خارج الحدود المعتمدة لهذا المسار؛ عدّله قبل الانتقال للدفع.").font(.footnote.weight(.semibold)).foregroundStyle(.red) }
             }
         }
     }
     private var paymentSection: some View {
         Section("٤ · طريقة الإيداع") {
             Picker("طريقة الدفع", selection: $method) { Text("اختر طريقة الإيداع").tag(""); ForEach(methods.indices, id: \.self) { i in if methods[i]["available"] as? Bool == true { Text(urText(methods[i], "name")).tag(urText(methods[i], "id")) } } }.pickerStyle(.navigationLink)
-            ForEach(methods.indices, id: \.self) { i in URNativePaymentBrandRow(method: methods[i]) }
+            ForEach(methods.indices, id: \.self) { i in
+                Button { focusedField = nil; method = urText(methods[i], "id") } label: { URNativePaymentBrandRow(method: methods[i], selected: method == urText(methods[i], "id")) }.buttonStyle(.plain)
+            }
             if method == "bank" {
                 Picker("حساب الإيداع AED", selection: $bankAccountId) { ForEach(bankAccounts.indices, id: \.self) { i in Text(urText(bankAccounts[i], "bankName")).tag(urText(bankAccounts[i], "id")) } }
                 Text("يظهر مبلغ الإيداع بالدرهم بعد اعتماد عرض السعر، مع اسم المستفيد والآيبان.").font(.footnote)
@@ -890,7 +895,7 @@ private struct URNativeTransferForm: View {
                 if api.profile.isEmpty && !auth.isAuthenticated { NavigationLink("تسجيل الدخول لإرسال الطلب") { URNativeAccountView() } }
                 else {
                     if api.profile.isEmpty { Toggle("أوافق على شروط خدمة الحوالات", isOn: $accountTermsAccepted) }
-                    Button(submitted ? "تم إنشاء الطلب" : busy ? "جاري الإنشاء…" : "تأكيد الطلب والانتقال للدفع") { Task { await submitTransfer() } }.buttonStyle(.borderedProminent).controlSize(.large).disabled(busy || submitted || quote.isEmpty || method.isEmpty || (api.profile.isEmpty && !accountTermsAccepted)) }
+                    Button(submitted ? "تم إنشاء الطلب" : busy ? "جاري الإنشاء…" : "تأكيد الطلب والانتقال للدفع") { Task { await submitTransfer() } }.buttonStyle(.borderedProminent).controlSize(.large).disabled(busy || submitted || quote.isEmpty || !quoteWithinLimits || method.isEmpty || (api.profile.isEmpty && !accountTermsAccepted)) }
                 if submitted {
                     Text("رقم الطلب: " + requestId).font(.footnote).textSelection(.enabled)
                     Text("الطلب محفوظ وعرض السعر جاهز. إثبات أو TXID لا يعني أن الدفع تحقق.").font(.footnote)
@@ -913,7 +918,6 @@ private struct URNativeTransferForm: View {
             .onChange(of: senderCountry) { _, _ in quote = [:]; collection = 0; receiverCountry = ""; payout = 0 }
             .onChange(of: receiverCountry) { _, _ in quote = [:]; payout = 0 }
             .onChange(of: feeMode) { _, _ in quote = [:] }
-            .onChange(of: method) { _, _ in quote = [:] }
     }
     private func load() async {
         do {
@@ -924,7 +928,8 @@ private struct URNativeTransferForm: View {
             if !destinations.contains(receiverCountry) { receiverCountry = ""; payout = 0 }
             if !method.isEmpty && !methods.contains(where: { urText($0, "id") == method && $0["available"] as? Bool == true }) { method = ""; message = "طريقة الإيداع السابقة غير متوفرة؛ اختر طريقة أخرى" }
             if senderName.isEmpty { senderName = api.profile["name"] ?? "" }; if senderPhone.isEmpty { senderPhone = api.profile["phone"] ?? "" }
-        } catch { message = error.localizedDescription }
+        } catch is CancellationError { return }
+        catch { message = error.localizedDescription }
     }
     private func calculate() async {
         guard !busy && !submitted else { return }
@@ -937,6 +942,7 @@ private struct URNativeTransferForm: View {
             let result = try await api.request(components.string ?? "")["quote"] as? [String: Any] ?? [:]
             guard input == [senderCountry, receiverCountry, String(payout), urDigits(amount), feeMode] else { throw URNativeError.message("تغيرت بيانات الحسبة؛ احسب مرة ثانية") }
             guard !result.isEmpty else { throw URNativeError.message("لم يصل عرض السعر") }; quote = result
+            if result["withinLimits"] as? Bool != true { message = "المبلغ المسموح لهذا المسار من " + urText(result, "minAmount") + " إلى " + urText(result, "maxAmount") + " دولار." }
         } catch { message = error.localizedDescription }
     }
     private func submitTransfer() async {
@@ -1636,6 +1642,7 @@ private struct URNativePayPalSettingsView: View {
 
 private struct URNativePaymentBrandRow: View {
     let method: [String: Any]
+    var selected = false
     private var id: String { urText(method, "id") }
     private var brand: String { ["usdt_trc20": "tron", "usdt_erc20": "ethereum"][id] ?? id }
     var body: some View {
@@ -1651,9 +1658,9 @@ private struct URNativePaymentBrandRow: View {
                 if id == "usdt_erc20" { Text("شبكة Ethereum").font(.caption).foregroundStyle(.secondary) }
             }
             Spacer()
-            Text(method["available"] as? Bool == true ? (urText(method, "environment", fallback: "") == "sandbox" ? "اختبار فقط" : "متوفر") : "غير متوفر")
-                .font(.caption.weight(.semibold)).padding(8).background(URColor.ivory).clipShape(Capsule())
-        }.padding(.vertical, 5)
+            if selected { Image(systemName: "checkmark.circle.fill").foregroundStyle(URColor.royalBlue) }
+            else { Text(method["available"] as? Bool == true ? (urText(method, "environment", fallback: "") == "sandbox" ? "اختبار فقط" : "متوفر") : "غير متوفر").font(.caption.weight(.semibold)).padding(8).background(URColor.ivory).clipShape(Capsule()) }
+        }.padding(.vertical, 5).contentShape(Rectangle())
     }
 }
 private struct URNativePayPalPreview: View {
