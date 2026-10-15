@@ -1146,14 +1146,16 @@ private struct URNativeOrderView: View {
                 if !urText(order, "review_reason", fallback: "").isEmpty { Text("ملاحظة الإدارة: " + urText(order, "review_reason")).foregroundStyle(.red) }
                 Section("تفاصيل الإيداع") {
                     LabeledContent("طريقة الدفع", value: urText(paymentMethod, "name", fallback: urText(order, "method")))
-                    Text("المبلغ المطلوب: " + urText(quote, "total") + " " + urText(quote, "paymentCurrency")).font(.headline).foregroundStyle(URColor.deepNavy)
+                    legacyPaymentCard(title: "المبلغ المطلوب دفعه", value: urText(quote, "total") + " " + urText(quote, "paymentCurrency"), color: URColor.deepNavy, valueColor: .yellow, icon: "dollarsign.circle.fill")
                     if urText(order, "method") == "superqi" {
                         let beneficiary = urText(paymentMethod, "beneficiary", fallback: "")
                         let account = urText(paymentMethod, "account", fallback: "")
                         if !beneficiary.isEmpty && !account.isEmpty {
-                            LabeledContent("اسم صاحب الحساب", value: beneficiary)
-                            LabeledContent("رقم حساب SuperQi", value: account).environment(\.layoutDirection, .leftToRight).textSelection(.enabled)
-                            Button("نسخ رقم الحساب") { UIPasteboard.general.string = account }
+                            legacyPaymentCard(title: "اسم صاحب الحساب", value: beneficiary, color: .orange, valueColor: .white, icon: "person.crop.circle.fill")
+                            legacyPaymentCard(title: "رقم حساب SuperQi", value: account, color: URColor.royalBlue, valueColor: .white, icon: "number.circle.fill")
+                            Button { UIPasteboard.general.string = account } label: {
+                                Label("نسخ رقم الحساب", systemImage: "doc.on.doc.fill").font(.headline.weight(.black)).frame(maxWidth: .infinity).padding(.vertical, 7)
+                            }.buttonStyle(.borderedProminent).tint(URColor.royalBlue)
                             Text(urText(paymentMethod, "instructions", fallback: "حوّل المبلغ الظاهر فقط، ثم أرفق المرجع والإثبات.")).font(.footnote).foregroundStyle(.secondary)
                             Text("الإيداع يدوي وتراجعه الإدارة. رفع الإثبات وحده لا يعني وصول المبلغ.").font(.footnote.weight(.semibold)).foregroundStyle(URColor.deepNavy)
                         } else { Text("بيانات حساب SuperQi غير مكتملة. لا تحوّل المبلغ وراجع الدعم.").foregroundStyle(.red) }
@@ -1171,9 +1173,9 @@ private struct URNativeOrderView: View {
                         Text(urText(office, "phone")).textSelection(.enabled)
                     }
                     if let account = (quote["bankAccount"] ?? payload["bankAccount"]) as? [String: Any] {
-                        Text(urText(account, "beneficiary")).textSelection(.enabled)
+                        legacyPaymentCard(title: "اسم صاحب الحساب", value: urText(account, "beneficiary"), color: .orange, valueColor: .white, icon: "person.crop.circle.fill")
                         Text(urText(account, "bankName"))
-                        Text("IBAN: " + urText(account, "iban")).environment(\.layoutDirection, .leftToRight).textSelection(.enabled)
+                        legacyPaymentCard(title: "رقم IBAN", value: urText(account, "iban"), color: URColor.royalBlue, valueColor: .white, icon: "number.circle.fill")
                         Text("Account: " + urText(account, "account")).environment(\.layoutDirection, .leftToRight).textSelection(.enabled)
                         if !urText(account, "bic", fallback: "").isEmpty { Text("BIC: " + urText(account, "bic")).textSelection(.enabled) }
                     } else if urText(order, "method") == "bank" { Text("تعذر عرض الحساب البنكي المعتمد؛ راجع الدعم قبل الإيداع.").foregroundStyle(.red) }
@@ -1220,6 +1222,17 @@ private struct URNativeOrderView: View {
                     fileData = try Data(contentsOf: url); fileType = url.pathExtension.lowercased() == "pdf" ? "application/pdf" : url.pathExtension.lowercased() == "png" ? "image/png" : "image/jpeg"
                 } catch { message = error.localizedDescription }
             }
+    }
+    private func legacyPaymentCard(title: String, value: String, color: Color, valueColor: Color, icon: String) -> some View {
+        VStack(alignment: .trailing, spacing: 9) {
+            Label(title, systemImage: icon).font(.headline.weight(.black)).foregroundStyle(.white)
+            Text(value).font(.system(size: 29, weight: .black, design: .rounded)).foregroundStyle(valueColor)
+                .frame(maxWidth: .infinity, alignment: .trailing).environment(\.layoutDirection, .leftToRight).textSelection(.enabled)
+        }
+        .padding(18).frame(maxWidth: .infinity, minHeight: 108, alignment: .trailing)
+        .background(color, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(.white.opacity(0.6), lineWidth: 2))
+        .shadow(color: color.opacity(0.42), radius: 9, y: 4)
     }
     private func reload() async {
         do { let result = try await api.request("/api/customer/checkout"); if let rows = result["orders"] as? [[String: Any]], let latest = rows.first(where: { urText($0, "id") == urText(order, "id") }) { order = latest } }
