@@ -994,7 +994,7 @@ private struct URNativeInlinePaymentCompletion: View {
             VStack(alignment: .trailing, spacing: 5) {
                 Text("المبلغ المطلوب دفعه").font(.subheadline.weight(.bold)).foregroundStyle(.white.opacity(0.82))
                 Text(urText(quote, "total") + " " + urText(quote, "paymentCurrency"))
-                    .font(.system(size: 28, weight: .black, design: .rounded)).foregroundStyle(.white)
+                    .font(.system(size: 34, weight: .black, design: .rounded)).foregroundStyle(.yellow)
                     .environment(\.layoutDirection, .leftToRight).textSelection(.enabled)
             }
             .frame(maxWidth: .infinity, alignment: .trailing).padding(16)
@@ -1066,13 +1066,14 @@ private struct URNativeInlinePaymentCompletion: View {
     }
     private func paymentValueCard(title: String, value: String, systemImage: String, accent: Color) -> some View {
         VStack(alignment: .trailing, spacing: 8) {
-            Label(title, systemImage: systemImage).font(.subheadline.weight(.black)).foregroundStyle(accent)
-            Text(value).font(.system(.title3, design: .rounded, weight: .black)).foregroundStyle(URColor.deepNavy)
+            Label(title, systemImage: systemImage).font(.headline.weight(.black)).foregroundStyle(.white)
+            Text(value).font(.system(size: 27, weight: .black, design: .rounded)).foregroundStyle(.white)
                 .frame(maxWidth: .infinity, alignment: .trailing).environment(\.layoutDirection, .leftToRight).textSelection(.enabled)
         }
-        .padding(14).frame(maxWidth: .infinity, alignment: .trailing)
-        .background(accent.opacity(0.13), in: RoundedRectangle(cornerRadius: 15))
-        .overlay(RoundedRectangle(cornerRadius: 15).stroke(accent.opacity(0.75), lineWidth: 2))
+        .padding(18).frame(maxWidth: .infinity, minHeight: 104, alignment: .trailing)
+        .background(accent, in: RoundedRectangle(cornerRadius: 17))
+        .overlay(RoundedRectangle(cornerRadius: 17).stroke(.white.opacity(0.55), lineWidth: 2))
+        .shadow(color: accent.opacity(0.38), radius: 8, y: 4)
     }
     private func loadMethods() async { do { methods = try await api.request("/api/payment-methods")["methods"] as? [[String: Any]] ?? [] } catch { message = error.localizedDescription } }
     private func reload() async { do { let rows = try await api.request("/api/customer/checkout")["orders"] as? [[String: Any]] ?? []; if let latest = rows.first(where: { urText($0, "id") == urText(order, "id") }) { order = latest } } catch is CancellationError {} catch { message = error.localizedDescription } }
