@@ -26,12 +26,13 @@ struct AgentJoinView: View {
     private let businessType = "حوالات وصرافة"
     @State private var busy = false
     @State private var message = ""
+    @FocusState private var officeFocused: Bool
     var body: some View {
         ScrollView {
             VStack(alignment: .trailing, spacing: 16) {
-                AgentJoinGraphicHero(reduceMotion: reduceMotion)
+                AgentJoinGraphicHero(reduceMotion: reduceMotion) { officeFocused = true }
                 VStack(spacing: 12) {
-                    field("اسم المكتب", text: $officeName)
+                    field("اسم المكتب", text: $officeName).focused($officeFocused)
                     field("اسم المسؤول", text: $fullName)
                     field("البريد الإلكتروني", text: $email, keyboard: .emailAddress)
                     field("واتساب مع رمز الدولة", text: $whatsapp, keyboard: .phonePad)
@@ -56,36 +57,22 @@ struct AgentJoinView: View {
 
 private struct AgentJoinGraphicHero: View {
     let reduceMotion: Bool
-    private let marks: [(String, CGFloat, CGFloat, Double)] = [
-        ("dollarsign.circle.fill", 0.12, 0.24, 0), ("arrow.left.arrow.right.circle.fill", 0.82, 0.22, 1.1),
-        ("banknote.fill", 0.18, 0.76, 2.1), ("building.columns.fill", 0.82, 0.72, 3.0)
-    ]
+    let startApplication: () -> Void
     var body: some View {
-        TimelineView(.animation(minimumInterval: reduceMotion ? 60 : 1.0 / 20.0)) { timeline in
-            let time = reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
-            GeometryReader { proxy in
-                ZStack(alignment: .bottomTrailing) {
-                    Image("AgentMoneyBackground").resizable().scaledToFill()
-                    LinearGradient(colors: [URColor.deepNavy.opacity(0.94), URColor.deepNavy.opacity(0.56), Color.red.opacity(0.50)], startPoint: .bottomTrailing, endPoint: .topLeading)
-                    ForEach(marks.indices, id: \.self) { index in
-                        let mark = marks[index]
-                        Image(systemName: mark.0)
-                            .font(.system(size: index == 1 ? 34 : 27, weight: .bold))
-                            .foregroundStyle(index == 1 ? URColor.premiumGold : .white.opacity(0.82))
-                            .position(x: proxy.size.width * mark.1, y: proxy.size.height * mark.2 + CGFloat(sin(time + mark.3) * 5))
-                            .accessibilityHidden(true)
-                    }
-                    VStack(alignment: .trailing, spacing: 7) {
-                        Text("انضم إلى شبكة أور").font(.system(size: 29, weight: .black, design: .rounded))
-                        Text("شراكة حوالات وصيرفة بمسارات وصلاحيات تعتمدها الإدارة")
-                            .font(.subheadline.weight(.semibold)).foregroundStyle(.white.opacity(0.88)).multilineTextAlignment(.trailing)
-                        Label("طلب مكتب جديد", systemImage: "building.2.crop.circle.fill")
-                            .font(.caption.weight(.black)).foregroundStyle(URColor.deepNavy)
-                            .padding(.horizontal, 12).padding(.vertical, 7).background(URColor.premiumGold, in: Capsule())
-                    }
-                    .foregroundStyle(.white).padding(20).frame(maxWidth: .infinity, alignment: .trailing)
-                }
-            }
+        ZStack(alignment: .trailing) {
+            Image("AgentPremiumOffice").resizable().scaledToFill()
+            LinearGradient(colors: [URColor.deepNavy.opacity(0.05), URColor.deepNavy.opacity(0.98)], startPoint: .leading, endPoint: .trailing)
+            VStack(alignment: .trailing, spacing: 7) {
+                Text("UR GLOBAL").font(.caption.weight(.black)).tracking(1.1)
+                Text("انضم إلى شبكة وكلاء أور").font(.system(size: 25, weight: .black, design: .rounded)).minimumScaleFactor(0.74)
+                Text("قدّم طلبك وتابع حالته من التطبيق").font(.subheadline.weight(.semibold)).foregroundStyle(.white.opacity(0.84))
+                Button("قدّم طلب الانضمام", action: startApplication)
+                    .font(.headline.weight(.black)).foregroundStyle(URColor.deepNavy)
+                    .padding(.horizontal, 18).frame(height: 44)
+                    .background(LinearGradient(colors: [Color(red: 0.96, green: 0.78, blue: 0.42), URColor.premiumGold], startPoint: .top, endPoint: .bottom), in: RoundedRectangle(cornerRadius: 12))
+                NavigationLink("عندك حساب وكيل؟ تسجيل الدخول", destination: AgentPortalEntryView())
+                    .font(.caption.weight(.bold)).foregroundStyle(URColor.premiumGold).underline()
+            }.foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .trailing)
         }
         .frame(height: 230).clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 28).stroke(.white.opacity(0.32)))

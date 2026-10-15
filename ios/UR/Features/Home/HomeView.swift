@@ -45,39 +45,27 @@ struct HomeView: View {
 
     private var header: some View {
         ZStack {
-            Image("HomeGlobalHero").resizable().scaledToFill()
-            LinearGradient(colors: [URColor.deepNavy.opacity(0.20), URColor.deepNavy.opacity(0.94)], startPoint: .leading, endPoint: .trailing)
-            LinearGradient(colors: [.clear, .black.opacity(0.48)], startPoint: .top, endPoint: .bottom)
-            VStack(alignment: .trailing, spacing: 15) {
-                HStack(spacing: 11) {
-                    URBrandLogo(size: 48)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("أور جلوبال").font(.title2.weight(.black)).foregroundStyle(.white)
-                        Text("UR GLOBAL").font(.caption2.weight(.black)).tracking(1.4).foregroundStyle(URColor.premiumGold)
-                    }
+            Image("HomePremiumGlobe").resizable().scaledToFill()
+            LinearGradient(colors: [URColor.deepNavy.opacity(0.02), URColor.deepNavy.opacity(0.98)], startPoint: .leading, endPoint: .trailing)
+            VStack(alignment: .trailing, spacing: 9) {
+                HStack {
                     Spacer()
-                    NavigationLink { URNativeNotificationView(api: customerAPI) } label: {
-                        Image(systemName: "bell.badge.fill").font(.title3).foregroundStyle(URColor.premiumGold)
-                            .frame(width: 44, height: 44).background(.ultraThinMaterial.opacity(0.42), in: Circle()).overlay(Circle().stroke(.white.opacity(0.24)))
-                    }.accessibilityLabel("إشعارات الحساب")
+                    Text("UR GLOBAL").font(.caption.weight(.black)).tracking(1.2).foregroundStyle(.white)
                 }
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text(auth.isAuthenticated ? "حوالاتك توصل أبعد" : "أموالك معك في كل وجهة")
-                        .font(.title2.weight(.black)).foregroundStyle(.white).minimumScaleFactor(0.75)
-                    Text("أسعار واضحة · متابعة آمنة · شبكة عالمية")
-                        .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.82))
-                }.frame(maxWidth: .infinity, alignment: .trailing)
-                HStack(spacing: 8) {
-                    Label("متابعة مباشرة", systemImage: "location.north.circle.fill")
-                    Label("خدمة موثوقة", systemImage: "checkmark.shield.fill")
-                }.font(.caption2.weight(.bold)).foregroundStyle(.white)
-                    .padding(.horizontal, 10).padding(.vertical, 7)
-                    .background(.black.opacity(0.28), in: Capsule()).frame(maxWidth: .infinity, alignment: .trailing)
-            }
-            .padding(18)
+                Spacer()
+                Text("حوالاتك، بخطوات أوضح")
+                    .font(.system(size: 25, weight: .black, design: .rounded)).foregroundStyle(.white).minimumScaleFactor(0.72)
+                Text("أرسل وتابع حوالتك من مكان واحد")
+                    .font(.subheadline.weight(.semibold)).foregroundStyle(.white.opacity(0.84))
+                NavigationLink { URNativeTransferForm() } label: {
+                    Text("حوالة جديدة").font(.headline.weight(.black)).foregroundStyle(URColor.deepNavy)
+                        .frame(width: 152, height: 46).background(LinearGradient(colors: [Color(red: 0.96, green: 0.78, blue: 0.42), URColor.premiumGold], startPoint: .top, endPoint: .bottom), in: RoundedRectangle(cornerRadius: 13))
+                }.buttonStyle(.plain).accessibilityHint("يفتح نموذج إنشاء حوالة")
+            }.padding(18).frame(maxWidth: .infinity, alignment: .trailing)
         }.frame(height: 208).clipShape(RoundedRectangle(cornerRadius: 27, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 27).stroke(URColor.premiumGold.opacity(0.32)))
             .shadow(color: URColor.deepNavy.opacity(0.24), radius: 20, y: 10)
+            .accessibilityElement(children: .contain)
     }
 
     @ViewBuilder private var rateCard: some View {

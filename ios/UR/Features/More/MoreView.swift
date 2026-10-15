@@ -18,18 +18,23 @@ struct MoreView: View {
                     Spacer()
                     Button { adminTapCount += 1; if adminTapCount == 5 { adminTapCount = 0; showAdminLogin = true } } label: { Image(systemName: "gearshape.fill").frame(width: 44, height: 44).background(.white, in: Circle()) }.buttonStyle(.plain).accessibilityLabel("الإعدادات")
                 }.foregroundStyle(URColor.deepNavy)
-                ZStack(alignment: .bottomTrailing) {
+                ZStack {
                     LinearGradient(colors: [URColor.deepNavy, URColor.royalBlue], startPoint: .topTrailing, endPoint: .bottomLeading)
-                    HStack(spacing: -18) {
-                        Image("EuroStack").resizable().scaledToFit().frame(width: 88).rotationEffect(.degrees(-7))
-                        Image("DollarStack").resizable().scaledToFit().frame(width: 106).rotationEffect(.degrees(5))
-                        Image("PoundStack").resizable().scaledToFit().frame(width: 84).rotationEffect(.degrees(9))
-                    }.opacity(0.72).offset(x: -12, y: 17)
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text("كل خدمات أور بمكان واحد").font(.headline.weight(.black))
-                        Text("حسابك، أدواتك، التحقق والمساعدة").font(.caption).foregroundStyle(.white.opacity(0.78))
-                    }.foregroundStyle(.white).padding(16).frame(maxWidth: .infinity, alignment: .trailing)
-                }.frame(height: 112).clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    HStack(spacing: 12) {
+                        moreHeroIcon("إدارة الحساب", "person")
+                        Divider().overlay(.white.opacity(0.20)).frame(height: 58)
+                        moreHeroIcon("أدوات الحوالات", "doc.text")
+                        Divider().overlay(.white.opacity(0.20)).frame(height: 58)
+                        moreHeroIcon("المساعدة والدعم", "headphones")
+                        Spacer(minLength: 8)
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text("UR GLOBAL").font(.caption2.weight(.black)).tracking(1)
+                            Text("خدمات أور بين إيديك").font(.title3.weight(.black))
+                            Text("حسابك، أدواتك، ومساعدتك").font(.caption).foregroundStyle(.white.opacity(0.78))
+                        }
+                    }.foregroundStyle(.white).padding(16)
+                }.frame(height: 132).clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 22).stroke(URColor.premiumGold.opacity(0.28)))
                 MoreGroup(title: "حسابي") {
                     NavigationLink { URNativeAccountView() } label: { MoreRow("بياناتي والحساب", "person.crop.circle.fill") }
                     Divider(); NavigationLink { URNativeNotificationView(api: URNativeAPI.customer) } label: { MoreRow("التنبيهات", "bell.badge.fill") }
@@ -63,6 +68,14 @@ struct MoreView: View {
         .fullScreenCover(isPresented: $showQRScanner) {
             QRScannerView { scannedQR = $0 }
         }
+    }
+
+    private func moreHeroIcon(_ title: String, _ symbol: String) -> some View {
+        VStack(spacing: 7) {
+            Image(systemName: symbol).font(.title2).foregroundStyle(URColor.premiumGold)
+                .frame(width: 46, height: 46).overlay(Circle().stroke(URColor.premiumGold, lineWidth: 1.4))
+            Text(title).font(.caption2.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.7)
+        }.accessibilityElement(children: .combine)
     }
 }
 
