@@ -785,6 +785,7 @@ private func urReceiptDate(_ value: Any?) -> String {
 }
 
 private struct URNativeTransferForm: View {
+    private enum TransferField: Hashable { case senderName, senderPhone, senderAddress, receiverName, receiverPhone, receiverAddress, purpose, amount }
     @EnvironmentObject private var auth: URAuthService
     @ObservedObject private var api = URNativeAPI.customer
     @AppStorage("URTransferDraft.amount") private var amount = ""
@@ -811,6 +812,7 @@ private struct URNativeTransferForm: View {
     @State private var busy = false
     @State private var submitted = false
     @State private var createdOrder: [String: Any]?
+    @FocusState private var focusedField: TransferField?
     @AppStorage("URTransferDraft.requestId") private var requestId = UUID().uuidString
     @AppStorage("URTransferDraft.owner") private var draftOwner = ""
     private var receivingOffices: [[String: Any]] { offices.filter { urText($0, "country") == receiverCountry } }
@@ -826,13 +828,13 @@ private struct URNativeTransferForm: View {
     }
     private var receiverSection: some View {
         Section("٢ · دولة الاستلام وبيانات المستفيد") {
-            Picker("دولة الاستلام", selection: $receiverCountry) { Text("اختر الدولة").tag(""); ForEach(destinations, id: \.self) { Text($0).tag($0) } }.disabled(senderCountry.isEmpty)
-            TextField("اسم المستلم الكامل", text: $receiverName)
-            TextField("هاتف المستلم مع رمز الدولة", text: $receiverPhone).keyboardType(.phonePad)
-            TextField("عنوان المستلم", text: $receiverAddress)
-            TextField("غرض الحوالة", text: $purpose)
+            Picker("دولة الاستلام", selection: $receiverCountry) { Text("اختر الدولة").tag(""); ForEach(destinations, id: \.self) { Text($0).tag($0) } }.pickerStyle(.navigationLink).disabled(senderCountry.isEmpty)
+            TextField("اسم المستلم الكامل", text: $receiverName).focused($focusedField, equals: .receiverName)
+            TextField("هاتف المستلم مع رمز الدولة", text: $receiverPhone).keyboardType(.phonePad).focused($focusedField, equals: .receiverPhone)
+            TextField("عنوان المستلم", text: $receiverAddress).focused($focusedField, equals: .receiverAddress)
+            TextField("غرض الحوالة", text: $purpose).focused($focusedField, equals: .purpose)
             if !receiverCountry.isEmpty {
-                Picker("مكتب الاستلام المعتمد", selection: $payout) { Text("اختر").tag(0); ForEach(receivingOffices.indices, id: \.self) { i in Text(officeLabel(receivingOffices[i])).tag(receivingOffices[i]["id"] as? Int ?? 0) } }
+                Picker("مكتب الاستلام المعتمد", selection: $payout) { Text("اختر").tag(0); ForEach(receivingOffices.indices, id: \.self) { i in Text(officeLabel(receivingOffices[i])).tag(receivingOffices[i]["id"] as? Int ?? 0) } }.pickerStyle(.navigationLink)
                 if receivingOffices.isEmpty { Text("لا يوجد مكتب استلام معتمد في هذه الدولة حالياً.").foregroundStyle(.red) }
                 if payout > 0 { Text(urText(payoutOffice, "details")); Text("هاتف المكتب: " + urText(payoutOffice, "phone")) }
             }
@@ -841,15 +843,15 @@ private struct URNativeTransferForm: View {
     }
     private var senderSection: some View {
         Section("١ · دولة الإرسال وبيانات المرسل") {
-            Picker("جهة الإرسال", selection: $senderCountry) { Text("اختر").tag(""); ForEach(origins, id: \.self) { Text($0).tag($0) } }
-            TextField("اسم المرسل الكامل", text: $senderName)
-            TextField("هاتف المرسل مع رمز الدولة", text: $senderPhone).keyboardType(.phonePad)
-            TextField("عنوان المرسل", text: $senderAddress)
+            Picker("جهة الإرسال", selection: $senderCountry) { Text("اختر").tag(""); ForEach(origins, id: \.self) { Text($0).tag($0) } }.pickerStyle(.navigationLink)
+            TextField("اسم المرسل الكامل", text: $senderName).focused($focusedField, equals: .senderName)
+            TextField("هاتف المرسل مع رمز الدولة", text: $senderPhone).keyboardType(.phonePad).focused($focusedField, equals: .senderPhone)
+            TextField("عنوان المرسل", text: $senderAddress).focused($focusedField, equals: .senderAddress)
         }
     }
     private var amountSection: some View {
         Section("٣ · المبلغ والعمولة") {
-            TextField("المبلغ بالدولار USD", text: $amount).keyboardType(.decimalPad)
+            TextField("المبلغ بالدولار USD", text: $amount).keyboardType(.decimalPad).focused($focusedField, equals: .amount)
             Picker("احتساب العمولة", selection: $feeMode) { Text("فوق المبلغ").tag("added"); Text("تنخصم من المبلغ").tag("deducted") }.pickerStyle(.segmented)
             Text(feeMode == "added" ? "المستفيد يستلم قيمة المبلغ كاملة، وتدفع العمولة فوقها." : "تدفع المبلغ المحدد، وتُخصم العمولة قبل تحويل الصافي للمستفيد.").font(.footnote).foregroundStyle(.secondary)
             Button("احسب السعر والرسوم") { Task { await calculate() } }.buttonStyle(.borderedProminent).controlSize(.large).disabled(busy || !hasPricedRoute || payout == 0 || senderCountry.isEmpty)
@@ -868,7 +870,7 @@ private struct URNativeTransferForm: View {
     }
     private var paymentSection: some View {
         Section("٤ · طريقة الإيداع") {
-            Picker("طريقة الدفع", selection: $method) { Text("اختر طريقة الإيداع").tag(""); ForEach(methods.indices, id: \.self) { i in if methods[i]["available"] as? Bool == true { Text(urText(methods[i], "name")).tag(urText(methods[i], "id")) } } }
+            Picker("طريقة الدفع", selection: $method) { Text("اختر طريقة الإيداع").tag(""); ForEach(methods.indices, id: \.self) { i in if methods[i]["available"] as? Bool == true { Text(urText(methods[i], "name")).tag(urText(methods[i], "id")) } } }.pickerStyle(.navigationLink)
             ForEach(methods.indices, id: \.self) { i in URNativePaymentBrandRow(method: methods[i]) }
             if method == "bank" {
                 Picker("حساب الإيداع AED", selection: $bankAccountId) { ForEach(bankAccounts.indices, id: \.self) { i in Text(urText(bankAccounts[i], "bankName")).tag(urText(bankAccounts[i], "id")) } }
@@ -899,6 +901,7 @@ private struct URNativeTransferForm: View {
             }
         }.disabled(busy).scrollContentBackground(.hidden).background(URColor.ivory).tint(URColor.royalBlue).navigationTitle("حسبة وحوالة جديدة")
             .environment(\.layoutDirection, .rightToLeft)
+            .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("تم") { focusedField = nil } } }
             .task(id: auth.email) {
                 let owner = auth.isAuthenticated ? (auth.email?.lowercased() ?? "anonymous") : "anonymous"
                 if !draftOwner.isEmpty && draftOwner != owner { clearDraftForDifferentUser() }
