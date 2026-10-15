@@ -41,7 +41,7 @@ struct RootView: View {
             : arguments.contains("-showTransfers") ? .transfers
             : arguments.contains("-showSupport") ? .support
             : arguments.contains("-showMore") ? .more
-            : .rates
+            : .home
         _selection = State(initialValue: initial)
     }
 
@@ -57,7 +57,7 @@ struct RootView: View {
                 .tag(URTab.transfers)
             NavigationStack { SupportView(repository: container.ratesRepository, api: container.apiClient) }
                 .tag(URTab.support)
-            NavigationStack { MoreView(api: container.apiClient) }
+            NavigationStack { MoreView(api: container.apiClient, repository: container.ratesRepository) }
                 .tag(URTab.more)
         }
         .toolbar(.hidden, for: .tabBar)

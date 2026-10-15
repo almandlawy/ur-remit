@@ -5,6 +5,7 @@ import WidgetKit
 
 @main
 struct URRemitApp: App {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "URRemit", category: "PriceAlerts")
     @StateObject private var auth = URAuthService.live
     @State private var favorites = FavoritesStore.shared
@@ -112,13 +113,13 @@ struct URRemitApp: App {
             }
             .task {
                 do {
-                    try await Task.sleep(for: .seconds(5))
+                    try await Task.sleep(for: .milliseconds(reduceMotion ? 250 : 1_100))
                 } catch is CancellationError {
                     return
                 } catch {
                     Self.logger.error("Splash delay failed: \(error.localizedDescription, privacy: .public)")
                 }
-                withAnimation(.easeOut(duration: 0.4)) {
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) {
                     showSplash = false
                 }
             }

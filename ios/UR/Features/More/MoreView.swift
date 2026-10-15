@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MoreView: View {
     let api: any APIClient
+    let repository: any RatesRepository
     @EnvironmentObject private var auth: URAuthService
     @State private var adminTapCount = 0
     @State private var showAdminLogin = false
@@ -11,62 +12,37 @@ struct MoreView: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 14) {
-                GeometryReader { proxy in
-                  ZStack(alignment: .bottomTrailing) {
-                    Image("DubaiSkyline").resizable().scaledToFill()
-                        .frame(width: proxy.size.width, height: 142).clipped()
-                    LinearGradient(colors: [.clear, URColor.deepNavy.opacity(0.96)], startPoint: .top, endPoint: .bottom)
-                    VStack(alignment: .trailing, spacing: 4) {
-                        HStack {
-                            Button {
-                                adminTapCount += 1
-                                guard adminTapCount == 5 else { return }
-                                adminTapCount = 0
-                                showAdminLogin = true
-                            } label: {
-                                URBrandLogo(size: 34)
-                            }.buttonStyle(.plain).accessibilityLabel("UR")
-                            Spacer()
-                            Image(systemName: "ellipsis.circle.fill").font(.title2).foregroundStyle(URColor.premiumGold)
-                        }
-                        Spacer()
-                        Text("المزيد").font(.system(size: 25, weight: .black)).foregroundStyle(.white)
-                        Text("حسابك، خدمات أور، الأمان والإعدادات بمكان واحد")
-                            .font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.82)).lineLimit(1)
-                    }.padding(14).frame(width: proxy.size.width, height: 142, alignment: .bottomTrailing)
-                  }
+                HStack(spacing: 12) {
+                    URBrandLogo(size: 44)
+                    VStack(alignment: .leading, spacing: 2) { Text("المزيد").font(.title2.weight(.black)); Text("حسابك وأدواتك ومعلومات أور").font(.caption).foregroundStyle(.secondary) }
+                    Spacer()
+                    Button { adminTapCount += 1; if adminTapCount == 5 { adminTapCount = 0; showAdminLogin = true } } label: { Image(systemName: "gearshape.fill").frame(width: 44, height: 44).background(.white, in: Circle()) }.buttonStyle(.plain).accessibilityLabel("الإعدادات")
+                }.foregroundStyle(URColor.deepNavy)
+                MoreGroup(title: "حسابي") {
+                    NavigationLink { URNativeAccountView() } label: { MoreRow("بياناتي والحساب", "person.crop.circle.fill") }
+                    Divider(); NavigationLink { URNativeNotificationView(api: URNativeAPI.customer) } label: { MoreRow("التنبيهات", "bell.badge.fill") }
+                    Divider(); NavigationLink { URNativeDeleteAccountView() } label: { MoreRow("حذف الحساب وتسجيل الخروج", "rectangle.portrait.and.arrow.right") }
                 }
-                .frame(height: 142)
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(.white.opacity(0.35)))
-                .shadow(color: URColor.deepNavy.opacity(0.16), radius: 14, y: 7)
-                NavigationLink { URNativeAccountView() } label: {
-                    HStack(spacing: 13) {
-                        Image(systemName: "chevron.left").font(.caption.weight(.bold)); Spacer()
-                        VStack(alignment: .trailing, spacing: 3) { Text("حسابي").font(.headline.weight(.bold)); Text("الدخول والخروج وحذف الحساب").font(.caption).foregroundStyle(.secondary) }
-                        Image(systemName: "person.crop.circle.fill").font(.system(size: 38)).foregroundStyle(URColor.royalBlue)
-                    }.padding(16).foregroundStyle(URColor.deepNavy).background(URColor.surface.opacity(0.92), in: RoundedRectangle(cornerRadius: 17)).overlay(RoundedRectangle(cornerRadius: 17).stroke(URColor.hairline))
-                }
-                MoreGroup(title: "الخدمات") {
-                    NavigationLink { CustomerRemittanceView() } label: { MoreRow("طلب حوالة والدفع والوصولات", "arrow.left.arrow.right.circle.fill") }
-                    Divider()
-                    NavigationLink { OfficesView(api: api) } label: { MoreRow("المراكز المعتمدة", "building.2.fill") }
-                    Divider(); NavigationLink { DailyReminderView() } label: { MoreRow("تذكير يومي بالأسعار", "bell.badge.fill") }
-                    Divider(); NavigationLink { ShareTemplatesGallery() } label: { MoreRow("قوالب المشاركة", "square.and.arrow.up.on.square.fill") }
-                    Divider(); NavigationLink { URWeeklyLeaderboardView() } label: { MoreRow("الأكثر طلبًا هذا الأسبوع", "trophy.fill") }
-                    Divider(); Button { showQRScanner = true } label: { MoreRow("مسح رمز QR", "qrcode.viewfinder") }
+                MoreGroup(title: "الأدوات") {
+                    NavigationLink { CalculatorView(repository: repository) } label: { MoreRow("الحاسبة", "function") }
+                    Divider(); NavigationLink { TrackingView(api: api) } label: { MoreRow("التحقق من الوصل", "doc.text.magnifyingglass") }
+                    Divider(); NavigationLink { AgentVerificationView(api: api) } label: { MoreRow("التحقق من الوكيل", "checkmark.shield.fill") }
+                    Divider(); Button { showQRScanner = true } label: { MoreRow("مسح QR", "qrcode.viewfinder") }
                     if !scannedQR.isEmpty { Text(scannedQR).font(.caption2.monospaced()).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .trailing).padding(.vertical, 8) }
-                    Divider(); NavigationLink { SecurityCenterView() } label: { MoreRow("عن الأسعار", "info.circle.fill") }
                 }
-                MoreGroup(title: "حول UR") {
-                    Link(destination: URL(string: "https://urremit.com/privacy")!) { MoreRow("سياسة الخصوصية", "hand.raised.fill") }
-                    Divider(); Link(destination: URL(string: "https://urremit.com/terms")!) { MoreRow("الشروط والأحكام", "doc.text.fill") }
-                    Divider(); Link(destination: URL(string: "https://urremit.com/contact")!) { MoreRow("اتصل بنا", "phone.fill") }
+                MoreGroup(title: "المساعدة والمعلومات") {
+                    NavigationLink { SupportView(repository: repository, api: api) } label: { MoreRow("الدعم", "headphones") }
+                    Divider(); Link(destination: URL(string: "https://urremit.com/contact")!) { MoreRow("شرح الاستخدام والتواصل", "questionmark.circle.fill") }
+                    Divider(); Link(destination: URL(string: "https://urremit.com/privacy")!) { MoreRow("الخصوصية", "hand.raised.fill") }
+                    Divider(); Link(destination: URL(string: "https://urremit.com/terms")!) { MoreRow("الشروط", "doc.text.fill") }
+                    Divider(); NavigationLink { SecurityCenterView() } label: { MoreRow("عن أور", "info.circle.fill") }
                 }
-                Text("UR Remit  •  الإصدار \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")").font(.caption2).foregroundStyle(.secondary).padding(.top, 8)
+                let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
+                let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
+                Text("UR Global  •  Version \(version)  •  Build \(build)").font(.caption2.monospaced()).foregroundStyle(.secondary).padding(.top, 4)
             }.padding(.horizontal, 14).padding(.top, 10).padding(.bottom, 14)
         }
-        .background(URColor.ivory.ignoresSafeArea()).toolbar(.hidden, for: .navigationBar)
+        .background(URColor.ivory.ignoresSafeArea()).toolbar(.hidden, for: .navigationBar).environment(\.layoutDirection, .rightToLeft)
         .sheet(isPresented: $showAdminLogin) {
             NavigationStack {
                 AdminEntryView()
@@ -792,7 +768,7 @@ private func urReceiptDate(_ value: Any?) -> String {
     return date.formatted(.dateTime.locale(Locale(identifier: "ar_IQ")).year().month().day().hour().minute())
 }
 
-private struct URNativeTransferForm: View {
+struct URNativeTransferForm: View {
     private enum TransferField: Hashable { case senderName, senderPhone, senderAddress, receiverName, receiverPhone, receiverAddress, purpose, amount }
     @EnvironmentObject private var auth: URAuthService
     @ObservedObject private var api = URNativeAPI.customer
@@ -1157,7 +1133,7 @@ private struct URNativeInlinePaymentCompletion: View {
     private func loadFile(_ result: Result<URL, Error>) { do { let url = try result.get(); let access = url.startAccessingSecurityScopedResource(); defer { if access { url.stopAccessingSecurityScopedResource() } }; let data = try Data(contentsOf: url); guard !data.isEmpty && data.count <= 8 * 1024 * 1024 else { throw URNativeError.message("الحد الأقصى 8MB") }; fileData = data; fileType = url.pathExtension.lowercased() == "pdf" ? "application/pdf" : url.pathExtension.lowercased() == "png" ? "image/png" : "image/jpeg" } catch { message = error.localizedDescription } }
 }
 
-private struct URNativeOrderView: View {
+struct URNativeOrderView: View {
     @State var order: [String: Any]
     @ObservedObject var api: URNativeAPI
     @State private var reference = ""

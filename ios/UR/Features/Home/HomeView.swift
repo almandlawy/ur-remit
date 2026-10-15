@@ -3,150 +3,137 @@ import SwiftUI
 struct HomeView: View {
     let repository: any RatesRepository
     let api: any APIClient
-    @State private var heroRate: Rate?
+    @EnvironmentObject private var auth: URAuthService
+    @Environment(\.scenePhase) private var scenePhase
+    @ObservedObject private var customerAPI = URNativeAPI.customer
+    @State private var snapshot: RatesSnapshot?
+    @State private var openOrder: [String: Any]?
+    @State private var rateError = ""
+    @State private var orderError = ""
+    @State private var loadingRates = false
+    @State private var loadingOrder = false
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(spacing: 14) {
-                homeHeader
-                welcomeCard
-                sectionTitle("مكتب الصيرفة", subtitle: "العملات الرئيسية بتجربة بصرية فاخرة")
-                CurrencyDeskShowcase()
-                sectionTitle("معلوماتك السريعة", subtitle: "الأسعار والمعلومات في مكان واحد")
-                LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: 10) {
-                    NavigationLink { CalculatorView(repository: repository) } label: {
-                        QuickService(title: "حاسبة العملات", subtitle: "قارن القيمة تقديريًا", symbol: "function", color: URColor.premiumGold)
-                    }
-                    NavigationLink { RatesView(repository: repository) } label: {
-                        QuickService(title: "أسعار السوق", subtitle: "تصفح كل الأسعار", symbol: "chart.line.uptrend.xyaxis", color: URColor.royalBlue)
-                    }
-                    NavigationLink { OfficesView(api: api) } label: {
-                        QuickService(title: "دليل المعلومات", subtitle: "بيانات التواصل العامة", symbol: "mappin.and.ellipse", color: .teal)
-                    }
-                    NavigationLink { SecurityCenterView() } label: {
-                        QuickService(title: "عن الأسعار", subtitle: "معلومات وتنبيهات مهمة", symbol: "info.circle.fill", color: URColor.success)
-                    }
-                }
-                sectionTitle("سعر اليوم", subtitle: "الدولار الأمريكي مقابل الدينار العراقي")
-                liveRateCard
-                safetyCard
-            }
-            .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 18)
+            LazyVStack(spacing: 14) {
+                header
+                rateCard
+                primaryActions
+                orderCard
+                shortcuts
+                if !rateError.isEmpty { retryCard(rateError) { await loadRates() } }
+                if !orderError.isEmpty { retryCard(orderError) { await loadOrder() } }
+            }.padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 20)
         }
-        .background(URColor.ivory.ignoresSafeArea())
-        .toolbar(.hidden, for: .navigationBar)
-        .task {
-            guard heroRate == nil else { return }
-            heroRate = (try? await repository.loadRates())?.rates.first { $0.sourceCurrency == "USD" && $0.destinationCurrency == "IQD" }
+        .background(URColor.ivory.ignoresSafeArea()).toolbar(.hidden, for: .navigationBar)
+        .environment(\.layoutDirection, .rightToLeft).refreshable { await refresh() }
+        .task(id: auth.isAuthenticated) {
+            await customerAPI.resumeCustomerAccount(appEmail: auth.isAuthenticated ? auth.email : nil)
+            await refresh()
         }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await refresh() } } }
     }
 
-    private var homeHeader: some View {
-        HStack(spacing: 10) {
-            NavigationLink { URNativeNotificationView(api: URNativeAPI.customer) } label: {
-                Image(systemName: "bell").frame(width: 40, height: 40).background(.white, in: Circle()).overlay(Circle().stroke(URColor.hairline))
+    private var header: some View {
+        HStack(spacing: 11) {
+            URBrandLogo(size: 42)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("أور جلوبال").font(.title3.weight(.black)).foregroundStyle(URColor.deepNavy)
+                Text(auth.isAuthenticated ? "متابعة حسابك وحوالاتك" : "الأسعار والحوالات بمكان واحد").font(.caption).foregroundStyle(.secondary)
             }
-            Label("العربية", systemImage: "globe").font(.subheadline.weight(.bold)).padding(.horizontal, 13).frame(height: 40).background(.white, in: Capsule()).overlay(Capsule().stroke(URColor.hairline))
             Spacer()
-            VStack(alignment: .trailing, spacing: -2) {
-                HStack(spacing: 7) { Text("أور جلوبال").font(.system(size: 22, weight: .black)); URBrandLogo(size: 39) }
-                Text("لأسعار العملات العالمية").font(.caption2.weight(.bold))
-            }
+            NavigationLink { URNativeNotificationView(api: customerAPI) } label: {
+                Image(systemName: "bell.badge.fill").font(.title3).foregroundStyle(URColor.deepNavy)
+                    .frame(width: 46, height: 46).background(.white, in: Circle()).overlay(Circle().stroke(URColor.hairline))
+            }.accessibilityLabel("إشعارات الحساب")
         }
-        .foregroundStyle(URColor.deepNavy).environment(\.layoutDirection, .leftToRight)
     }
 
-    private var welcomeCard: some View {
-        ZStack(alignment: .bottomTrailing) {
-            LinearGradient(colors: [Color(red: 0.02, green: 0.20, blue: 0.34), URColor.deepNavy], startPoint: .topLeading, endPoint: .bottomTrailing)
-            Image("DubaiSkyline").resizable().scaledToFit().opacity(0.22).offset(y: 18)
-            VStack(alignment: .trailing, spacing: 8) {
-                Text("معكم في كل وجهة").font(.title2.weight(.black))
-                Text("أسعار عملات واضحة ومعلومات إرشادية تساعدك على المقارنة.").font(.subheadline).foregroundStyle(.white.opacity(0.78)).multilineTextAlignment(.trailing)
-                HStack(spacing: 6) { Circle().fill(.green).frame(width: 7, height: 7); Text("الأسعار متاحة الآن").font(.caption.weight(.semibold)) }
-                HStack(spacing: 8) {
-                    NavigationLink { RatesView(repository: repository) } label: {
-                        Label("الأسعار", systemImage: "chart.bar.fill").frame(maxWidth: .infinity, minHeight: 36).background(.white.opacity(0.13), in: RoundedRectangle(cornerRadius: 10))
-                    }
-                    NavigationLink { CalculatorView(repository: repository) } label: {
-                        Label("حاسبة العملات", systemImage: "function").frame(maxWidth: .infinity, minHeight: 36).background(URColor.premiumGold, in: RoundedRectangle(cornerRadius: 10))
-                    }
-                }.font(.caption.weight(.bold))
-            }
-            .frame(maxWidth: .infinity, alignment: .trailing).padding(18)
-        }
-        .foregroundStyle(.white).frame(height: 190).clipShape(RoundedRectangle(cornerRadius: 18)).overlay(RoundedRectangle(cornerRadius: 18).stroke(URColor.premiumGold.opacity(0.45)))
-    }
-
-    private func sectionTitle(_ title: String, subtitle: String) -> some View {
-        HStack { Spacer(); VStack(alignment: .trailing, spacing: 1) { Text(title).font(.headline.weight(.black)); Text(subtitle).font(.caption).foregroundStyle(.secondary) } }
-            .foregroundStyle(URColor.deepNavy).padding(.top, 2)
-    }
-
-    private var liveRateCard: some View {
-        URCard {
-            HStack(spacing: 14) {
-                Text("🇺🇸").font(.system(size: 35))
-                VStack(alignment: .leading, spacing: 2) { Text("USD / IQD").font(.caption).foregroundStyle(.secondary); Text("الدولار ← الدينار العراقي").font(.subheadline.weight(.bold)) }
+    @ViewBuilder private var rateCard: some View {
+        let rate = snapshot?.rates.first { $0.sourceCurrency == "USD" && $0.destinationCurrency == "IQD" }
+        let stale = rate.map { $0.staleAfter < Date() } ?? false
+        VStack(alignment: .trailing, spacing: 12) {
+            HStack {
+                if loadingRates { ProgressView().controlSize(.small) }
+                if snapshot?.isFromCache == true { statusPill("محفوظ", color: .orange) }
+                if stale { statusPill("قديم", color: .red) }
                 Spacer()
-                VStack(alignment: .trailing, spacing: 1) {
-                    Text(heroRate?.sell?.formatted(.number.grouping(.automatic)) ?? "—").font(.title2.weight(.black)).monospacedDigit().foregroundStyle(URColor.deepNavy)
-                    Text("سعر البيع").font(.caption2).foregroundStyle(.secondary)
-                }
-            }.environment(\.layoutDirection, .leftToRight)
-        }
-    }
-
-    private var safetyCard: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "lock.shield.fill").font(.title2).foregroundStyle(URColor.success)
-            VStack(alignment: .trailing, spacing: 2) { Text("معلومة مهمة").font(.subheadline.weight(.bold)); Text("الأسعار إرشادية وقد تتغير حسب السوق والوقت.").font(.caption).foregroundStyle(.secondary) }
-            Spacer()
-        }
-        .environment(\.layoutDirection, .rightToLeft).padding(14).background(URColor.success.opacity(0.08), in: RoundedRectangle(cornerRadius: 15))
-    }
-}
-
-private struct CurrencyDeskShowcase: View {
-    private let currencies = [
-        ("DollarStack", "الدولار", "USD", Color(red: 0.02, green: 0.20, blue: 0.34)),
-        ("PoundStack", "الباوند", "GBP", Color(red: 0.23, green: 0.10, blue: 0.17)),
-        ("EuroStack", "اليورو", "EUR", Color(red: 0.10, green: 0.17, blue: 0.34))
-    ]
-    var body: some View {
-        HStack(spacing: 8) {
-            ForEach(currencies, id: \.1) { item in
-                GeometryReader { proxy in
-                    ZStack(alignment: .bottomTrailing) {
-                        LinearGradient(colors: [item.3.opacity(0.86), URColor.deepNavy], startPoint: .topLeading, endPoint: .bottomTrailing)
-                        Image(item.0)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: proxy.size.width, height: 104)
-                            .clipped()
-                            .opacity(0.83)
-                        LinearGradient(colors: [.clear, URColor.deepNavy.opacity(0.88)], startPoint: .top, endPoint: .bottom)
-                        VStack(alignment: .trailing, spacing: 0) { Text(item.1).font(.caption.weight(.black)); Text(item.2).font(.caption2.weight(.bold)).foregroundStyle(URColor.premiumGold) }.padding(9)
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(URColor.premiumGold.opacity(0.45)))
-                }
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 104)
+                Label("الدولار مقابل الدينار العراقي", systemImage: "dollarsign.circle.fill").font(.headline.weight(.black))
             }
-        }.environment(\.layoutDirection, .rightToLeft)
+            HStack(spacing: 10) { rateValue(title: "بيع", value: rate?.sell); rateValue(title: "شراء", value: rate?.buy) }
+            Divider()
+            HStack {
+                Text(rate.map { $0.sourceCurrency == "USD" && $0.destinationCurrency == "IQD" ? "الوحدة: دينار عراقي لكل 100 دولار" : "الوحدة: \($0.destinationCurrency) لكل \($0.sourceCurrency)" } ?? "الوحدة غير متاحة").font(.caption2).foregroundStyle(.secondary)
+                Spacer()
+                Text(rate.map { "وقت المصدر: " + $0.sourceTimestamp.formatted(.dateTime.locale(Locale(identifier: "ar_IQ")).day().month(.abbreviated).year().hour().minute()) } ?? "لا توجد بيانات")
+                    .font(.caption2).foregroundStyle(stale ? .red : .secondary)
+            }
+        }.padding(16).background(.white, in: RoundedRectangle(cornerRadius: 19))
+            .overlay(RoundedRectangle(cornerRadius: 19).stroke(stale ? Color.red.opacity(0.25) : URColor.hairline))
+    }
+
+    private func rateValue(title: String, value: Decimal?) -> some View {
+        VStack(alignment: .trailing, spacing: 3) {
+            Text(title).font(.caption.weight(.bold)).foregroundStyle(.secondary)
+            Text(value?.formatted(.number.grouping(.automatic).precision(.fractionLength(0...2))) ?? "—")
+                .font(.system(.title2, design: .rounded, weight: .black)).monospacedDigit().foregroundStyle(URColor.deepNavy)
+        }.frame(maxWidth: .infinity, alignment: .trailing).padding(12).background(URColor.premiumGold.opacity(0.10), in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    private var primaryActions: some View {
+        HStack(spacing: 10) {
+            NavigationLink { CustomerRemittanceView() } label: {
+                Label("حوالاتي", systemImage: "clock.arrow.circlepath").frame(maxWidth: .infinity, minHeight: 52)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 15)).overlay(RoundedRectangle(cornerRadius: 15).stroke(URColor.deepNavy.opacity(0.18)))
+            }
+            NavigationLink { URNativeTransferForm() } label: {
+                Label("حوالة جديدة", systemImage: "plus.circle.fill").frame(maxWidth: .infinity, minHeight: 52).background(URColor.premiumGold, in: RoundedRectangle(cornerRadius: 15))
+            }
+        }.font(.headline.weight(.black)).foregroundStyle(URColor.deepNavy)
+    }
+
+    @ViewBuilder private var orderCard: some View {
+        if loadingOrder { HStack { ProgressView(); Text("جاري تحديث طلبك…") }.font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding() }
+        else if let order = openOrder {
+            NavigationLink { URNativeOrderView(order: order, api: customerAPI) } label: {
+                let status = homeText(order, "status")
+                VStack(alignment: .trailing, spacing: 10) {
+                    HStack { Image(systemName: "chevron.left").foregroundStyle(.secondary); Spacer(); Text("طلبك المفتوح").font(.headline.weight(.black)); Image(systemName: "doc.text.fill").foregroundStyle(URColor.premiumGold) }
+                    HStack { Text(homeShortID(homeText(order, "id"))).font(.caption.monospaced()); Spacer(); Text(homeStatus(status)).font(.subheadline.weight(.black)).foregroundStyle(URColor.royalBlue) }
+                    Text(homeNextStep(status)).font(.subheadline.weight(.bold)).foregroundStyle(URColor.deepNavy).frame(maxWidth: .infinity, alignment: .trailing)
+                }.padding(16).background(.white, in: RoundedRectangle(cornerRadius: 18)).overlay(RoundedRectangle(cornerRadius: 18).stroke(URColor.premiumGold.opacity(0.45)))
+            }.buttonStyle(.plain)
+        } else if !customerAPI.profile.isEmpty {
+            HStack { Spacer(); Label("لا توجد حوالة مفتوحة", systemImage: "checkmark.circle.fill") }.font(.subheadline.weight(.bold)).foregroundStyle(URColor.success).padding(14).frame(maxWidth: .infinity).background(.white.opacity(0.8), in: RoundedRectangle(cornerRadius: 16))
+        }
+    }
+
+    private var shortcuts: some View {
+        VStack(alignment: .trailing, spacing: 9) {
+            Text("وصول سريع").font(.headline.weight(.black)).foregroundStyle(URColor.deepNavy)
+            LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: 9) {
+                NavigationLink { RatesView(repository: repository) } label: { shortcut("الأسعار", "chart.line.uptrend.xyaxis") }
+                NavigationLink { OfficesView(api: api) } label: { shortcut("المراكز", "mappin.and.ellipse") }
+                NavigationLink { CalculatorView(repository: repository) } label: { shortcut("الحاسبة", "function") }
+                NavigationLink { SupportView(repository: repository, api: api) } label: { shortcut("الدعم", "headphones") }
+            }
+        }
+    }
+    private func shortcut(_ title: String, _ symbol: String) -> some View { HStack { Spacer(); Text(title).font(.subheadline.weight(.bold)); Image(systemName: symbol).foregroundStyle(URColor.premiumGold).frame(width: 28) }.foregroundStyle(URColor.deepNavy).padding(13).frame(minHeight: 50).background(.white, in: RoundedRectangle(cornerRadius: 14)).overlay(RoundedRectangle(cornerRadius: 14).stroke(URColor.hairline)) }
+    private func retryCard(_ text: String, action: @escaping () async -> Void) -> some View { HStack(spacing: 10) { Button("إعادة المحاولة") { Task { await action() } }.font(.caption.weight(.black)); Spacer(); Text(text).font(.caption).multilineTextAlignment(.trailing); Image(systemName: "wifi.exclamationmark") }.foregroundStyle(.red).padding(13).background(.red.opacity(0.06), in: RoundedRectangle(cornerRadius: 14)) }
+    private func statusPill(_ text: String, color: Color) -> some View { Text(text).font(.caption2.weight(.black)).foregroundStyle(color).padding(.horizontal, 8).padding(.vertical, 5).background(color.opacity(0.10), in: Capsule()) }
+
+    private func refresh() async { async let rates: Void = loadRates(); async let order: Void = loadOrder(); _ = await (rates, order) }
+    private func loadRates() async { guard !loadingRates else { return }; loadingRates = true; defer { loadingRates = false }; do { snapshot = try await repository.loadRates(); rateError = "" } catch { rateError = "تعذر تحديث الأسعار. بقية الصفحة ما زالت متاحة." } }
+    private func loadOrder() async {
+        guard !loadingOrder else { return }; loadingOrder = true; defer { loadingOrder = false }
+        guard !customerAPI.profile.isEmpty else { openOrder = nil; orderError = ""; return }
+        do { let rows = try await customerAPI.request("/api/customer/checkout")["orders"] as? [[String: Any]] ?? []; openOrder = rows.first { !["delivered", "cancelled", "rejected"].contains(homeText($0, "status")) }; orderError = "" }
+        catch { orderError = "تعذر تحديث الحوالة المفتوحة. الأسعار والاختصارات ما زالت تعمل." }
     }
 }
 
-private struct QuickService: View {
-    let title: String; let subtitle: String; let symbol: String; let color: Color
-    var body: some View {
-        VStack(alignment: .trailing, spacing: 9) {
-            Image(systemName: symbol).font(.system(size: 21, weight: .bold)).foregroundStyle(.white).frame(width: 42, height: 42).background(color, in: RoundedRectangle(cornerRadius: 13))
-            Text(title).font(.subheadline.weight(.bold)).foregroundStyle(URColor.deepNavy)
-            Text(subtitle).font(.caption2).foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, minHeight: 115, alignment: .trailing).padding(14).background(.white.opacity(0.84), in: RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(URColor.hairline))
-    }
-}
+private func homeText(_ row: [String: Any], _ key: String) -> String { guard let value = row[key], !(value is NSNull) else { return "" }; return String(describing: value) }
+private func homeShortID(_ id: String) -> String { id.count > 12 ? "…" + id.suffix(8) : id }
+private func homeStatus(_ status: String) -> String { switch status { case "awaiting_payment": return "بانتظار الدفع"; case "payment_review": return "الإثبات قيد المراجعة"; case "needs_more_info": return "مطلوب تصحيح"; case "payment_confirmed": return "تم اعتماد القبض"; case "processing": return "قيد التنفيذ"; default: return status.isEmpty ? "قيد المتابعة" : status } }
+private func homeNextStep(_ status: String) -> String { switch status { case "awaiting_payment": return "الخطوة المطلوبة: أرفق إثبات الدفع"; case "payment_review": return "لا يلزم إجراء الآن؛ الإدارة تراجع الإثبات"; case "needs_more_info": return "الخطوة المطلوبة: افتح الطلب وصحح الإثبات"; case "payment_confirmed", "processing": return "تابع حالة تنفيذ الحوالة"; default: return "افتح الطلب لمعرفة الخطوة التالية" } }
