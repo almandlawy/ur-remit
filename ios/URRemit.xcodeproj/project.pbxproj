@@ -25,7 +25,6 @@
 		5765518353D6A2C880AC76E7 /* TrackingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 935E7FDFC28A0D554F80AE53 /* TrackingView.swift */; };
 		5A4B0F978AC32ADF2CD5EB17 /* RateCacheTests.swift.20261008-060328-783374.bak in Resources */ = {isa = PBXBuildFile; fileRef = 8FAD1AA7882BD4509D5D9E71 /* RateCacheTests.swift.20261008-060328-783374.bak */; };
 		60ABE0B91A8366A26FDDEF27 /* PublicModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74CC08056F06B058D31A3953 /* PublicModels.swift */; };
-		631F10228D05F76FFDC1CB4E /* MoreView.swift.before-native.bak in Resources */ = {isa = PBXBuildFile; fileRef = 51ACF158F7A83A6219A8851B /* MoreView.swift.before-native.bak */; };
 		7103DCE9DC4021B7B44B4773 /* URLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 75CC30C2B2C750995617347E /* URLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		763C0F31EE03A18F51236E95 /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0004C43C0A31A6A8E69F12C5 /* AccountView.swift */; };
 		7654C7B36EDE4FF3D3005A20 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 906634F2DE0DA3184B968B85 /* WelcomeView.swift */; };
@@ -34,7 +33,6 @@
 		8F492CBE0DF02021DCC1559E /* FileRatesCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBD6D7FF0233D61CA3D001B5 /* FileRatesCache.swift */; };
 		90DD00A8CE19DCDAFD313D4D /* URWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F6A6003C031698962EEB9DAA /* URWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		99FCE8E4AE8A755F04910A12 /* ShareTemplates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AA2B1DAF54462542D103F83 /* ShareTemplates.swift */; };
-		A096F9E7ED0C6795C24D8CE9 /* RootView.swift.before-native.bak in Resources */ = {isa = PBXBuildFile; fileRef = 8EC4D304449796CF00BCA07B /* RootView.swift.before-native.bak */; };
 		A5616FC2011F291FE04E400F /* SmartNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18D225FD4208B3DBC2A725E6 /* SmartNotificationService.swift */; };
 		A5CAFEBCDB002CE7246EA620 /* DeleteAccountService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E9F7D8925194F5736A3482C /* DeleteAccountService.swift */; };
 		AE69A7F42100D8670786DB56 /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 280667B7F029B5EFE2484D3E /* AppContainer.swift */; };
@@ -113,7 +111,6 @@
 		44458181F01A4278D6DAB85B /* RatesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatesViewModel.swift; sourceTree = "<group>"; };
 		476D9E753B47FDEEB12CC41E /* PriceAlertSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceAlertSheet.swift; sourceTree = "<group>"; };
 		49D450F64710663985E1E11C /* tr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/Localizable.strings; sourceTree = "<group>"; };
-		51ACF158F7A83A6219A8851B /* MoreView.swift.before-native.bak */ = {isa = PBXFileReference; path = "MoreView.swift.before-native.bak"; sourceTree = "<group>"; };
 		6623AA122B1508E97E4AE8E1 /* URAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URAuthService.swift; sourceTree = "<group>"; };
 		673C0DF216A55E9EC898CAB5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		69977AFBB6CCADE019FA80EB /* URRemitApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URRemitApp.swift; sourceTree = "<group>"; };
@@ -125,7 +122,6 @@
 		76A2DD1791B54C69970B13C5 /* PriceAlertManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceAlertManager.swift; sourceTree = "<group>"; };
 		86D9A82CE56351874727A791 /* CalculatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalculatorView.swift; sourceTree = "<group>"; };
 		8E9F7D8925194F5736A3482C /* DeleteAccountService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteAccountService.swift; sourceTree = "<group>"; };
-		8EC4D304449796CF00BCA07B /* RootView.swift.before-native.bak */ = {isa = PBXFileReference; path = "RootView.swift.before-native.bak"; sourceTree = "<group>"; };
 		8FAD1AA7882BD4509D5D9E71 /* RateCacheTests.swift.20261008-060328-783374.bak */ = {isa = PBXFileReference; path = "RateCacheTests.swift.20261008-060328-783374.bak"; sourceTree = "<group>"; };
 		906634F2DE0DA3184B968B85 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		90FF8E23FCEFFE761B6BBDF7 /* RatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatesView.swift; sourceTree = "<group>"; };
@@ -316,7 +312,6 @@
 				76A2DD1791B54C69970B13C5 /* PriceAlertManager.swift */,
 				476D9E753B47FDEEB12CC41E /* PriceAlertSheet.swift */,
 				D68719E48D78EA257F78893B /* RootView.swift */,
-				8EC4D304449796CF00BCA07B /* RootView.swift.before-native.bak */,
 				18D225FD4208B3DBC2A725E6 /* SmartNotificationService.swift */,
 				22C8CF57EE2FAC5623F682F5 /* SplashView.swift */,
 				704D324C198B290A60B8F477 /* URComponents.swift */,
@@ -365,7 +360,6 @@
 			isa = PBXGroup;
 			children = (
 				10AE76AC5E559DA98159CD24 /* MoreView.swift */,
-				51ACF158F7A83A6219A8851B /* MoreView.swift.before-native.bak */,
 			);
 			path = More;
 			sourceTree = "<group>";
@@ -583,9 +577,7 @@
 			files = (
 				571506A680F6DDA3883926F0 /* Assets.xcassets in Resources */,
 				3F6CA866941267A8DB2919F8 /* Localizable.strings in Resources */,
-				631F10228D05F76FFDC1CB4E /* MoreView.swift.before-native.bak in Resources */,
 				BC1D49AA513859D2303AA8D7 /* PrivacyInfo.xcprivacy in Resources */,
-				A096F9E7ED0C6795C24D8CE9 /* RootView.swift.before-native.bak in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

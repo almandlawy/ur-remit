@@ -17,6 +17,8 @@ targets:
       - path: UR
         excludes:
           - Features/WelcomeView.swift
+          - App/RootView.swift.before-native.bak
+          - Features/More/MoreView.swift.before-native.bak
       - path: Resources
         excludes:
           - Info.plist
