@@ -15,7 +15,7 @@ struct HomeView: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            LazyVStack(spacing: 14) {
+            LazyVStack(spacing: 20) {
                 header
                 rateCard
                 primaryActions
@@ -31,45 +31,73 @@ struct HomeView: View {
             await customerAPI.resumeCustomerAccount(appEmail: auth.isAuthenticated ? auth.email : nil)
             await refresh()
         }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60))
+                if !Task.isCancelled { await loadRates() }
+            }
+        }
         .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await refresh() } } }
     }
 
     private var header: some View {
-        HStack(spacing: 11) {
-            URBrandLogo(size: 42)
-            VStack(alignment: .leading, spacing: 1) {
-                Text("أور جلوبال").font(.title3.weight(.black)).foregroundStyle(URColor.deepNavy)
-                Text(auth.isAuthenticated ? "متابعة حسابك وحوالاتك" : "الأسعار والحوالات بمكان واحد").font(.caption).foregroundStyle(.secondary)
+        ZStack(alignment: .topLeading) {
+            LinearGradient(colors: [URColor.deepNavy, URColor.royalBlue.opacity(0.92)], startPoint: .topTrailing, endPoint: .bottomLeading)
+            Circle().fill(URColor.premiumGold.opacity(0.17)).frame(width: 170, height: 170).offset(x: -38, y: 35)
+            Circle().stroke(.white.opacity(0.10), lineWidth: 1).frame(width: 220, height: 220).offset(x: 125, y: -120)
+            VStack(alignment: .trailing, spacing: 20) {
+                HStack(spacing: 11) {
+                    URBrandLogo(size: 46)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("أور جلوبال").font(.title2.weight(.black)).foregroundStyle(.white)
+                        Text("ثقة تربطك بكل وجهة").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.72))
+                    }
+                    Spacer()
+                    NavigationLink { URNativeNotificationView(api: customerAPI) } label: {
+                        Image(systemName: "bell.badge.fill").font(.title3).foregroundStyle(URColor.premiumGold)
+                            .frame(width: 46, height: 46).background(.white.opacity(0.12), in: Circle()).overlay(Circle().stroke(.white.opacity(0.18)))
+                    }.accessibilityLabel("إشعارات الحساب")
+                }
+                VStack(alignment: .trailing, spacing: 5) {
+                    Text(auth.isAuthenticated ? "كل حوالاتك بمتابعة أوضح" : "أسعارك وحوالاتك بمكان واحد")
+                        .font(.title3.weight(.black)).foregroundStyle(.white)
+                    Text("ابدأ حوالة، تابع الطلب، ووصل للدعم بسرعة")
+                        .font(.caption).foregroundStyle(.white.opacity(0.76))
+                }.frame(maxWidth: .infinity, alignment: .trailing)
             }
-            Spacer()
-            NavigationLink { URNativeNotificationView(api: customerAPI) } label: {
-                Image(systemName: "bell.badge.fill").font(.title3).foregroundStyle(URColor.deepNavy)
-                    .frame(width: 46, height: 46).background(.white, in: Circle()).overlay(Circle().stroke(URColor.hairline))
-            }.accessibilityLabel("إشعارات الحساب")
-        }
+            .padding(18)
+        }.frame(minHeight: 170).clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .shadow(color: URColor.deepNavy.opacity(0.18), radius: 18, y: 9)
     }
 
     @ViewBuilder private var rateCard: some View {
         let rate = snapshot?.rates.first { $0.sourceCurrency == "USD" && $0.destinationCurrency == "IQD" }
         let stale = rate.map { $0.staleAfter < Date() } ?? false
-        VStack(alignment: .trailing, spacing: 12) {
+        VStack(alignment: .trailing, spacing: 14) {
             HStack {
                 if loadingRates { ProgressView().controlSize(.small) }
                 if snapshot?.isFromCache == true { statusPill("محفوظ", color: .orange) }
-                if stale { statusPill("قديم", color: .red) }
+                if stale { statusPill("يحتاج تحديث", color: .orange) }
                 Spacer()
-                Label("الدولار مقابل الدينار العراقي", systemImage: "dollarsign.circle.fill").font(.headline.weight(.black))
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("سعر الدولار اليوم").font(.headline.weight(.black))
+                    Text("الدولار مقابل الدينار العراقي").font(.caption).foregroundStyle(.secondary)
+                }
+                Image(systemName: "chart.line.uptrend.xyaxis.circle.fill").font(.title2).foregroundStyle(URColor.premiumGold)
             }
             HStack(spacing: 10) { rateValue(title: "بيع", value: rate?.sell); rateValue(title: "شراء", value: rate?.buy) }
             Divider()
             HStack {
-                Text(rate.map { $0.sourceCurrency == "USD" && $0.destinationCurrency == "IQD" ? "الوحدة: دينار عراقي لكل 100 دولار" : "الوحدة: \($0.destinationCurrency) لكل \($0.sourceCurrency)" } ?? "الوحدة غير متاحة").font(.caption2).foregroundStyle(.secondary)
+                Text(rate.map { $0.sourceCurrency == "USD" && $0.destinationCurrency == "IQD" ? "دينار عراقي لكل 100 دولار" : "\($0.destinationCurrency) لكل \($0.sourceCurrency)" } ?? "الوحدة غير متاحة").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
                 Spacer()
-                Text(rate.map { "وقت المصدر: " + $0.sourceTimestamp.formatted(.dateTime.locale(Locale(identifier: "ar_IQ")).day().month(.abbreviated).year().hour().minute()) } ?? "لا توجد بيانات")
-                    .font(.caption2).foregroundStyle(stale ? .red : .secondary)
+                Text(rate.map { "تحديث المصدر: " + $0.sourceTimestamp.formatted(.dateTime.locale(Locale(identifier: "ar_IQ")).day().month(.abbreviated).hour().minute()) } ?? "لا توجد بيانات")
+                    .font(.caption2.weight(.semibold)).foregroundStyle(stale ? .orange : .secondary)
             }
-        }.padding(16).background(.white, in: RoundedRectangle(cornerRadius: 19))
-            .overlay(RoundedRectangle(cornerRadius: 19).stroke(stale ? Color.red.opacity(0.25) : URColor.hairline))
+            Text("يتم التحقق تلقائياً من المصدر كل دقيقة")
+                .font(.caption2).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .trailing)
+        }.padding(17).background(.white, in: RoundedRectangle(cornerRadius: 21, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 21).stroke(stale ? Color.orange.opacity(0.35) : URColor.hairline))
+            .shadow(color: URColor.deepNavy.opacity(0.06), radius: 12, y: 5)
     }
 
     private func rateValue(title: String, value: Decimal?) -> some View {
@@ -77,19 +105,29 @@ struct HomeView: View {
             Text(title).font(.caption.weight(.bold)).foregroundStyle(.secondary)
             Text(value?.formatted(.number.grouping(.automatic).precision(.fractionLength(0...2))) ?? "—")
                 .font(.system(.title2, design: .rounded, weight: .black)).monospacedDigit().foregroundStyle(URColor.deepNavy)
-        }.frame(maxWidth: .infinity, alignment: .trailing).padding(12).background(URColor.premiumGold.opacity(0.10), in: RoundedRectangle(cornerRadius: 14))
+        }.frame(maxWidth: .infinity, alignment: .trailing).padding(13).background(LinearGradient(colors: [URColor.premiumGold.opacity(0.17), URColor.premiumGold.opacity(0.07)], startPoint: .topTrailing, endPoint: .bottomLeading), in: RoundedRectangle(cornerRadius: 15))
     }
 
     private var primaryActions: some View {
         HStack(spacing: 10) {
             NavigationLink { CustomerRemittanceView() } label: {
-                Label("حوالاتي", systemImage: "clock.arrow.circlepath").frame(maxWidth: .infinity, minHeight: 52)
-                    .background(.white, in: RoundedRectangle(cornerRadius: 15)).overlay(RoundedRectangle(cornerRadius: 15).stroke(URColor.deepNavy.opacity(0.18)))
+                actionBanner(title: "حوالاتي", subtitle: "تابع الحالة والوصولات", symbol: "clock.arrow.circlepath", primary: false)
             }
             NavigationLink { URNativeTransferForm() } label: {
-                Label("حوالة جديدة", systemImage: "plus.circle.fill").frame(maxWidth: .infinity, minHeight: 52).background(URColor.premiumGold, in: RoundedRectangle(cornerRadius: 15))
+                actionBanner(title: "حوالة جديدة", subtitle: "ابدأ خلال دقائق", symbol: "plus.circle.fill", primary: true)
             }
-        }.font(.headline.weight(.black)).foregroundStyle(URColor.deepNavy)
+        }.foregroundStyle(URColor.deepNavy)
+    }
+
+    private func actionBanner(title: String, subtitle: String, symbol: String, primary: Bool) -> some View {
+        VStack(alignment: .trailing, spacing: 9) {
+            HStack { Spacer(); Image(systemName: symbol).font(.title2.weight(.bold)).foregroundStyle(primary ? URColor.premiumGold : URColor.royalBlue) }
+            Text(title).font(.headline.weight(.black)).foregroundStyle(primary ? .white : URColor.deepNavy)
+            Text(subtitle).font(.caption2.weight(.semibold)).foregroundStyle(primary ? .white.opacity(0.68) : .secondary)
+        }.padding(15).frame(maxWidth: .infinity, minHeight: 118, alignment: .trailing)
+            .background(primary ? AnyShapeStyle(LinearGradient(colors: [URColor.deepNavy, URColor.royalBlue], startPoint: .topTrailing, endPoint: .bottomLeading)) : AnyShapeStyle(Color.white), in: RoundedRectangle(cornerRadius: 19, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 19).stroke(primary ? URColor.premiumGold.opacity(0.42) : URColor.hairline))
+            .shadow(color: URColor.deepNavy.opacity(primary ? 0.15 : 0.05), radius: 11, y: 5)
     }
 
     @ViewBuilder private var orderCard: some View {
@@ -119,7 +157,7 @@ struct HomeView: View {
             }
         }
     }
-    private func shortcut(_ title: String, _ symbol: String) -> some View { HStack { Spacer(); Text(title).font(.subheadline.weight(.bold)); Image(systemName: symbol).foregroundStyle(URColor.premiumGold).frame(width: 28) }.foregroundStyle(URColor.deepNavy).padding(13).frame(minHeight: 50).background(.white, in: RoundedRectangle(cornerRadius: 14)).overlay(RoundedRectangle(cornerRadius: 14).stroke(URColor.hairline)) }
+    private func shortcut(_ title: String, _ symbol: String) -> some View { HStack { Spacer(); Text(title).font(.subheadline.weight(.bold)); Image(systemName: symbol).font(.headline).foregroundStyle(URColor.premiumGold).frame(width: 30, height: 30).background(URColor.premiumGold.opacity(0.10), in: Circle()) }.foregroundStyle(URColor.deepNavy).padding(13).frame(minHeight: 58).background(.white, in: RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(URColor.hairline)).shadow(color: URColor.deepNavy.opacity(0.04), radius: 7, y: 3) }
     private func retryCard(_ text: String, action: @escaping () async -> Void) -> some View { HStack(spacing: 10) { Button("إعادة المحاولة") { Task { await action() } }.font(.caption.weight(.black)); Spacer(); Text(text).font(.caption).multilineTextAlignment(.trailing); Image(systemName: "wifi.exclamationmark") }.foregroundStyle(.red).padding(13).background(.red.opacity(0.06), in: RoundedRectangle(cornerRadius: 14)) }
     private func statusPill(_ text: String, color: Color) -> some View { Text(text).font(.caption2.weight(.black)).foregroundStyle(color).padding(.horizontal, 8).padding(.vertical, 5).background(color.opacity(0.10), in: Capsule()) }
 

@@ -14,6 +14,7 @@ struct SupportView: View {
     @State private var notice = ""
     @State private var loading = false
     @State private var sending = false
+    @FocusState private var detailsFocused: Bool
 
     private let categories = [("transfer", "حوالة أو تأخر استلام", "arrow.left.arrow.right"), ("payment", "دفع أو إثبات", "doc.badge.clock"), ("account", "حساب وتسجيل دخول", "person.crop.circle"), ("general", "استفسار عام", "questionmark.circle"), ("fraud", "إبلاغ عن احتيال", "exclamationmark.shield")]
 
@@ -37,6 +38,7 @@ struct SupportView: View {
             }.padding(14)
         }
         .background(URColor.ivory.ignoresSafeArea()).toolbar(.hidden, for: .navigationBar).environment(\.layoutDirection, .rightToLeft)
+        .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("تم") { detailsFocused = false } } }
         .task(id: auth.isAuthenticated) { await customerAPI.resumeCustomerAccount(appEmail: auth.isAuthenticated ? auth.email : nil); await load() }
         .refreshable { await load() }
     }
@@ -45,7 +47,7 @@ struct SupportView: View {
     private var newTicketCard: some View { VStack(alignment: .trailing, spacing: 12) {
         if category == "transfer" || category == "payment" { Picker("الطلب المرتبط", selection: $selectedOrder) { Text("اختر طلبك").tag(""); ForEach(orders.indices, id: \.self) { index in Text("طلب " + supportShortID(supportText(orders[index], "id"))).tag(supportText(orders[index], "id")) } }.pickerStyle(.menu).frame(maxWidth: .infinity, alignment: .trailing); Text("نربط التذكرة بالطلب المختار ولا نطلب منك إعادة كتابة بياناته.").font(.caption2).foregroundStyle(.secondary) }
         Text(categoryPrompt).font(.subheadline.weight(.bold))
-        TextEditor(text: $details).frame(minHeight: 95).padding(8).background(URColor.ivory, in: RoundedRectangle(cornerRadius: 12)).overlay(RoundedRectangle(cornerRadius: 12).stroke(URColor.hairline)).accessibilityLabel("تفاصيل المشكلة")
+        TextEditor(text: $details).focused($detailsFocused).frame(minHeight: 95).padding(8).background(URColor.ivory, in: RoundedRectangle(cornerRadius: 12)).overlay(RoundedRectangle(cornerRadius: 12).stroke(URColor.hairline)).accessibilityLabel("تفاصيل المشكلة")
         Button(sending ? "جاري الحفظ…" : "إرسال التذكرة") { Task { await submit() } }.buttonStyle(URPrimaryButtonStyle()).disabled(sending || details.trimmingCharacters(in: .whitespacesAndNewlines).count < 5 || ((category == "transfer" || category == "payment") && selectedOrder.isEmpty))
     }.padding(15).background(.white, in: RoundedRectangle(cornerRadius: 17)).overlay(RoundedRectangle(cornerRadius: 17).stroke(URColor.hairline)) }
     private var categoryPrompt: String { switch category { case "transfer": return "شنو المشكلة بالحوالة أو الاستلام؟"; case "payment": return "شنو المشكلة بالدفع أو إثباته؟"; case "account": return "اشرح مشكلة الدخول بدون إرسال كلمة مرور أو رمز"; case "fraud": return "اذكر الواقعة بدون مشاركة كلمات المرور"; default: return "اكتب استفسارك باختصار" } }
@@ -58,11 +60,14 @@ struct SupportView: View {
 private struct SupportTicketDetail: View {
     let ticket: [String: Any]; let allMessages: [[String: Any]]; @ObservedObject var api: URNativeAPI; let reload: () async -> Void
     @State private var reply=""; @State private var notice=""; @State private var busy=false
+    @FocusState private var replyFocused: Bool
     private var rows: [[String:Any]] { allMessages.filter { supportText($0,"ticket_id") == supportText(ticket,"id") } }
     var body: some View { List { Section { LabeledContent("رقم التذكرة", value:supportText(ticket,"id")); LabeledContent("الحالة", value:supportStatus(supportText(ticket,"status"))); if !supportText(ticket,"order_id").isEmpty { LabeledContent("الطلب", value:supportShortID(supportText(ticket,"order_id"))) }; Text(supportText(ticket,"description")) }
         Section("التسلسل الزمني") { ForEach(rows.indices,id:\.self) { i in VStack(alignment:.trailing,spacing:5) { Text(supportText(rows[i],"sender_role") == "customer" ? "أنت" : "فريق أور").font(.caption.weight(.black)).foregroundStyle(URColor.royalBlue); Text(supportText(rows[i],"message")).frame(maxWidth:.infinity,alignment:.trailing) }.padding(.vertical,4) } }
-        Section("رد جديد") { TextField("اكتب ردك…",text:$reply,axis:.vertical).lineLimit(2...5); Button(busy ? "جاري الإرسال…" : "إرسال الرد") { Task { await send("reply") } }.disabled(busy || reply.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty); if supportText(ticket,"status") == "closed" { Button("إعادة فتح المشكلة") { Task { await send("reopen") } }.disabled(busy) }; if !notice.isEmpty { Text(notice).foregroundStyle(.red) } }
-    }.navigationTitle("تفاصيل التذكرة").environment(\.layoutDirection,.rightToLeft) }
+        Section("رد جديد") { TextField("اكتب ردك…",text:$reply,axis:.vertical).focused($replyFocused).lineLimit(2...5); Button(busy ? "جاري الإرسال…" : "إرسال الرد") { Task { await send("reply") } }.disabled(busy || reply.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty); if supportText(ticket,"status") == "closed" { Button("إعادة فتح المشكلة") { Task { await send("reopen") } }.disabled(busy) }; if !notice.isEmpty { Text(notice).foregroundStyle(.red) } }
+    }.navigationTitle("تفاصيل التذكرة").environment(\.layoutDirection,.rightToLeft)
+        .toolbar { ToolbarItemGroup(placement:.keyboard) { Spacer(); Button("تم") { replyFocused = false } } }
+    }
     private func send(_ action:String) async { busy=true; defer{busy=false}; do { _=try await api.request("/api/customer/support",method:"POST",body:["action":action,"ticketId":supportText(ticket,"id"),"message":reply],idempotencyKey:UUID().uuidString); reply=""; await reload(); notice="تم الإرسال" } catch { notice=error.localizedDescription } }
 }
 

@@ -31,6 +31,7 @@ struct RootView: View {
     @Environment(\.scenePhase) private var nativeScenePhase
     let container: AppContainer
     @State private var selection: URTab
+    @State private var homeNavigationID = UUID()
 
     init(container: AppContainer) {
         self.container = container
@@ -48,6 +49,7 @@ struct RootView: View {
     var body: some View {
         TabView(selection: $selection) {
             NavigationStack { HomeView(repository: container.ratesRepository, api: container.apiClient) }
+                .id(homeNavigationID)
                 .tag(URTab.home)
             NavigationStack { OfficesView(api: container.apiClient) }
                 .tag(URTab.offices)
@@ -64,13 +66,16 @@ struct RootView: View {
         .task { await URNativeTelemetry.launch() }
         .onChange(of: nativeScenePhase) { _, phase in if phase == .active { Task { await URNativeTelemetry.send("app_open") } } }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            URBottomNavigation(selection: $selection)
+            URBottomNavigation(selection: $selection) { tab in
+                if tab == .home { homeNavigationID = UUID() }
+            }
         }
     }
 }
 
 private struct URBottomNavigation: View {
     @Binding var selection: URTab
+    let onSelect: (URTab) -> Void
     @Namespace private var animationNamespace
 
     private func color(for tab: URTab) -> Color {
@@ -81,6 +86,7 @@ private struct URBottomNavigation: View {
         HStack(spacing: 0) {
             ForEach(URTab.allCases) { tab in
                 Button {
+                    onSelect(tab)
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
                         selection = tab
                     }
