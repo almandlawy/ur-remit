@@ -1623,7 +1623,6 @@ private struct URNativeOwnerOrderView: View {
 struct URRatesWorkspace<Content: View>: View {
     let content: Content
     @State private var tomanRate: Decimal?
-    @State private var tomanSourceDate: Date?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     init(@ViewBuilder content: () -> Content) { self.content = content() }
     var body: some View {
@@ -1666,7 +1665,7 @@ struct URRatesWorkspace<Content: View>: View {
                     Spacer()
                     VStack(alignment: .leading, spacing: 1) {
                         Text(tomanRate.map { urFormatTomanRate($0) } ?? "السعر غير متاح").font(.subheadline.weight(.black)).monospacedDigit()
-                        Text(tomanRateSubtitle).font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.72))
+                        Text(tomanRate == nil ? "تعذّر التحديث" : "تومان لكل 1$ · تحديث مباشر").font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.72))
                     }.environment(\.layoutDirection, .leftToRight).padding(.horizontal, 10).padding(.vertical, 6).background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
                 }.foregroundStyle(.white).padding(.horizontal, 14).frame(minHeight: 62)
                     .background(LinearGradient(colors: [URColor.deepNavy, Color(red: 0.02, green: 0.28, blue: 0.30)], startPoint: .trailing, endPoint: .leading), in: RoundedRectangle(cornerRadius: 16))
@@ -1686,16 +1685,6 @@ struct URRatesWorkspace<Content: View>: View {
               let raw = row["sell"] ?? row["buy"],
               let value = Decimal(string: String(describing: raw)) else { return }
         tomanRate = value
-        tomanSourceDate = ISO8601DateParser.date(from: urText(row, "sourceTimestamp"))
-    }
-
-    private var tomanRateSubtitle: String {
-        guard tomanRate != nil else { return "تعذّر التحديث" }
-        guard let source = tomanSourceDate else { return "تومان لكل 1$ · آخر سعر منشور" }
-        let formatter = RelativeDateTimeFormatter(); formatter.locale = Locale(identifier: "ar"); formatter.unitsStyle = .short
-        let age = formatter.localizedString(for: source, relativeTo: .now)
-        let freshness = Date().timeIntervalSince(source) > 60 * 30 ? "آخر سعر منشور" : "سعر محدث"
-        return "تومان لكل 1$ · \(freshness) \(age)"
     }
 }
 

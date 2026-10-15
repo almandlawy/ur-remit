@@ -1,4 +1,5 @@
 import SwiftUI
+import WebKit
 
 struct HomeView: View {
     let repository: any RatesRepository
@@ -18,6 +19,7 @@ struct HomeView: View {
             LazyVStack(spacing: 20) {
                 header
                 rateCard
+                globalMarkets
                 primaryActions
                 agentActions
                 orderCard
@@ -109,6 +111,36 @@ struct HomeView: View {
         }.frame(maxWidth: .infinity, alignment: .trailing).padding(13).background(LinearGradient(colors: [URColor.premiumGold.opacity(0.17), URColor.premiumGold.opacity(0.07)], startPoint: .topTrailing, endPoint: .bottomLeading), in: RoundedRectangle(cornerRadius: 15))
     }
 
+    @State private var selectedMarket = URGlobalMarket.gold
+
+    private var globalMarkets: some View {
+        VStack(alignment: .trailing, spacing: 12) {
+            HStack {
+                Text("TradingView · قد تتأخر بعض الأسواق حسب البورصة").font(.caption2).foregroundStyle(.secondary)
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("الأسواق العالمية").font(.headline.weight(.black))
+                    Text("ذهب، نفط، فضة، يورو وباوند").font(.caption).foregroundStyle(.secondary)
+                }
+                Image(systemName: "chart.xyaxis.line").font(.title2).foregroundStyle(URColor.premiumGold)
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 7) {
+                    ForEach(URGlobalMarket.allCases) { market in
+                        Button { selectedMarket = market } label: {
+                            Label(market.title, systemImage: market.symbol)
+                                .font(.caption.weight(.black)).padding(.horizontal, 11).padding(.vertical, 8)
+                                .foregroundStyle(selectedMarket == market ? .white : URColor.deepNavy)
+                                .background(selectedMarket == market ? URColor.deepNavy : URColor.ivory, in: Capsule())
+                        }.buttonStyle(.plain)
+                    }
+                }
+            }
+            TradingViewMiniChart(market: selectedMarket).id(selectedMarket.id).frame(height: 185)
+            HStack { Spacer(); Text("المصدر: TradingView · السعر والوحدة وحالة السوق تظهر داخل الشارت").font(.caption2).foregroundStyle(.secondary) }
+        }.padding(15).background(.white, in: RoundedRectangle(cornerRadius: 21)).overlay(RoundedRectangle(cornerRadius: 21).stroke(URColor.hairline))
+    }
+
     private var primaryActions: some View {
         HStack(spacing: 10) {
             NavigationLink { CustomerRemittanceView() } label: {
@@ -184,6 +216,32 @@ struct HomeView: View {
         guard !customerAPI.profile.isEmpty else { openOrder = nil; orderError = ""; return }
         do { let rows = try await customerAPI.request("/api/customer/checkout")["orders"] as? [[String: Any]] ?? []; openOrder = rows.first { !["delivered", "cancelled", "rejected"].contains(homeText($0, "status")) }; orderError = "" }
         catch { orderError = "تعذر تحديث الحوالة المفتوحة. الأسعار والاختصارات ما زالت تعمل." }
+    }
+}
+
+private enum URGlobalMarket: String, CaseIterable, Identifiable {
+    case gold = "TVC:GOLD", oil = "TVC:USOIL", silver = "TVC:SILVER", euro = "FX:EURUSD", pound = "FX:GBPUSD"
+    var id: String { rawValue }
+    var title: String { switch self { case .gold: "ذهب"; case .oil: "نفط WTI"; case .silver: "فضة"; case .euro: "يورو"; case .pound: "باوند" } }
+    var symbol: String { switch self { case .gold: "medal.fill"; case .oil: "drop.fill"; case .silver: "circle.fill"; case .euro: "eurosign.circle.fill"; case .pound: "sterlingsign.circle.fill" } }
+}
+
+private struct TradingViewMiniChart: UIViewRepresentable {
+    let market: URGlobalMarket
+    func makeUIView(context: Context) -> WKWebView {
+        let configuration = WKWebViewConfiguration(); configuration.defaultWebpagePreferences.allowsContentJavaScript = true
+        let view = WKWebView(frame: .zero, configuration: configuration); view.isOpaque = false; view.backgroundColor = .clear; view.scrollView.isScrollEnabled = false
+        return view
+    }
+    func updateUIView(_ view: WKWebView, context: Context) {
+        let html = """
+        <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><style>html,body,.tradingview-widget-container{margin:0;width:100%;height:100%;overflow:hidden;background:#fff}.tradingview-widget-container__widget{height:calc(100% - 22px);width:100%}.tradingview-widget-copyright{height:20px;text-align:center;font:11px -apple-system;color:#6a6d78}.blue-text{color:#2962ff;text-decoration:none}</style></head><body>
+        <div class="tradingview-widget-container"><div class="tradingview-widget-container__widget"></div><div class="tradingview-widget-copyright"><a class="blue-text" href="https://www.tradingview.com/markets/" target="_blank">\(market.title)</a> by TradingView</div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js" async>
+        {"symbols":[["\(market.title)","\(market.rawValue)|1D"]],"width":"100%","height":"100%","autosize":true,"locale":"en","colorTheme":"light","isTransparent":false,"chartType":"area","lineWidth":2,"dateRanges":["1d|1","1m|30","3m|60","12m|1D"],"hideMarketStatus":false,"hideSymbolLogo":false,"scalePosition":"right","scaleMode":"Normal"}
+        </script></div></body></html>
+        """
+        view.loadHTMLString(html, baseURL: URL(string: "https://www.tradingview.com"))
     }
 }
 

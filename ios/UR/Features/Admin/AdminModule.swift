@@ -651,6 +651,11 @@ private struct AdminRateEditor: View {
     @State private var feeFixed: String
     @State private var message: String?
     @State private var isSaving = false
+    @FocusState private var focusedField: Bool
+
+    private var hasChanges: Bool {
+        buy != (rate.buy.map { "\($0)" } ?? "") || sell != (rate.sell.map { "\($0)" } ?? "") || feeFixed != (rate.feeFixed.map { "\($0)" } ?? "")
+    }
 
     init(rate: Rate, token: String, onSaved: @escaping () async -> Void) {
         self.rate = rate
@@ -671,11 +676,9 @@ private struct AdminRateEditor: View {
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
 
-                HStack(spacing: 8) {
-                    valueField("شراء", text: $buy)
-                    valueField("بيع", text: $sell)
-                    valueField("العمولة", text: $feeFixed)
-                }
+                valueField("سعر الشراء", text: $buy, color: URColor.success)
+                valueField("سعر البيع", text: $sell, color: URColor.royalBlue)
+                valueField("العمولة لكل 10,000$", text: $feeFixed, color: URColor.premiumGold)
 
                 Button {
                     Task { await save() }
@@ -683,11 +686,12 @@ private struct AdminRateEditor: View {
                     if isSaving {
                         ProgressView()
                     } else {
-                        Text("حفظ نسخة سعر جديدة")
+                        Label("حفظ السعر ونشره", systemImage: "checkmark.circle.fill")
                     }
                 }
                 .font(.caption.weight(.bold))
-                .disabled(isSaving)
+                .buttonStyle(.borderedProminent).tint(URColor.deepNavy)
+                .disabled(isSaving || !hasChanges)
 
                 if let message {
                     Text(message)
@@ -697,18 +701,21 @@ private struct AdminRateEditor: View {
                 }
             }
         }
+        .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("تم") { focusedField = false } } }
     }
 
-    private func valueField(_ title: String, text: Binding<String>) -> some View {
-        VStack(alignment: .trailing, spacing: 4) {
-            Text(title).font(.caption2.weight(.bold))
+    private func valueField(_ title: String, text: Binding<String>, color: Color) -> some View {
+        VStack(alignment: .trailing, spacing: 6) {
+            Text(title).font(.caption.weight(.black)).foregroundStyle(color)
             TextField("—", text: text)
                 .keyboardType(.decimalPad)
+                .focused($focusedField)
+                .font(.title3.weight(.black)).monospacedDigit()
                 .multilineTextAlignment(.trailing)
-                .padding(8)
-                .background(URColor.ivory, in: RoundedRectangle(cornerRadius: 8))
+                .padding(12)
+                .background(color.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(color.opacity(0.28)))
         }
-        .frame(maxWidth: .infinity)
     }
 
     private func save() async {
