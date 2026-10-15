@@ -1580,7 +1580,7 @@ private struct URNativeOwnerOrderView: View {
             Section("مراجعة الطلب") {
                 Text(urText(order, "id")); Text(urStatus(urText(order, "status")))
                 ForEach(["senderName", "senderPhone", "senderAddress", "receiverName", "receiverPhone", "receiverAddress", "amount", "purpose"], id: \.self) { key in Text(urText(payload, key)) }
-                if urText(payload, "productType") == "toman_account_deposit" { Text("الحساب الإيراني: " + urText(payload, "accountNumber")).fontWeight(.bold) }
+                if ["toman_account_deposit", "renminbi_account_deposit"].contains(urText(payload, "productType")) { Text("حساب الإيداع: " + urText(payload, "accountNumber")).fontWeight(.bold) }
                 Text("إثبات: " + urText(order, "evidence"))
                 if let path = urText(order, "evidence").components(separatedBy: " · ").first(where: { $0.hasPrefix("/api/customer/evidence?") }) {
                     Button("عرض صورة أو PDF الإيداع") { Task { do { proofURL = try await api.downloadEvidence(path) } catch { message = error.localizedDescription } } }
@@ -1600,9 +1600,9 @@ private struct URNativeOwnerOrderView: View {
                 Button("تأكيد قبض المبلغ") { Task { await action("confirm") } }.disabled(!received || reference.count < 4 || busy)
             }
             if urText(order, "status") == "confirmed" {
-                if urText(payload, "productType") == "toman_account_deposit" {
-                    TextField("مرجع تنفيذ الإيداع الإيراني", text: $reference)
-                    Button("تأكيد تنفيذ إيداع التومان") { Task { await action("complete_deposit") } }.disabled(reference.count < 4 || busy)
+                if ["toman_account_deposit", "renminbi_account_deposit"].contains(urText(payload, "productType")) {
+                    TextField("مرجع تنفيذ الإيداع بالحساب", text: $reference)
+                    Button("تأكيد تنفيذ الإيداع") { Task { await action("complete_deposit") } }.disabled(reference.count < 4 || busy)
                 } else { Button("إصدار الحوالة") { Task { await action("issue") } }.disabled(busy) }
             }
             if !message.isEmpty { Text(message) }
@@ -1623,6 +1623,7 @@ private struct URNativeOwnerOrderView: View {
 struct URRatesWorkspace<Content: View>: View {
     let content: Content
     @State private var tomanRate: Decimal?
+    @State private var renminbiRate: Decimal?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     init(@ViewBuilder content: () -> Content) { self.content = content() }
     var body: some View {
@@ -1642,13 +1643,13 @@ struct URRatesWorkspace<Content: View>: View {
                             }
                             Image(systemName: "building.2.fill").font(.title2)
                         }.padding(.horizontal, 14)
-                    }.frame(maxWidth: .infinity, minHeight: 68).clipShape(Capsule())
+                    }.frame(maxWidth: .infinity, minHeight: 46).clipShape(Capsule())
                 }
                 NavigationLink { AgentPortalEntryView() } label: {
                     VStack(spacing: 3) {
                         Image(systemName: "person.badge.key.fill").font(.title3)
                         Text("دخول الوكيل").font(.caption2.weight(.black)).lineLimit(1)
-                    }.frame(width: 76, height: 68).background(URColor.deepNavy, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    }.frame(width: 72, height: 46).background(URColor.deepNavy, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
                 }.accessibilityLabel("دخول الوكلاء الحاليين")
               }.foregroundStyle(.white)
               AgentRecruitmentTicker(reduceMotion: reduceMotion)
@@ -1657,46 +1658,38 @@ struct URRatesWorkspace<Content: View>: View {
                   .padding(.horizontal, 4)
             }
             .padding(.horizontal, 11).padding(.vertical, 7)
-            NavigationLink { TomanAccountDepositView() } label: {
-                ZStack {
-                    LinearGradient(colors: [URColor.deepNavy, Color(red: 0.00, green: 0.36, blue: 0.34)], startPoint: .topTrailing, endPoint: .bottomLeading)
-                    Circle().stroke(.white.opacity(0.10), lineWidth: 18).frame(width: 145).offset(x: -130, y: -50)
-                    VStack(spacing: 12) {
-                        HStack(alignment: .top, spacing: 12) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(tomanRate.map { urFormatTomanRate($0) } ?? "السعر غير متاح").font(.title3.weight(.black)).monospacedDigit()
-                                Text(tomanRate == nil ? "تعذّر التحديث" : "لكل 1$ · سعر مباشر").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.72))
-                            }.environment(\.layoutDirection, .leftToRight)
-                            Spacer()
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text("إيداع تومان بالحساب").font(.headline.weight(.black))
-                                Text("بدون عمولة خدمة").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.74))
-                            }
-                            Image(systemName: "arrow.down.to.line.circle.fill").font(.title2).foregroundStyle(URColor.premiumGold)
-                        }
-                        HStack(spacing: 6) {
-                            Image(systemName: "arrow.left.circle.fill")
-                            Text("ابدأ إيداع تومان").font(.subheadline.weight(.black))
-                        }.foregroundStyle(URColor.deepNavy).frame(maxWidth: .infinity, minHeight: 42).background(URColor.premiumGold, in: Capsule())
-                    }.padding(15)
-                }.foregroundStyle(.white).frame(minHeight: 132).clipShape(UnevenRoundedRectangle(topLeadingRadius: 30, bottomLeadingRadius: 18, bottomTrailingRadius: 30, topTrailingRadius: 18, style: .continuous))
-                    .shadow(color: URColor.deepNavy.opacity(0.18), radius: 12, y: 6)
-            }.padding(.horizontal, 11).padding(.bottom, 7)
+            HStack(spacing: 8) {
+                NavigationLink { AccountDepositView(product: .toman) } label: { depositStrip(.toman, rate: tomanRate) }
+                NavigationLink { AccountDepositView(product: .renminbi) } label: { depositStrip(.renminbi, rate: renminbiRate) }
+            }.padding(.horizontal, 11).padding(.bottom, 6).buttonStyle(.plain)
             content
         }.background(URColor.ivory).tint(URColor.royalBlue)
-            .task { await loadTomanRate() }
+            .task { await loadDepositRates() }
     }
 
-    private func loadTomanRate() async {
+    private func depositStrip(_ product: AccountDepositProduct, rate: Decimal?) -> some View {
+        ZStack(alignment: .leading) {
+            LinearGradient(colors: product.colors, startPoint: .topTrailing, endPoint: .bottomLeading)
+            Image(product.asset).resizable().scaledToFill().frame(width: 70, height: 62).clipped().opacity(0.42)
+            HStack(spacing: 6) {
+                Spacer(minLength: 58)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(product.flag + " " + product.shortTitle).font(.caption.weight(.black)).lineLimit(1)
+                    Text(rate.map { product.formatRate($0) } ?? "السعر غير متاح").font(.caption2.weight(.bold)).lineLimit(1).minimumScaleFactor(0.72)
+                }
+                Image(systemName: "chevron.left").font(.caption2.weight(.black)).foregroundStyle(URColor.premiumGold)
+            }.padding(.horizontal, 9)
+        }.foregroundStyle(.white).frame(maxWidth: .infinity, minHeight: 62, maxHeight: 62).clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+    }
+
+    private func loadDepositRates() async {
         guard let url = URL(string: "https://www.urremit.com/api/native/prices"),
               let (data, response) = try? await URLSession.shared.data(from: url),
               let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
               let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let rows = payload["data"] as? [[String: Any]],
-              let row = rows.first(where: { urText($0, "sourceCurrency").uppercased() == "USD" && urText($0, "destinationCurrency").uppercased() == "IRT" }),
-              let raw = row["sell"] ?? row["buy"],
-              let value = Decimal(string: String(describing: raw)) else { return }
-        tomanRate = value
+              let rows = payload["data"] as? [[String: Any]] else { return }
+        func rate(_ currency: String) -> Decimal? { guard let row = rows.first(where: { urText($0, "sourceCurrency").uppercased() == "USD" && urText($0, "destinationCurrency").uppercased() == currency }), let raw = row["sell"] ?? row["buy"] else { return nil }; return Decimal(string: String(describing: raw).replacingOccurrences(of: ",", with: "")) }
+        tomanRate = rate("IRT"); renminbiRate = rate("CNY")
     }
 }
 
@@ -1714,7 +1707,7 @@ private struct AgentRecruitmentTicker: View {
                         .offset(x: proxy.size.width - CGFloat(progress) * (proxy.size.width * 2.2))
                 }
             }
-        }.frame(height: 25).clipped().accessibilityLabel("مطلوب وكلاء في العراق وكل دول العالم")
+        }.frame(height: 16).clipped().accessibilityLabel("مطلوب وكلاء في العراق وكل دول العالم")
     }
 }
 
@@ -1724,7 +1717,22 @@ private func urFormatTomanRate(_ value: Decimal) -> String {
     return (formatter.string(from: number) ?? number.stringValue) + " تومان"
 }
 
-private struct TomanAccountDepositView: View {
+private enum AccountDepositProduct: Equatable {
+    case toman, renminbi
+    var flag: String { self == .toman ? "🇮🇷" : "🇨🇳" }
+    var title: String { self == .toman ? "إيداع تومان بالحساب" : "إيداع رينمنبي بالحساب" }
+    var shortTitle: String { self == .toman ? "إيداع تومان" : "إيداع رينمنبي" }
+    var currencyName: String { self == .toman ? "تومان" : "رينمنبي" }
+    var payoutCode: String { self == .toman ? "IRT" : "CNY" }
+    var country: String { self == .toman ? "الإيراني" : "الصيني" }
+    var endpoint: String { self == .toman ? "/api/customer/toman-deposit" : "/api/customer/renminbi-deposit" }
+    var asset: String { self == .toman ? "IranCurrency" : "ChinaCurrency" }
+    var colors: [Color] { self == .toman ? [URColor.deepNavy, Color(red: 0.00, green: 0.36, blue: 0.34)] : [URColor.deepNavy, Color(red: 0.66, green: 0.04, blue: 0.08)] }
+    func formatRate(_ value: Decimal) -> String { let n = NSDecimalNumber(decimal: value); let f = NumberFormatter(); f.numberStyle = .decimal; f.maximumFractionDigits = self == .toman ? 0 : 4; return (f.string(from: n) ?? n.stringValue) + " " + currencyName }
+}
+
+private struct AccountDepositView: View {
+    let product: AccountDepositProduct
     @ObservedObject private var api = URNativeAPI.customer
     @State private var amount = ""
     @State private var beneficiaryName = ""
@@ -1741,27 +1749,27 @@ private struct TomanAccountDepositView: View {
         ScrollView {
             VStack(alignment: .trailing, spacing: 16) {
                 VStack(alignment: .trailing, spacing: 7) {
-                    Label("إيداع تومان بالحساب", systemImage: "arrow.down.to.line.circle.fill").font(.title2.weight(.black))
-                    Text("أدخل الدولار وبيانات الحساب؛ السعر يأتي من قائمة أور المعتمدة، ولا توجد عمولة خدمة على هذا المنتج.").font(.subheadline).foregroundStyle(.white.opacity(0.82))
-                }.foregroundStyle(.white).frame(maxWidth: .infinity, alignment: .trailing).padding(20)
-                    .background(LinearGradient(colors: [URColor.deepNavy, Color(red: 0.02, green: 0.34, blue: 0.31)], startPoint: .topTrailing, endPoint: .bottomLeading), in: RoundedRectangle(cornerRadius: 24))
+                    Label(product.title, systemImage: "arrow.down.to.line.circle.fill").font(.headline.weight(.black))
+                    Text("أدخل الدولار وبيانات الحساب؛ السعر يأتي من قائمة أور المعتمدة، ولا توجد عمولة خدمة.").font(.caption).foregroundStyle(.white.opacity(0.82)).lineLimit(2)
+                }.foregroundStyle(.white).frame(maxWidth: .infinity, alignment: .trailing).padding(.horizontal, 16).padding(.vertical, 10)
+                    .background(LinearGradient(colors: product.colors, startPoint: .topTrailing, endPoint: .bottomLeading), in: RoundedRectangle(cornerRadius: 16))
                 VStack(spacing: 13) {
                     TextField("المبلغ بالدولار", text: $amount).keyboardType(.decimalPad).focused($focused).textFieldStyle(.roundedBorder)
-                    TextField("اسم صاحب الحساب الإيراني", text: $beneficiaryName).focused($focused).textFieldStyle(.roundedBorder)
+                    TextField("اسم صاحب الحساب " + product.country, text: $beneficiaryName).focused($focused).textFieldStyle(.roundedBorder)
                     TextField("رقم الحساب / البطاقة", text: $accountNumber).keyboardType(.asciiCapableNumberPad).focused($focused).textFieldStyle(.roundedBorder)
                     Picker("طريقة الدفع", selection: $method) {
                         Text("اختر بوابة دفع").tag("")
                         ForEach(methods.indices, id: \.self) { index in Text(urText(methods[index], "name")).tag(urText(methods[index], "id")) }
                     }.pickerStyle(.menu).frame(maxWidth: .infinity, alignment: .trailing)
-                    Button(quote.isEmpty ? "احسب سعر التومان" : "تحديث السعر") { Task { await calculate() } }
+                    Button(quote.isEmpty ? "احسب سعر " + product.currencyName : "تحديث السعر") { Task { await calculate() } }
                         .buttonStyle(.borderedProminent).tint(URColor.deepNavy).disabled(busy || method.isEmpty)
                 }.padding(17).background(.white, in: RoundedRectangle(cornerRadius: 20))
                 if !quote.isEmpty {
                     VStack(alignment: .trailing, spacing: 12) {
                         Text("المبلغ الذي ينزل بالحساب").font(.caption.weight(.bold)).foregroundStyle(.white.opacity(0.75))
-                        Text(urGroupedAmount(urText(quote, "payout")) + " تومان").font(.system(size: 31, weight: .black, design: .rounded)).foregroundStyle(.yellow).environment(\.layoutDirection, .leftToRight)
+                        Text(urGroupedAmount(urText(quote, "payout")) + " " + product.currencyName).font(.system(size: 31, weight: .black, design: .rounded)).foregroundStyle(.yellow).environment(\.layoutDirection, .leftToRight)
                         Divider().overlay(.white.opacity(0.2))
-                        quoteLine("سعر الدولار", urGroupedAmount(urText(quote, "rate")) + " تومان")
+                        quoteLine("سعر الدولار", urGroupedAmount(urText(quote, "rate")) + " " + product.currencyName)
                         quoteLine("عمولة الخدمة", "0 USD")
                         quoteLine("المطلوب دفعه", urGroupedAmount(urText(quote, "total")) + " " + urText(quote, "paymentCurrency"))
                         Text("السعر صالح حتى " + expiryText).font(.caption).foregroundStyle(.white.opacity(0.72))
@@ -1772,15 +1780,15 @@ private struct TomanAccountDepositView: View {
                 if !message.isEmpty { Text(message).font(.footnote.weight(.semibold)).foregroundStyle(.red) }
             }.padding()
         }
-        .background(URColor.ivory).navigationTitle("إيداع تومان").navigationBarTitleDisplayMode(.inline).environment(\.layoutDirection, .rightToLeft)
+        .background(URColor.ivory).navigationTitle(product.shortTitle).navigationBarTitleDisplayMode(.inline).environment(\.layoutDirection, .rightToLeft)
         .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("تم") { focused = false } } }
         .task { await loadMethods() }.onChange(of: amount) { _, _ in quote = [:] }.onChange(of: method) { _, _ in quote = [:] }
     }
     private var expiryText: String { guard let stamp = (quote["expiresAt"] as? NSNumber)?.doubleValue else { return "—" }; return Date(timeIntervalSince1970: stamp / 1000).formatted(date: .omitted, time: .shortened) }
     private func quoteLine(_ title: String, _ value: String) -> some View { HStack { Text(value).fontWeight(.black).environment(\.layoutDirection, .leftToRight); Spacer(); Text(title) }.foregroundStyle(.white) }
     private func loadMethods() async { do { methods = try await api.request("/api/payment-methods")["methods"] as? [[String: Any]] ?? []; if methods.count == 1 { method = urText(methods[0], "id") } } catch { message = error.localizedDescription } }
-    private func calculate() async { busy = true; message = ""; defer { busy = false }; do { var c = URLComponents(); c.path = "/api/customer/toman-deposit"; c.queryItems = [.init(name: "amount", value: urDigits(amount)), .init(name: "method", value: method)]; quote = try await api.request(c.string ?? "")["quote"] as? [String: Any] ?? [:] } catch { message = error.localizedDescription } }
-    private func submit() async { busy = true; message = ""; defer { busy = false }; do { let result = try await api.request("/api/customer/toman-deposit", method: "POST", body: ["id": requestId, "amount": urDigits(amount), "beneficiaryName": beneficiaryName, "accountNumber": accountNumber, "method": method], idempotencyKey: requestId); guard result["success"] as? Bool == true else { throw URNativeError.message("لم يؤكد الخادم حفظ الطلب") }; let rows = try await api.request("/api/customer/checkout")["orders"] as? [[String: Any]] ?? []; createdOrder = rows.first { urText($0, "id") == requestId }; quote = [:] } catch { message = error.localizedDescription } }
+    private func calculate() async { busy = true; message = ""; defer { busy = false }; do { var c = URLComponents(); c.path = product.endpoint; c.queryItems = [.init(name: "amount", value: urDigits(amount)), .init(name: "method", value: method)]; quote = try await api.request(c.string ?? "")["quote"] as? [String: Any] ?? [:] } catch { message = error.localizedDescription } }
+    private func submit() async { busy = true; message = ""; defer { busy = false }; do { let result = try await api.request(product.endpoint, method: "POST", body: ["id": requestId, "amount": urDigits(amount), "beneficiaryName": beneficiaryName, "accountNumber": accountNumber, "method": method], idempotencyKey: requestId); guard result["success"] as? Bool == true else { throw URNativeError.message("لم يؤكد الخادم حفظ الطلب") }; let rows = try await api.request("/api/customer/checkout")["orders"] as? [[String: Any]] ?? []; createdOrder = rows.first { urText($0, "id") == requestId }; quote = [:] } catch { message = error.localizedDescription } }
 }
 private struct URNativeRatesBoard: View {
     @State private var rows: [[String: Any]] = []
