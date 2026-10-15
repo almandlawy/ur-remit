@@ -990,10 +990,28 @@ private struct URNativeInlinePaymentCompletion: View {
     var body: some View {
         VStack(alignment: .trailing, spacing: 14) {
             Divider()
-            Text("إكمال الدفع").font(.headline.weight(.black)).foregroundStyle(URColor.deepNavy)
-            LabeledContent("الحالة", value: urStatus(orderStatus))
-            LabeledContent("المبلغ المطلوب", value: urText(quote, "total") + " " + urText(quote, "paymentCurrency"))
-            LabeledContent("طريقة الدفع", value: urText(method, "name", fallback: urText(order, "method")))
+            Text("إكمال الدفع").font(.title2.weight(.black)).foregroundStyle(URColor.deepNavy)
+            VStack(alignment: .trailing, spacing: 5) {
+                Text("المبلغ المطلوب دفعه").font(.subheadline.weight(.bold)).foregroundStyle(.white.opacity(0.82))
+                Text(urText(quote, "total") + " " + urText(quote, "paymentCurrency"))
+                    .font(.system(size: 28, weight: .black, design: .rounded)).foregroundStyle(.white)
+                    .environment(\.layoutDirection, .leftToRight).textSelection(.enabled)
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing).padding(16)
+            .background(URColor.deepNavy, in: RoundedRectangle(cornerRadius: 16))
+            HStack(spacing: 8) {
+                Text(urStatus(orderStatus)).font(.headline.weight(.black))
+                Spacer()
+                Text("الحالة").font(.headline.weight(.bold))
+            }
+            .foregroundStyle(URColor.deepNavy).padding(13)
+            .background(Color.yellow.opacity(0.42), in: RoundedRectangle(cornerRadius: 14))
+            HStack {
+                Text(urText(method, "name", fallback: urText(order, "method"))).font(.headline.weight(.bold))
+                Spacer()
+                Text("طريقة الدفع").font(.subheadline.weight(.bold)).foregroundStyle(.secondary)
+            }
+            .padding(13).background(Color.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 14))
             paymentDetails
             if ["awaiting_payment", "needs_payment_info", "payment_rejected"].contains(orderStatus) {
                 if !urText(order, "review_reason", fallback: "").isEmpty { Text("ملاحظة الإدارة: " + urText(order, "review_reason")).foregroundStyle(.red) }
@@ -1022,23 +1040,39 @@ private struct URNativeInlinePaymentCompletion: View {
     @ViewBuilder private var paymentDetails: some View {
         let id = urText(order, "method")
         if id == "superqi" || id == "fib" || id == "zaincash" {
-            LabeledContent("اسم صاحب الحساب", value: urText(method, "beneficiary", fallback: "غير مكتمل"))
-            LabeledContent("رقم الحساب/المحفظة", value: urText(method, "account", fallback: "غير مكتمل")).environment(\.layoutDirection, .leftToRight).textSelection(.enabled)
-            Button("نسخ رقم الحساب") { UIPasteboard.general.string = urText(method, "account", fallback: "") }
+            paymentValueCard(title: "اسم صاحب الحساب", value: urText(method, "beneficiary", fallback: "غير مكتمل"), systemImage: "person.crop.circle.fill", accent: .orange)
+            paymentValueCard(title: "رقم الحساب / المحفظة", value: urText(method, "account", fallback: "غير مكتمل"), systemImage: "number.circle.fill", accent: URColor.royalBlue)
+            Button { UIPasteboard.general.string = urText(method, "account", fallback: "") } label: {
+                Label("نسخ رقم الحساب", systemImage: "doc.on.doc.fill").font(.headline.weight(.black)).frame(maxWidth: .infinity).padding(.vertical, 7)
+            }.buttonStyle(.borderedProminent).tint(URColor.royalBlue)
             Text(urText(method, "instructions", fallback: "راجع الدعم قبل التحويل.")).font(.footnote).foregroundStyle(.secondary)
         } else if id == "bank" {
             let account = urObject(quote["bankAccount"] ?? payload["bankAccount"])
-            LabeledContent("المستفيد", value: urText(account, "beneficiary", fallback: urText(method, "beneficiary")))
-            LabeledContent("البنك", value: urText(account, "bankName"))
-            LabeledContent("IBAN", value: urText(account, "iban", fallback: urText(account, "account"))).environment(\.layoutDirection, .leftToRight).textSelection(.enabled)
-            Button("نسخ IBAN") { UIPasteboard.general.string = urText(account, "iban", fallback: urText(account, "account", fallback: "")) }
+            paymentValueCard(title: "اسم المستفيد", value: urText(account, "beneficiary", fallback: urText(method, "beneficiary")), systemImage: "person.crop.circle.fill", accent: .orange)
+            paymentValueCard(title: "البنك", value: urText(account, "bankName"), systemImage: "building.columns.fill", accent: URColor.royalBlue)
+            paymentValueCard(title: "رقم IBAN", value: urText(account, "iban", fallback: urText(account, "account")), systemImage: "number.circle.fill", accent: URColor.royalBlue)
+            Button { UIPasteboard.general.string = urText(account, "iban", fallback: urText(account, "account", fallback: "")) } label: {
+                Label("نسخ رقم IBAN", systemImage: "doc.on.doc.fill").font(.headline.weight(.black)).frame(maxWidth: .infinity).padding(.vertical, 7)
+            }.buttonStyle(.borderedProminent).tint(URColor.royalBlue)
         } else if id.hasPrefix("usdt_") {
             let deposit = urObject(quote["deposit"]), address = urText(deposit, "address", fallback: urText(method, "instructions", fallback: ""))
-            LabeledContent("الشبكة", value: id == "usdt_trc20" ? "TRON · TRC20" : "Ethereum · ERC20")
-            Text(address).font(.system(.caption, design: .monospaced)).environment(\.layoutDirection, .leftToRight).textSelection(.enabled)
-            Button("نسخ عنوان المحفظة") { UIPasteboard.general.string = address }
+            paymentValueCard(title: "شبكة التحويل", value: id == "usdt_trc20" ? "TRON · TRC20" : "Ethereum · ERC20", systemImage: "network", accent: .orange)
+            paymentValueCard(title: "عنوان المحفظة", value: address, systemImage: "wallet.bifold.fill", accent: URColor.royalBlue)
+            Button { UIPasteboard.general.string = address } label: {
+                Label("نسخ عنوان المحفظة", systemImage: "doc.on.doc.fill").font(.headline.weight(.black)).frame(maxWidth: .infinity).padding(.vertical, 7)
+            }.buttonStyle(.borderedProminent).tint(URColor.royalBlue)
         }
         Text("لا ترسل إلى بيانات مختلفة عن الظاهرة هنا. رفع الإثبات لا يعني اعتماد وصول الأموال.").font(.footnote.weight(.semibold)).foregroundStyle(URColor.deepNavy)
+    }
+    private func paymentValueCard(title: String, value: String, systemImage: String, accent: Color) -> some View {
+        VStack(alignment: .trailing, spacing: 8) {
+            Label(title, systemImage: systemImage).font(.subheadline.weight(.black)).foregroundStyle(accent)
+            Text(value).font(.system(.title3, design: .rounded, weight: .black)).foregroundStyle(URColor.deepNavy)
+                .frame(maxWidth: .infinity, alignment: .trailing).environment(\.layoutDirection, .leftToRight).textSelection(.enabled)
+        }
+        .padding(14).frame(maxWidth: .infinity, alignment: .trailing)
+        .background(accent.opacity(0.13), in: RoundedRectangle(cornerRadius: 15))
+        .overlay(RoundedRectangle(cornerRadius: 15).stroke(accent.opacity(0.75), lineWidth: 2))
     }
     private func loadMethods() async { do { methods = try await api.request("/api/payment-methods")["methods"] as? [[String: Any]] ?? [] } catch { message = error.localizedDescription } }
     private func reload() async { do { let rows = try await api.request("/api/customer/checkout")["orders"] as? [[String: Any]] ?? []; if let latest = rows.first(where: { urText($0, "id") == urText(order, "id") }) { order = latest } } catch is CancellationError {} catch { message = error.localizedDescription } }
