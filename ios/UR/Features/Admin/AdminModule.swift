@@ -279,7 +279,10 @@ private struct AdminLoginView: View {
 
     private enum Field { case username, password }
     private var cleanUsername: String { username.trimmingCharacters(in: .whitespacesAndNewlines) }
-    private var canSubmit: Bool { cleanUsername.count >= 4 && password.count >= 12 && !isLoggingIn }
+    // Password policy belongs to the authentication service. Older authorised
+    // accounts may use a shorter numeric password, so the client must not
+    // reject a non-empty credential before it reaches the server.
+    private var canSubmit: Bool { cleanUsername.count >= 4 && !password.isEmpty && !isLoggingIn }
 
     var body: some View {
         ScrollView {
@@ -362,7 +365,7 @@ private struct AdminLoginView: View {
         guard canSubmit else {
             errorMessage = cleanUsername.count < 4
                 ? "أدخل اسم مستخدم أو بريداً صحيحاً."
-                : "كلمة المرور أقصر من الحد المطلوب."
+                : "أدخل كلمة المرور."
             return
         }
         isLoggingIn = true
