@@ -7,7 +7,8 @@
 - A valid route is quoted immediately; proof submission enters payment review and never confirms funds.
 - Administration can request more information, reject evidence with a visible reason, or confirm actual receipt once.
 - Confirmation freezes a unique receipt number and immutable snapshot with operator, time, amount, currency, and reference.
-- Deployed server: Sites version 163, commit `ef0fa5ac556cb0747374cbd0856e1b024cd95b6b`. Rollback: redeploy version 162.
+- Deployed server: Sites version 164, commit `35d8f8831fedaa9c8183b79eb23d77fa1880b00c`. Rollback: redeploy version 163.
+- Payment receipts render from the immutable approval snapshot, including the frozen receipt number, parties, office, quote, payment method, receipt reference, approving operator, and approval time.
 
 ## Implemented in this branch
 
@@ -21,10 +22,10 @@
 - QR camera usage description and UserDefaults/App Group required-reason declarations.
 - Widget placeholders no longer invent prices and displayed rates use thousands separators.
 
-## Hosted backend candidate
+## Hosted backend
 
-- Saved Sites version: 162 (not deployed).
-- Source commit: `c8365af415eb9973df850bee4ff243724f51e218`.
+- Production Sites version: 164.
+- Source commit: `35d8f8831fedaa9c8183b79eb23d77fa1880b00c`.
 - Formula: `amount / 10000 * signed route commission + USD 2`.
 - Positive, zero, and negative route commissions are preserved through quote arithmetic.
 - Valid orders receive a server quote and enter `awaiting_payment`; evidence still enters `payment_review` and never confirms receipt automatically.
@@ -34,15 +35,14 @@
 
 - iOS generic Simulator build: passed.
 - iPhone 15 Simulator XCTest: 2/2 passed.
-- iPad (10th generation) Simulator build: passed.
+- iPad (10th generation) Simulator XCTest: 2/2 passed.
 - Hosted backend build: passed.
-- Focused backend tests: 15/15 passed, including 3/3 new signed-commission/payment-fee cases.
+- Complete backend suite: 109/109 passed, including signed-commission/payment-fee, office isolation, evidence review, replay prevention, deletion, analytics, and privacy cases.
 - Protected-rate check: 8/8 files unchanged.
 
 ## Release gates still open
 
-- Sites version 162 is not deployed because the complete legacy suite has 11 failures: eight assumptions conflict with the newly requested flow and three are pre-existing/environmental (`python` alias, backup fixture, and a test-module loader). The focused changed-path suite passes.
 - Live customer/admin linkage, provider verification, deletion of a dedicated test account, QR device camera, and Universal Link device routing are not yet verified against the candidate server.
 - Commodity prices are not enabled: a redistribution-safe no-new-cost data source has not been approved. No mock or scraped data is shown.
-- Build 17 is confirmed unused in App Store Connect but has not been archived or uploaded while the backend candidate is undeployed.
+- Build 17 is confirmed unused in App Store Connect and the signed Archive succeeded. Upload remains blocked because Xcode has no Apple ID recorded in its Accounts list with App Store Connect access for team `H7LT4CJA73`.
 - No App Store review submission and no Apple Ads activation occurred.
