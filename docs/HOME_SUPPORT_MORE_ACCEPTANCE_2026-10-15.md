@@ -1,7 +1,7 @@
 # UR Global — Home, Support and More acceptance checkpoint
 
 Date: 2026-10-15  
-App version/build: 1.2.1 (17)  
+App version/build: 1.2.1 (18)  
 Server source commit: `7cc0b6d`
 
 ## Implemented
@@ -31,4 +31,4 @@ Server source commit: `7cc0b6d`
 - The new server migration and support API are not deployed at this checkpoint.
 - Authenticated ticket create/reply/close acceptance with two dedicated test accounts is pending credentials/deployment; local tests do not prove production behavior.
 - Support attachment upload is not exposed in the iOS ticket composer yet.
-- No Archive/TestFlight upload was made from this checkpoint and App Store review was not started.
+- App Store Connect was checked live: Build 17 is already uploaded and `Ready to Submit`, so this source was advanced to Build 18. Archive/TestFlight upload remains a separate verification step; App Store review was not started.
