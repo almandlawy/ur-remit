@@ -1077,8 +1077,11 @@ private struct URNativeInlinePaymentCompletion: View {
                 PhotosPicker(selection: $selectedPhoto, matching: .images) { Label("إرفاق صورة الإثبات", systemImage: "photo") }
                 Button("رفع PDF أو صورة من الملفات") { importFile = true }
                 if let fileData { Text("الإثبات جاهز: \(fileData.count / 1024) KB").font(.caption) }
+                Text("أرفق صورة الإثبات أو اكتب مرجع الإيداع؛ يكفي أحدهما مع الموافقة أعلاه.")
+                    .font(.caption).foregroundStyle(.secondary)
                 Button(busy ? "جاري إرسال الإثبات…" : "إرسال الإثبات للمراجعة") { Task { await upload() } }
-                    .buttonStyle(.borderedProminent).disabled(busy || !accepted || reference.trimmingCharacters(in: .whitespacesAndNewlines).count < 4)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(busy || !accepted || (reference.trimmingCharacters(in: .whitespacesAndNewlines).count < 4 && fileData == nil))
             } else if orderStatus == "payment_review" {
                 Text("تم إرسال الإثبات. الطلب الآن بانتظار مراجعة الإدارة واعتماد وصول المبلغ.").font(.subheadline.weight(.semibold)).foregroundStyle(URColor.deepNavy)
             }
@@ -1143,7 +1146,8 @@ private struct URNativeInlinePaymentCompletion: View {
                 for (name, value) in [("id", urText(order, "id")), ("version", urText(order, "version"))] { data.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"\r\n\r\n\(value)\r\n".utf8)) }
                 data.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"deposit\"\r\nContent-Type: \(fileType)\r\n\r\n".utf8)); data.append(fileData); data.append(Data("\r\n--\(boundary)--\r\n".utf8))
                 let result = try await api.request("/api/customer/evidence", method: "POST", bytes: data, contentType: "multipart/form-data; boundary=" + boundary)
-                evidence += " · " + urText(result, "evidenceUrl", fallback: "")
+                let evidenceURL = urText(result, "evidenceUrl", fallback: "")
+                evidence = evidence.isEmpty ? evidenceURL : evidence + " · " + evidenceURL
             }
             _ = try await api.request("/api/customer/checkout", method: "PATCH", body: ["id": urText(order, "id"), "version": order["version"] as? Int ?? -1, "evidence": evidence, "acceptQuote": true])
             fileData = nil; reference = ""; accepted = false; await reload()
@@ -1246,7 +1250,9 @@ private struct URNativeOrderView: View {
                     PhotosPicker(selection: $selectedPhoto, matching: .images) { Label("صورة إثبات الإيداع", systemImage: "photo") }
                     Button("رفع PDF أو صورة من الملفات") { importFile = true }
                     if let data = fileData { Text("الإثبات جاهز: \(data.count / 1024) KB") }
-                    Button(busy ? "جاري الرفع…" : "إرسال الإثبات للمراجعة") { Task { await upload() } }.disabled(!accepted || reference.count < 4 || busy || !depositReady)
+                    Text("أرفق صورة الإثبات أو اكتب مرجع الإيداع؛ يكفي أحدهما مع الموافقة أعلاه.").font(.caption).foregroundStyle(.secondary)
+                    Button(busy ? "جاري الرفع…" : "إرسال الإثبات للمراجعة") { Task { await upload() } }
+                        .disabled(!accepted || (reference.trimmingCharacters(in: .whitespacesAndNewlines).count < 4 && fileData == nil) || busy || !depositReady)
                 }
             }
             if ["confirmed", "issued"].contains(urText(order, "status")) {
@@ -1308,7 +1314,8 @@ private struct URNativeOrderView: View {
                 for (name, value) in [("id", urText(order, "id")), ("version", urText(order, "version"))] { data.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"\r\n\r\n\(value)\r\n".utf8)) }
                 data.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"deposit\"\r\nContent-Type: \(fileType)\r\n\r\n".utf8)); data.append(fileData); data.append(Data("\r\n--\(boundary)--\r\n".utf8))
                 let result = try await api.request("/api/customer/evidence", method: "POST", bytes: data, contentType: "multipart/form-data; boundary=" + boundary)
-                evidence += " · " + urText(result, "evidenceUrl", fallback: "")
+                let evidenceURL = urText(result, "evidenceUrl", fallback: "")
+                evidence = evidence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? evidenceURL : evidence + " · " + evidenceURL
             }
             _ = try await api.request("/api/customer/checkout", method: "PATCH", body: ["id": urText(order, "id"), "version": order["version"] as? Int ?? -1, "evidence": evidence, "acceptQuote": accepted])
             fileData = nil; await reload()
