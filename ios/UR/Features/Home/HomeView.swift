@@ -19,6 +19,7 @@ struct HomeView: View {
                 header
                 rateCard
                 primaryActions
+                agentActions
                 orderCard
                 shortcuts
                 if !rateError.isEmpty { retryCard(rateError) { await loadRates() } }
@@ -117,6 +118,21 @@ struct HomeView: View {
                 actionBanner(title: "حوالة جديدة", subtitle: "ابدأ خلال دقائق", symbol: "plus.circle.fill", primary: true)
             }
         }.foregroundStyle(URColor.deepNavy)
+    }
+
+    private var agentActions: some View {
+        HStack(spacing: 10) {
+            NavigationLink { AgentJoinView() } label: { agentAction("انضم كوكيل", "مكتب جديد", "building.2.crop.circle") }
+            NavigationLink { AgentPortalEntryView() } label: { agentAction("دخول الوكلاء", "حساب المكتب", "person.badge.key.fill") }
+        }.buttonStyle(.plain)
+    }
+
+    private func agentAction(_ title: String, _ subtitle: String, _ symbol: String) -> some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .trailing, spacing: 3) { Text(title).font(.subheadline.weight(.black)); Text(subtitle).font(.caption2).foregroundStyle(.secondary) }
+            Image(systemName: symbol).font(.title3.weight(.bold)).foregroundStyle(URColor.premiumGold)
+        }.foregroundStyle(URColor.deepNavy).padding(13).frame(maxWidth: .infinity, minHeight: 66)
+            .background(.white, in: RoundedRectangle(cornerRadius: 17)).overlay(RoundedRectangle(cornerRadius: 17).stroke(URColor.premiumGold.opacity(0.34)))
     }
 
     private func actionBanner(title: String, subtitle: String, symbol: String, primary: Bool) -> some View {

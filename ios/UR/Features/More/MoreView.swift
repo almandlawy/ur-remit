@@ -247,6 +247,7 @@ import UserNotifications
 final class URNativeAPI: ObservableObject {
     static let customer = URNativeAPI(scope: "customer")
     static let owner = URNativeAPI(scope: "owner")
+    static let agent = URNativeAPI(scope: "agent")
     @Published var profile: [String: String] = [:]
     private let account: String
     private let session: URLSession
@@ -1598,9 +1599,15 @@ struct URRatesWorkspace<Content: View>: View {
     let content: Content
     init(@ViewBuilder content: () -> Content) { self.content = content() }
     var body: some View {
-        content
-            .background(URColor.ivory)
-            .tint(URColor.royalBlue)
+        VStack(spacing: 0) {
+            content
+            HStack(spacing: 10) {
+                NavigationLink { AgentJoinView() } label: { Label("انضم كوكيل", systemImage: "building.2.crop.circle") }
+                NavigationLink { AgentPortalEntryView() } label: { Label("دخول الوكلاء", systemImage: "person.badge.key.fill") }
+            }
+            .font(.caption.weight(.black)).foregroundStyle(URColor.deepNavy).padding(10)
+            .background(.white).overlay(alignment: .top) { Divider() }
+        }.background(URColor.ivory).tint(URColor.royalBlue)
     }
 }
 private struct URNativeRatesBoard: View {

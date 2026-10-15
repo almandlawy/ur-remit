@@ -47,6 +47,7 @@
 		D829F09FEB7BAAEADDCF982A /* RatesRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1E6D4F7A7F9D87256F187C /* RatesRepository.swift */; };
 		DA91AD9D8D85A442E4CF1E2C /* RateCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A47C464A4E5B6AE18337C874 /* RateCacheTests.swift */; };
 		DBF150D5B5223C6CD68D4416 /* URWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC1EDE4AE378BAA2B6E61EDC /* URWidget.swift */; };
+		DDBF77BE6CC5807E8044D6BD /* AgentPortal.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8D61986CFC22F1C658335C5 /* AgentPortal.swift */; };
 		DE35DAD0F74C7BBBAD3E6E79 /* URAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6623AA122B1508E97E4AE8E1 /* URAuthService.swift */; };
 		E2C238A7F35290C10D2445DA /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E47E15BBF2C66AF2D8F9563D /* OnboardingView.swift */; };
 		E3FD25BBFB09DC13290AFF60 /* AdminModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18743967701B8304E5C7F616 /* AdminModule.swift */; };
@@ -145,6 +146,7 @@
 		E2C7482F2FE8AB6DA4D9E3B3 /* DailyReminderManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyReminderManager.swift; sourceTree = "<group>"; };
 		E47E15BBF2C66AF2D8F9563D /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		E7D97FEB1BF2F19BD085A93B /* URTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URTheme.swift; sourceTree = "<group>"; };
+		E8D61986CFC22F1C658335C5 /* AgentPortal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentPortal.swift; sourceTree = "<group>"; };
 		EFA7CFA2F9BD54B831219301 /* FavoritesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesStore.swift; sourceTree = "<group>"; };
 		F653470FC848F68D758CC689 /* AccountDeletedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountDeletedView.swift; sourceTree = "<group>"; };
 		F6A6003C031698962EEB9DAA /* URWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = URWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -359,6 +361,7 @@
 		BB6E4A687AFFEE7ECD3D6B33 /* More */ = {
 			isa = PBXGroup;
 			children = (
+				E8D61986CFC22F1C658335C5 /* AgentPortal.swift */,
 				10AE76AC5E559DA98159CD24 /* MoreView.swift */,
 			);
 			path = More;
@@ -592,6 +595,7 @@
 				434F7A39188E0D36C320314B /* AccountDeletedView.swift in Sources */,
 				763C0F31EE03A18F51236E95 /* AccountView.swift in Sources */,
 				E3FD25BBFB09DC13290AFF60 /* AdminModule.swift in Sources */,
+				DDBF77BE6CC5807E8044D6BD /* AgentPortal.swift in Sources */,
 				AE69A7F42100D8670786DB56 /* AppContainer.swift in Sources */,
 				2A37E0F76CB93A624C20245C /* CalculatorView.swift in Sources */,
 				C8522921A79CAF04A2903799 /* DailyReminderManager.swift in Sources */,
