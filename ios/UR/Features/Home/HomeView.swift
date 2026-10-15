@@ -44,33 +44,40 @@ struct HomeView: View {
     }
 
     private var header: some View {
-        ZStack(alignment: .topLeading) {
-            LinearGradient(colors: [URColor.deepNavy, URColor.royalBlue.opacity(0.92)], startPoint: .topTrailing, endPoint: .bottomLeading)
-            Circle().fill(URColor.premiumGold.opacity(0.17)).frame(width: 170, height: 170).offset(x: -38, y: 35)
-            Circle().stroke(.white.opacity(0.10), lineWidth: 1).frame(width: 220, height: 220).offset(x: 125, y: -120)
-            VStack(alignment: .trailing, spacing: 20) {
+        ZStack {
+            Image("HomeGlobalHero").resizable().scaledToFill()
+            LinearGradient(colors: [URColor.deepNavy.opacity(0.20), URColor.deepNavy.opacity(0.94)], startPoint: .leading, endPoint: .trailing)
+            LinearGradient(colors: [.clear, .black.opacity(0.48)], startPoint: .top, endPoint: .bottom)
+            VStack(alignment: .trailing, spacing: 15) {
                 HStack(spacing: 11) {
-                    URBrandLogo(size: 46)
-                    VStack(alignment: .leading, spacing: 2) {
+                    URBrandLogo(size: 48)
+                    VStack(alignment: .leading, spacing: 1) {
                         Text("أور جلوبال").font(.title2.weight(.black)).foregroundStyle(.white)
-                        Text("ثقة تربطك بكل وجهة").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.72))
+                        Text("UR GLOBAL").font(.caption2.weight(.black)).tracking(1.4).foregroundStyle(URColor.premiumGold)
                     }
                     Spacer()
                     NavigationLink { URNativeNotificationView(api: customerAPI) } label: {
                         Image(systemName: "bell.badge.fill").font(.title3).foregroundStyle(URColor.premiumGold)
-                            .frame(width: 46, height: 46).background(.white.opacity(0.12), in: Circle()).overlay(Circle().stroke(.white.opacity(0.18)))
+                            .frame(width: 44, height: 44).background(.ultraThinMaterial.opacity(0.42), in: Circle()).overlay(Circle().stroke(.white.opacity(0.24)))
                     }.accessibilityLabel("إشعارات الحساب")
                 }
-                VStack(alignment: .trailing, spacing: 5) {
-                    Text(auth.isAuthenticated ? "كل حوالاتك بمتابعة أوضح" : "أسعارك وحوالاتك بمكان واحد")
-                        .font(.title3.weight(.black)).foregroundStyle(.white)
-                    Text("ابدأ حوالة، تابع الطلب، ووصل للدعم بسرعة")
-                        .font(.caption).foregroundStyle(.white.opacity(0.76))
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(auth.isAuthenticated ? "حوالاتك توصل أبعد" : "أموالك معك في كل وجهة")
+                        .font(.title2.weight(.black)).foregroundStyle(.white).minimumScaleFactor(0.75)
+                    Text("أسعار واضحة · متابعة آمنة · شبكة عالمية")
+                        .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.82))
                 }.frame(maxWidth: .infinity, alignment: .trailing)
+                HStack(spacing: 8) {
+                    Label("متابعة مباشرة", systemImage: "location.north.circle.fill")
+                    Label("خدمة موثوقة", systemImage: "checkmark.shield.fill")
+                }.font(.caption2.weight(.bold)).foregroundStyle(.white)
+                    .padding(.horizontal, 10).padding(.vertical, 7)
+                    .background(.black.opacity(0.28), in: Capsule()).frame(maxWidth: .infinity, alignment: .trailing)
             }
             .padding(18)
-        }.frame(minHeight: 170).clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-            .shadow(color: URColor.deepNavy.opacity(0.18), radius: 18, y: 9)
+        }.frame(height: 208).clipShape(RoundedRectangle(cornerRadius: 27, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 27).stroke(URColor.premiumGold.opacity(0.32)))
+            .shadow(color: URColor.deepNavy.opacity(0.24), radius: 20, y: 10)
     }
 
     @ViewBuilder private var rateCard: some View {

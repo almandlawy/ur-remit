@@ -1624,40 +1624,9 @@ struct URRatesWorkspace<Content: View>: View {
     let content: Content
     @State private var tomanRate: Decimal?
     @State private var renminbiRate: Decimal?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     init(@ViewBuilder content: () -> Content) { self.content = content() }
     var body: some View {
         VStack(spacing: 0) {
-            VStack(spacing: 7) {
-              HStack(spacing: 9) {
-                NavigationLink { AgentJoinView() } label: {
-                    ZStack {
-                        LinearGradient(colors: [Color(red: 0.82, green: 0.03, blue: 0.09), Color(red: 0.52, green: 0.00, blue: 0.06)], startPoint: .topTrailing, endPoint: .bottomLeading)
-                        Circle().fill(.white.opacity(0.09)).frame(width: 92).offset(x: -115, y: 30)
-                        HStack(spacing: 10) {
-                            Text("انضم الآن").font(.caption.weight(.black)).padding(.horizontal, 11).padding(.vertical, 7).background(.white, in: Capsule()).foregroundStyle(Color(red: 0.65, green: 0.01, blue: 0.06))
-                            Spacer(minLength: 4)
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text("مطلوب وكلاء").font(.headline.weight(.black))
-                                Text("في العراق وكل دول العالم").font(.caption.weight(.bold)).opacity(0.86)
-                            }
-                            Image(systemName: "building.2.fill").font(.title2)
-                        }.padding(.horizontal, 14)
-                    }.frame(maxWidth: .infinity, minHeight: 46).clipShape(Capsule())
-                }
-                NavigationLink { AgentPortalEntryView() } label: {
-                    VStack(spacing: 3) {
-                        Image(systemName: "person.badge.key.fill").font(.title3)
-                        Text("دخول الوكيل").font(.caption2.weight(.black)).lineLimit(1)
-                    }.frame(width: 72, height: 46).background(URColor.deepNavy, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
-                }.accessibilityLabel("دخول الوكلاء الحاليين")
-              }.foregroundStyle(.white)
-              AgentRecruitmentTicker(reduceMotion: reduceMotion)
-                  .foregroundStyle(Color(red: 0.68, green: 0.02, blue: 0.07))
-                  .background(Color.red.opacity(0.07), in: Capsule())
-                  .padding(.horizontal, 4)
-            }
-            .padding(.horizontal, 11).padding(.vertical, 7)
             HStack(spacing: 8) {
                 NavigationLink { AccountDepositView(product: .toman) } label: { depositStrip(.toman, rate: tomanRate) }
                 NavigationLink { AccountDepositView(product: .renminbi) } label: { depositStrip(.renminbi, rate: renminbiRate) }
@@ -1690,24 +1659,6 @@ struct URRatesWorkspace<Content: View>: View {
               let rows = payload["data"] as? [[String: Any]] else { return }
         func rate(_ currency: String) -> Decimal? { guard let row = rows.first(where: { urText($0, "sourceCurrency").uppercased() == "USD" && urText($0, "destinationCurrency").uppercased() == currency }), let raw = row["sell"] ?? row["buy"] else { return nil }; return Decimal(string: String(describing: raw).replacingOccurrences(of: ",", with: "")) }
         tomanRate = rate("IRT"); renminbiRate = rate("CNY")
-    }
-}
-
-private struct AgentRecruitmentTicker: View {
-    let reduceMotion: Bool
-    private let tickerText = "العراق  •  الخليج  •  أوروبا  •  وكل دول العالم  •  انضم إلى شبكة أور  •  "
-    var body: some View {
-        GeometryReader { proxy in
-            if reduceMotion {
-                Text(tickerText).lineLimit(1).font(.caption2.weight(.black)).frame(maxWidth: .infinity)
-            } else {
-                TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-                    let progress = timeline.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 18) / 18
-                    Text(tickerText + tickerText).lineLimit(1).font(.caption2.weight(.black)).fixedSize()
-                        .offset(x: proxy.size.width - CGFloat(progress) * (proxy.size.width * 2.2))
-                }
-            }
-        }.frame(height: 16).clipped().accessibilityLabel("مطلوب وكلاء في العراق وكل دول العالم")
     }
 }
 
