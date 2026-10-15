@@ -1627,48 +1627,60 @@ struct URRatesWorkspace<Content: View>: View {
     init(@ViewBuilder content: () -> Content) { self.content = content() }
     var body: some View {
         VStack(spacing: 0) {
-            VStack(spacing: 0) {
-              HStack(spacing: 0) {
+            VStack(spacing: 7) {
+              HStack(spacing: 9) {
                 NavigationLink { AgentJoinView() } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: "arrow.left.circle.fill").font(.title3)
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text("مطلوب وكلاء في العراق وكل دول العالم").font(.subheadline.weight(.black)).lineLimit(1).minimumScaleFactor(0.76)
-                            Text("انضم ويانا كوكيل").font(.caption2.weight(.bold)).opacity(0.88)
-                        }
-                        Spacer(minLength: 2)
-                        Image(systemName: "building.2.fill").font(.title2)
-                    }.padding(.horizontal, 12).frame(maxWidth: .infinity, minHeight: 62)
+                    ZStack {
+                        LinearGradient(colors: [Color(red: 0.82, green: 0.03, blue: 0.09), Color(red: 0.52, green: 0.00, blue: 0.06)], startPoint: .topTrailing, endPoint: .bottomLeading)
+                        Circle().fill(.white.opacity(0.09)).frame(width: 92).offset(x: -115, y: 30)
+                        HStack(spacing: 10) {
+                            Text("انضم الآن").font(.caption.weight(.black)).padding(.horizontal, 11).padding(.vertical, 7).background(.white, in: Capsule()).foregroundStyle(Color(red: 0.65, green: 0.01, blue: 0.06))
+                            Spacer(minLength: 4)
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text("مطلوب وكلاء").font(.headline.weight(.black))
+                                Text("في العراق وكل دول العالم").font(.caption.weight(.bold)).opacity(0.86)
+                            }
+                            Image(systemName: "building.2.fill").font(.title2)
+                        }.padding(.horizontal, 14)
+                    }.frame(maxWidth: .infinity, minHeight: 68).clipShape(Capsule())
                 }
                 NavigationLink { AgentPortalEntryView() } label: {
                     VStack(spacing: 3) {
-                        Image(systemName: "person.badge.key.fill").font(.headline)
-                        Text("دخول").font(.caption2.weight(.black))
-                    }.frame(width: 66).frame(minHeight: 62).background(.black.opacity(0.14))
+                        Image(systemName: "person.badge.key.fill").font(.title3)
+                        Text("دخول الوكيل").font(.caption2.weight(.black)).lineLimit(1)
+                    }.frame(width: 76, height: 68).background(URColor.deepNavy, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
                 }.accessibilityLabel("دخول الوكلاء الحاليين")
-              }
+              }.foregroundStyle(.white)
               AgentRecruitmentTicker(reduceMotion: reduceMotion)
+                  .foregroundStyle(Color(red: 0.68, green: 0.02, blue: 0.07))
+                  .background(Color.red.opacity(0.07), in: Capsule())
+                  .padding(.horizontal, 4)
             }
-            .foregroundStyle(.white)
-            .background(LinearGradient(colors: [Color(red: 0.74, green: 0.02, blue: 0.08), Color(red: 0.43, green: 0.00, blue: 0.05)], startPoint: .topTrailing, endPoint: .bottomLeading))
-            .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 15).stroke(.white.opacity(0.25)))
-            .shadow(color: Color.red.opacity(0.18), radius: 8, y: 4)
             .padding(.horizontal, 11).padding(.vertical, 7)
             NavigationLink { TomanAccountDepositView() } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "arrow.down.to.line.circle.fill").font(.title2).foregroundStyle(URColor.premiumGold)
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("إيداع تومان بالحساب").font(.subheadline.weight(.black))
-                        Text("سعر مباشر · عمولة الخدمة 0 · بوابات الدفع المتاحة").font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.78))
-                    }
-                    Spacer()
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(tomanRate.map { urFormatTomanRate($0) } ?? "السعر غير متاح").font(.subheadline.weight(.black)).monospacedDigit()
-                        Text(tomanRate == nil ? "تعذّر التحديث" : "تومان لكل 1$ · تحديث مباشر").font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.72))
-                    }.environment(\.layoutDirection, .leftToRight).padding(.horizontal, 10).padding(.vertical, 6).background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
-                }.foregroundStyle(.white).padding(.horizontal, 14).frame(minHeight: 62)
-                    .background(LinearGradient(colors: [URColor.deepNavy, Color(red: 0.02, green: 0.28, blue: 0.30)], startPoint: .trailing, endPoint: .leading), in: RoundedRectangle(cornerRadius: 16))
+                ZStack {
+                    LinearGradient(colors: [URColor.deepNavy, Color(red: 0.00, green: 0.36, blue: 0.34)], startPoint: .topTrailing, endPoint: .bottomLeading)
+                    Circle().stroke(.white.opacity(0.10), lineWidth: 18).frame(width: 145).offset(x: -130, y: -50)
+                    VStack(spacing: 12) {
+                        HStack(alignment: .top, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(tomanRate.map { urFormatTomanRate($0) } ?? "السعر غير متاح").font(.title3.weight(.black)).monospacedDigit()
+                                Text(tomanRate == nil ? "تعذّر التحديث" : "لكل 1$ · سعر مباشر").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.72))
+                            }.environment(\.layoutDirection, .leftToRight)
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text("إيداع تومان بالحساب").font(.headline.weight(.black))
+                                Text("بدون عمولة خدمة").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.74))
+                            }
+                            Image(systemName: "arrow.down.to.line.circle.fill").font(.title2).foregroundStyle(URColor.premiumGold)
+                        }
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.left.circle.fill")
+                            Text("ابدأ إيداع تومان").font(.subheadline.weight(.black))
+                        }.foregroundStyle(URColor.deepNavy).frame(maxWidth: .infinity, minHeight: 42).background(URColor.premiumGold, in: Capsule())
+                    }.padding(15)
+                }.foregroundStyle(.white).frame(minHeight: 132).clipShape(UnevenRoundedRectangle(topLeadingRadius: 30, bottomLeadingRadius: 18, bottomTrailingRadius: 30, topTrailingRadius: 18, style: .continuous))
+                    .shadow(color: URColor.deepNavy.opacity(0.18), radius: 12, y: 6)
             }.padding(.horizontal, 11).padding(.bottom, 7)
             content
         }.background(URColor.ivory).tint(URColor.royalBlue)
@@ -1702,7 +1714,7 @@ private struct AgentRecruitmentTicker: View {
                         .offset(x: proxy.size.width - CGFloat(progress) * (proxy.size.width * 2.2))
                 }
             }
-        }.frame(height: 24).clipped().background(.black.opacity(0.18)).accessibilityLabel("مطلوب وكلاء في العراق وكل دول العالم")
+        }.frame(height: 25).clipped().accessibilityLabel("مطلوب وكلاء في العراق وكل دول العالم")
     }
 }
 
