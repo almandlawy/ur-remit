@@ -25,10 +25,14 @@ Server source commit: `7cc0b6d`
 - iPhone 15 Simulator XCTest: 2/2 passed.
 - iPad 10th generation Simulator XCTest: 2/2 passed.
 - Visual inspection: Home, Support visitor state and More captured on iPhone and iPad under `output/ui-qa/home-support-more/`.
+- Release archive: 1.2.1 (18), bundle `com.urremit.mobile`, succeeded with Widget and Live Activity validation.
+- Physical iPhone: Build 18 development build signed, installed and launched on `iPhone1`.
 
 ## Not yet claimed
 
 - The new server migration and support API are not deployed at this checkpoint.
 - Authenticated ticket create/reply/close acceptance with two dedicated test accounts is pending credentials/deployment; local tests do not prove production behavior.
 - Support attachment upload is not exposed in the iOS ticket composer yet.
-- App Store Connect was checked live: Build 17 is already uploaded and `Ready to Submit`, so this source was advanced to Build 18. Archive/TestFlight upload remains a separate verification step; App Store review was not started.
+- App Store Connect was checked live: Build 17 and Build 16 are already uploaded and `Ready to Submit`, so this source was advanced to Build 18.
+- TestFlight upload of Build 18 is blocked before transfer: Xcode reports no signed-in account with App Store Connect access for team `H7LT4CJA73`. The development account can sign and install, but the App Store Connect account for this team must be added/refreshed in Xcode before export/upload. App Store review was not started.
+- Xcode Cloud cannot build this unpushed branch while the repository push URL remains intentionally disabled. No remote or paid workflow was changed.
