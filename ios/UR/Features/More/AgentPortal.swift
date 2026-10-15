@@ -17,6 +17,7 @@ struct AgentPortalEntryView: View {
 }
 
 struct AgentJoinView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var officeName = ""
     @State private var fullName = ""
     @State private var email = ""
@@ -28,7 +29,7 @@ struct AgentJoinView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .trailing, spacing: 16) {
-                agentHero(title: "انضم إلى شبكة أور", subtitle: "طلب اعتماد مكتب جديد — لا يُمنح رصيد أو صلاحية مالية تلقائياً", symbol: "building.2.fill")
+                AgentJoinGraphicHero(reduceMotion: reduceMotion)
                 VStack(spacing: 12) {
                     field("اسم المكتب", text: $officeName)
                     field("اسم المسؤول", text: $fullName)
@@ -50,6 +51,47 @@ struct AgentJoinView: View {
             _ = try await URNativeAPI.agent.request("/api/agents", method: "POST", body: ["officeName": officeName, "fullName": fullName, "email": email, "whatsapp": whatsapp, "location": location, "businessType": businessType])
             message = "تم استلام الطلب. ستراجعه الإدارة قبل إنشاء الحساب أو منحه أي صلاحية مالية."
         } catch { message = error.localizedDescription }
+    }
+}
+
+private struct AgentJoinGraphicHero: View {
+    let reduceMotion: Bool
+    private let marks: [(String, CGFloat, CGFloat, Double)] = [
+        ("dollarsign.circle.fill", 0.12, 0.24, 0), ("arrow.left.arrow.right.circle.fill", 0.82, 0.22, 1.1),
+        ("banknote.fill", 0.18, 0.76, 2.1), ("building.columns.fill", 0.82, 0.72, 3.0)
+    ]
+    var body: some View {
+        TimelineView(.animation(minimumInterval: reduceMotion ? 60 : 1.0 / 20.0)) { timeline in
+            let time = reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
+            GeometryReader { proxy in
+                ZStack(alignment: .bottomTrailing) {
+                    Image("AgentMoneyBackground").resizable().scaledToFill()
+                    LinearGradient(colors: [URColor.deepNavy.opacity(0.94), URColor.deepNavy.opacity(0.56), Color.red.opacity(0.50)], startPoint: .bottomTrailing, endPoint: .topLeading)
+                    ForEach(marks.indices, id: \.self) { index in
+                        let mark = marks[index]
+                        Image(systemName: mark.0)
+                            .font(.system(size: index == 1 ? 34 : 27, weight: .bold))
+                            .foregroundStyle(index == 1 ? URColor.premiumGold : .white.opacity(0.82))
+                            .position(x: proxy.size.width * mark.1, y: proxy.size.height * mark.2 + CGFloat(sin(time + mark.3) * 5))
+                            .accessibilityHidden(true)
+                    }
+                    VStack(alignment: .trailing, spacing: 7) {
+                        Text("انضم إلى شبكة أور").font(.system(size: 29, weight: .black, design: .rounded))
+                        Text("شراكة حوالات وصيرفة بمسارات وصلاحيات تعتمدها الإدارة")
+                            .font(.subheadline.weight(.semibold)).foregroundStyle(.white.opacity(0.88)).multilineTextAlignment(.trailing)
+                        Label("طلب مكتب جديد", systemImage: "building.2.crop.circle.fill")
+                            .font(.caption.weight(.black)).foregroundStyle(URColor.deepNavy)
+                            .padding(.horizontal, 12).padding(.vertical, 7).background(URColor.premiumGold, in: Capsule())
+                    }
+                    .foregroundStyle(.white).padding(20).frame(maxWidth: .infinity, alignment: .trailing)
+                }
+            }
+        }
+        .frame(height: 230).clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 28).stroke(.white.opacity(0.32)))
+        .shadow(color: URColor.deepNavy.opacity(0.22), radius: 18, y: 10)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("انضم إلى شبكة أور. طلب اعتماد مكتب جديد")
     }
 }
 

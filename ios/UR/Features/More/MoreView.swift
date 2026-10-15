@@ -1555,12 +1555,13 @@ private struct URNativeOwnerOrderView: View {
     @State private var message = ""
     @State private var busy = false
     @State private var proofURL: URL?
+    private var payload: [String: Any] { urObject(order["payload"]) }
     var body: some View {
         Form {
             Section("مراجعة الطلب") {
                 Text(urText(order, "id")); Text(urStatus(urText(order, "status")))
-                let payload = urObject(order["payload"])
                 ForEach(["senderName", "senderPhone", "senderAddress", "receiverName", "receiverPhone", "receiverAddress", "amount", "purpose"], id: \.self) { key in Text(urText(payload, key)) }
+                if urText(payload, "productType") == "toman_account_deposit" { Text("الحساب الإيراني: " + urText(payload, "accountNumber")).fontWeight(.bold) }
                 Text("إثبات: " + urText(order, "evidence"))
                 if let path = urText(order, "evidence").components(separatedBy: " · ").first(where: { $0.hasPrefix("/api/customer/evidence?") }) {
                     Button("عرض صورة أو PDF الإيداع") { Task { do { proofURL = try await api.downloadEvidence(path) } catch { message = error.localizedDescription } } }
@@ -1579,7 +1580,12 @@ private struct URNativeOwnerOrderView: View {
                 Button("رفض الإثبات مع السماح بالتصحيح", role: .destructive) { Task { await action("reject_evidence") } }.disabled(reason.count < 5 || busy)
                 Button("تأكيد قبض المبلغ") { Task { await action("confirm") } }.disabled(!received || reference.count < 4 || busy)
             }
-            if urText(order, "status") == "confirmed" { Button("إصدار الحوالة") { Task { await action("issue") } }.disabled(busy) }
+            if urText(order, "status") == "confirmed" {
+                if urText(payload, "productType") == "toman_account_deposit" {
+                    TextField("مرجع تنفيذ الإيداع الإيراني", text: $reference)
+                    Button("تأكيد تنفيذ إيداع التومان") { Task { await action("complete_deposit") } }.disabled(reference.count < 4 || busy)
+                } else { Button("إصدار الحوالة") { Task { await action("issue") } }.disabled(busy) }
+            }
             if !message.isEmpty { Text(message) }
         }.scrollContentBackground(.hidden).background(URColor.ivory).tint(URColor.royalBlue).navigationTitle("عملية عميل").quickLookPreview($proofURL)
     }
@@ -1625,9 +1631,80 @@ struct URRatesWorkspace<Content: View>: View {
             .overlay(RoundedRectangle(cornerRadius: 15).stroke(.white.opacity(0.25)))
             .shadow(color: Color.red.opacity(0.18), radius: 8, y: 4)
             .padding(.horizontal, 11).padding(.vertical, 7)
+            NavigationLink { TomanAccountDepositView() } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "arrow.down.to.line.circle.fill").font(.title2).foregroundStyle(URColor.premiumGold)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("إيداع تومان بالحساب").font(.subheadline.weight(.black))
+                        Text("سعر مباشر · عمولة الخدمة 0 · بوابات الدفع المتاحة").font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.78))
+                    }
+                    Spacer()
+                    Text("IRT").font(.caption.weight(.black)).padding(.horizontal, 9).padding(.vertical, 5).background(.white.opacity(0.12), in: Capsule())
+                }.foregroundStyle(.white).padding(.horizontal, 14).frame(minHeight: 62)
+                    .background(LinearGradient(colors: [URColor.deepNavy, Color(red: 0.02, green: 0.28, blue: 0.30)], startPoint: .trailing, endPoint: .leading), in: RoundedRectangle(cornerRadius: 16))
+            }.padding(.horizontal, 11).padding(.bottom, 7)
             content
         }.background(URColor.ivory).tint(URColor.royalBlue)
     }
+}
+
+private struct TomanAccountDepositView: View {
+    @ObservedObject private var api = URNativeAPI.customer
+    @State private var amount = ""
+    @State private var beneficiaryName = ""
+    @State private var accountNumber = ""
+    @State private var methods: [[String: Any]] = []
+    @State private var method = ""
+    @State private var quote: [String: Any] = [:]
+    @State private var createdOrder: [String: Any]?
+    @State private var busy = false
+    @State private var message = ""
+    @State private var requestId = UUID().uuidString
+    @FocusState private var focused: Bool
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .trailing, spacing: 16) {
+                VStack(alignment: .trailing, spacing: 7) {
+                    Label("إيداع تومان بالحساب", systemImage: "arrow.down.to.line.circle.fill").font(.title2.weight(.black))
+                    Text("أدخل الدولار وبيانات الحساب؛ السعر يأتي من قائمة أور المعتمدة، ولا توجد عمولة خدمة على هذا المنتج.").font(.subheadline).foregroundStyle(.white.opacity(0.82))
+                }.foregroundStyle(.white).frame(maxWidth: .infinity, alignment: .trailing).padding(20)
+                    .background(LinearGradient(colors: [URColor.deepNavy, Color(red: 0.02, green: 0.34, blue: 0.31)], startPoint: .topTrailing, endPoint: .bottomLeading), in: RoundedRectangle(cornerRadius: 24))
+                VStack(spacing: 13) {
+                    TextField("المبلغ بالدولار", text: $amount).keyboardType(.decimalPad).focused($focused).textFieldStyle(.roundedBorder)
+                    TextField("اسم صاحب الحساب الإيراني", text: $beneficiaryName).focused($focused).textFieldStyle(.roundedBorder)
+                    TextField("رقم الحساب / البطاقة", text: $accountNumber).keyboardType(.asciiCapableNumberPad).focused($focused).textFieldStyle(.roundedBorder)
+                    Picker("طريقة الدفع", selection: $method) {
+                        Text("اختر بوابة دفع").tag("")
+                        ForEach(methods.indices, id: \.self) { index in Text(urText(methods[index], "name")).tag(urText(methods[index], "id")) }
+                    }.pickerStyle(.menu).frame(maxWidth: .infinity, alignment: .trailing)
+                    Button(quote.isEmpty ? "احسب سعر التومان" : "تحديث السعر") { Task { await calculate() } }
+                        .buttonStyle(.borderedProminent).tint(URColor.deepNavy).disabled(busy || method.isEmpty)
+                }.padding(17).background(.white, in: RoundedRectangle(cornerRadius: 20))
+                if !quote.isEmpty {
+                    VStack(alignment: .trailing, spacing: 12) {
+                        Text("المبلغ الذي ينزل بالحساب").font(.caption.weight(.bold)).foregroundStyle(.white.opacity(0.75))
+                        Text(urGroupedAmount(urText(quote, "payout")) + " تومان").font(.system(size: 31, weight: .black, design: .rounded)).foregroundStyle(.yellow).environment(\.layoutDirection, .leftToRight)
+                        Divider().overlay(.white.opacity(0.2))
+                        quoteLine("سعر الدولار", urGroupedAmount(urText(quote, "rate")) + " تومان")
+                        quoteLine("عمولة الخدمة", "0 USD")
+                        quoteLine("المطلوب دفعه", urGroupedAmount(urText(quote, "total")) + " " + urText(quote, "paymentCurrency"))
+                        Text("السعر صالح حتى " + expiryText).font(.caption).foregroundStyle(.white.opacity(0.72))
+                        Button("تأكيد الطلب والانتقال للدفع") { Task { await submit() } }.buttonStyle(.borderedProminent).tint(URColor.premiumGold).foregroundStyle(URColor.deepNavy).disabled(busy)
+                    }.padding(18).background(URColor.deepNavy, in: RoundedRectangle(cornerRadius: 22))
+                }
+                if let createdOrder { URNativeInlinePaymentCompletion(order: createdOrder, api: api) }
+                if !message.isEmpty { Text(message).font(.footnote.weight(.semibold)).foregroundStyle(.red) }
+            }.padding()
+        }
+        .background(URColor.ivory).navigationTitle("إيداع تومان").navigationBarTitleDisplayMode(.inline).environment(\.layoutDirection, .rightToLeft)
+        .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("تم") { focused = false } } }
+        .task { await loadMethods() }.onChange(of: amount) { _, _ in quote = [:] }.onChange(of: method) { _, _ in quote = [:] }
+    }
+    private var expiryText: String { guard let stamp = (quote["expiresAt"] as? NSNumber)?.doubleValue else { return "—" }; return Date(timeIntervalSince1970: stamp / 1000).formatted(date: .omitted, time: .shortened) }
+    private func quoteLine(_ title: String, _ value: String) -> some View { HStack { Text(value).fontWeight(.black).environment(\.layoutDirection, .leftToRight); Spacer(); Text(title) }.foregroundStyle(.white) }
+    private func loadMethods() async { do { methods = try await api.request("/api/payment-methods")["methods"] as? [[String: Any]] ?? []; if methods.count == 1 { method = urText(methods[0], "id") } } catch { message = error.localizedDescription } }
+    private func calculate() async { busy = true; message = ""; defer { busy = false }; do { var c = URLComponents(); c.path = "/api/customer/toman-deposit"; c.queryItems = [.init(name: "amount", value: urDigits(amount)), .init(name: "method", value: method)]; quote = try await api.request(c.string ?? "")["quote"] as? [String: Any] ?? [:] } catch { message = error.localizedDescription } }
+    private func submit() async { busy = true; message = ""; defer { busy = false }; do { let result = try await api.request("/api/customer/toman-deposit", method: "POST", body: ["id": requestId, "amount": urDigits(amount), "beneficiaryName": beneficiaryName, "accountNumber": accountNumber, "method": method], idempotencyKey: requestId); guard result["success"] as? Bool == true else { throw URNativeError.message("لم يؤكد الخادم حفظ الطلب") }; let rows = try await api.request("/api/customer/checkout")["orders"] as? [[String: Any]] ?? []; createdOrder = rows.first { urText($0, "id") == requestId }; quote = [:] } catch { message = error.localizedDescription } }
 }
 private struct URNativeRatesBoard: View {
     @State private var rows: [[String: Any]] = []
