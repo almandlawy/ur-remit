@@ -18,7 +18,7 @@ private struct URRateEntry: TimelineEntry {
 
 private struct URRateProvider: TimelineProvider {
     func placeholder(in context: Context) -> URRateEntry {
-        .init(date: .now, sourceDate: .now, buy: "165,900", sell: "165,950", routes: sampleRoutes, highlightedRoute: 0)
+        .init(date: .now, sourceDate: nil, buy: nil, sell: nil, routes: sampleRoutes, highlightedRoute: 0)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (URRateEntry) -> Void) {
@@ -119,9 +119,15 @@ private struct URRateWidgetView: View {
     private func rateValue(_ title: String, _ value: String?) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(title).font(.system(size: 9, weight: .bold)).foregroundStyle(.white.opacity(0.72))
-            Text(value ?? "—").font(.system(size: family == .systemSmall ? 19 : 24, weight: .black, design: .rounded))
+            Text(formatted(value)).font(.system(size: family == .systemSmall ? 19 : 24, weight: .black, design: .rounded))
                 .minimumScaleFactor(0.65).lineLimit(1).monospacedDigit().contentTransition(.numericText())
         }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func formatted(_ value: String?) -> String {
+        guard let value, let number = Decimal(string: value, locale: Locale(identifier: "en_US_POSIX")) else { return "—" }
+        let formatter = NumberFormatter(); formatter.locale = Locale(identifier: "en_US_POSIX"); formatter.numberStyle = .decimal; formatter.maximumFractionDigits = 4
+        return formatter.string(from: number as NSDecimalNumber) ?? "—"
     }
 
     private var compactRoute: some View {

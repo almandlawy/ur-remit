@@ -772,10 +772,13 @@ private func urStatus(_ value: String) -> String {
     ["review": "مراجعة بيانات الطلب", "awaiting_payment": "عرض السعر جاهز — بانتظار الإيداع", "payment_review": "مراجعة إثبات الإيداع", "confirmed": "تم تأكيد قبض المبلغ", "issued": "تم إصدار الحوالة", "rejected": "الطلب مرفوض", "paypal_pending": "دفع PayPal قيد التحقق — لا تدفع مرة ثانية", "paypal_test_complete": "اكتمل اختبار PayPal — لا أموال حقيقية", "payment_hold": "الدفع محجوز للمراجعة — تواصل مع أور"][value] ?? value
 }
 private func urDigits(_ text: String) -> String {
-    String(text.map { character in
+    let normalized = String(text.map { character in
         if let number = character.wholeNumberValue, (0...9).contains(number) { return Character(String(number)) }
-        return character == "٫" ? "." : character
+        if character == "٫" { return "." }
+        if character == "−" || character == "﹣" { return "-" }
+        return character
     })
+    return normalized.replacingOccurrences(of: "٬", with: "").replacingOccurrences(of: ",", with: "")
 }
 private func urPhone(_ text: String) -> String {
     urDigits(text).filter { !$0.isWhitespace && !"()-.".contains($0) }
@@ -790,21 +793,21 @@ private func urReceiptDate(_ value: Any?) -> String {
 private struct URNativeTransferForm: View {
     @EnvironmentObject private var auth: URAuthService
     @ObservedObject private var api = URNativeAPI.customer
-    @State private var amount = ""
-    @State private var senderName = ""
-    @State private var senderPhone = ""
-    @State private var senderAddress = ""
-    @State private var senderCountry = ""
-    @State private var receiverCountry = ""
-    @State private var feeMode = "added"
+    @AppStorage("URTransferDraft.amount") private var amount = ""
+    @AppStorage("URTransferDraft.senderName") private var senderName = ""
+    @AppStorage("URTransferDraft.senderPhone") private var senderPhone = ""
+    @AppStorage("URTransferDraft.senderAddress") private var senderAddress = ""
+    @AppStorage("URTransferDraft.senderCountry") private var senderCountry = ""
+    @AppStorage("URTransferDraft.receiverCountry") private var receiverCountry = ""
+    @AppStorage("URTransferDraft.feeMode") private var feeMode = "added"
     @State private var bankAccountId = "fab-aed"
-    @State private var receiverName = ""
-    @State private var receiverPhone = ""
-    @State private var receiverAddress = ""
-    @State private var purpose = ""
-    @State private var payout = 0
+    @AppStorage("URTransferDraft.receiverName") private var receiverName = ""
+    @AppStorage("URTransferDraft.receiverPhone") private var receiverPhone = ""
+    @AppStorage("URTransferDraft.receiverAddress") private var receiverAddress = ""
+    @AppStorage("URTransferDraft.purpose") private var purpose = ""
+    @AppStorage("URTransferDraft.payout") private var payout = 0
     @State private var collection = 0
-    @State private var method = ""
+    @AppStorage("URTransferDraft.method") private var method = ""
     @State private var accountTermsAccepted = false
     @State private var methods: [[String: Any]] = []
     @State private var offices: [[String: Any]] = []
@@ -814,7 +817,7 @@ private struct URNativeTransferForm: View {
     @State private var busy = false
     @State private var submitted = false
     @State private var createdOrder: [String: Any]?
-    @State private var requestId = UUID().uuidString
+    @AppStorage("URTransferDraft.requestId") private var requestId = UUID().uuidString
     private var receivingOffices: [[String: Any]] { offices.filter { urText($0, "country") == receiverCountry } }
     private var sendingOffices: [[String: Any]] { offices.filter { urText($0, "country") == senderCountry } }
     private var origins: [String] { Array(Set(offices.compactMap { $0["country"] as? String })).sorted() }
@@ -827,29 +830,24 @@ private struct URNativeTransferForm: View {
             Group {
             Section("١ · المسار والمبلغ") {
                 Picker("جهة الإرسال", selection: $senderCountry) { Text("اختر").tag(""); ForEach(origins, id: \.self) { Text($0).tag($0) } }
-                Picker("مكتب الإرسال وقبض النقد", selection: $collection) { Text("اختر").tag(0); ForEach(sendingOffices.indices, id: \.self) { i in Text(urText(sendingOffices[i], "region") + " · " + urText(sendingOffices[i], "name")).tag(sendingOffices[i]["id"] as? Int ?? 0) } }
-                if let office = sendingOffices.first(where: { ($0["id"] as? Int ?? 0) == collection }) {
-                    Text(urText(office, "details")).font(.subheadline)
-                    Text("هاتف المكتب: " + urText(office, "phone")).font(.footnote)
-                }
                 Picker("دولة الاستلام", selection: $receiverCountry) { Text("اختر الدولة").tag(""); ForEach(destinations, id: \.self) { Text($0).tag($0) } }.disabled(senderCountry.isEmpty)
-                Text("كل الدول والمكاتب المعتمدة متاحة لطلب الحوالة. المسار دون سعر معتمد يراجع من الإدارة قبل الدفع.").font(.footnote).foregroundStyle(.secondary)
+                Text("تظهر المسارات ذات السعر المعتمد فقط. لا يلزم مكتب قبض عند الدفع الإلكتروني.").font(.footnote).foregroundStyle(.secondary)
                 if origins.isEmpty { Text("تعذر تحميل المكاتب؛ حدّث الصفحة أو تواصل مع الدعم.").font(.footnote) }
                 Picker("مكتب الاستلام", selection: $payout) { Text("اختر").tag(0); ForEach(receivingOffices.indices, id: \.self) { i in Text(urText(receivingOffices[i], "region") + " · " + urText(receivingOffices[i], "name")).tag(receivingOffices[i]["id"] as? Int ?? 0) } }
                 if payout > 0 { Text(urText(payoutOffice, "details")); Text("هاتف المكتب: " + urText(payoutOffice, "phone")) }
                 TextField("المبلغ بالدولار USD", text: $amount).keyboardType(.decimalPad)
                 Picker("احتساب العمولة", selection: $feeMode) { Text("فوق المبلغ").tag("added"); Text("تنخصم من المبلغ").tag("deducted") }.pickerStyle(.segmented)
                 Text(feeMode == "added" ? "المستفيد يستلم قيمة المبلغ كاملة، وتدفع العمولة فوقها." : "تدفع المبلغ المحدد، وتُخصم العمولة قبل تحويل الصافي للمستفيد.").font(.footnote).foregroundStyle(.secondary)
-                Button(hasPricedRoute ? "احسب السعر والرسوم" : "طلب تسعير من الإدارة") { Task { await calculate() } }.buttonStyle(.borderedProminent).controlSize(.large).disabled(busy || payout == 0 || senderCountry.isEmpty)
+                Button("احسب السعر والرسوم") { Task { await calculate() } }.buttonStyle(.borderedProminent).controlSize(.large).disabled(busy || !hasPricedRoute || payout == 0 || senderCountry.isEmpty)
                 if !quote.isEmpty {
                     LabeledContent("سعر الصرف", value: urText(quote, "rate"))
-                    LabeledContent("رسوم خدمة أور", value: urText(quote, "serviceFee"))
-                    LabeledContent("عمولة مصدر السعر", value: urText(quote, "sourceFee"))
+                    LabeledContent("عمولة المسار لكل 10,000$", value: urText(quote, "routeCommission") + " USD")
+                    LabeledContent("رسوم طريقة الدفع", value: urText(quote, "paymentFee") + " USD")
                     LabeledContent("إجمالي الرسوم", value: urText(quote, "fee"))
                     LabeledContent("تدفع إجمالاً", value: urText(quote, "total") + " USD")
                     LabeledContent("يستلم المستفيد", value: urText(quote, "net") + " " + urText(quote, "targetCurrency"))
                     Text("السعر بتاريخ " + urText(quote, "sourceTimestamp")).font(.footnote)
-                    Text("تراجع أور الطلب وتثبت عرض السعر قبل الإيداع.").font(.footnote)
+                    Text("هذا عرض الخادم المعتمد؛ عند التأكيد ينتقل الطلب مباشرة إلى انتظار الدفع.").font(.footnote)
                     Text("حدود التنفيذ المباشر: " + urText(quote, "minAmount") + " — " + urText(quote, "maxAmount") + " USD").font(.caption)
                     if quote["approvalRequired"] as? Bool == true { Text("المبلغ يحتاج مراجعة حدود المسار من الإدارة. يمكنك إرسال الطلب، والدفع ينتظر الاعتماد.").font(.footnote).foregroundStyle(URColor.royalBlue) }
                 }
@@ -872,13 +870,7 @@ private struct URNativeTransferForm: View {
                         if methods[i]["available"] as? Bool == true { Text(urText(methods[i], "name")).tag(urText(methods[i], "id")) }
                     }
                 }
-                ForEach(methods.indices, id: \.self) { i in
-                    URNativePaymentBrandRow(method: methods[i])
-                }
-                if !methods.contains(where: { urText($0, "id") == "superqi" }) {
-                    ForEach(["superqi", "zaincash", "fib", "cards"], id: \.self) { id in URNativePaymentBrandRow(method: ["id": id, "name": ["superqi": "SuperQi · سوبر كي", "zaincash": "ZainCash · زين كاش", "fib": "FIB · مصرف العراق الأول", "cards": "البطاقات وApple Pay"][id] ?? id, "available": false]) }
-                }
-                NavigationLink("شوف خطوات تجربة PayPal") { URNativePayPalPreview() }
+                ForEach(methods.indices, id: \.self) { i in URNativePaymentBrandRow(method: methods[i]) }
                 if method == "bank" {
                     Picker("حساب الإيداع AED", selection: $bankAccountId) { ForEach(bankAccounts.indices, id: \.self) { i in Text(urText(bankAccounts[i], "bankName")).tag(urText(bankAccounts[i], "id")) } }
                     Text("يظهر مبلغ الإيداع بالدرهم بعد اعتماد عرض السعر، مع اسم المستفيد والآيبان.").font(.footnote)
@@ -890,10 +882,10 @@ private struct URNativeTransferForm: View {
                 if api.profile.isEmpty && !auth.isAuthenticated { NavigationLink("تسجيل الدخول لإرسال الطلب") { URNativeAccountView() } }
                 else {
                     if api.profile.isEmpty { Toggle("أوافق على شروط خدمة الحوالات", isOn: $accountTermsAccepted) }
-                    Button(submitted ? "تم إرسال الطلب — راجعه في حوالاتي" : busy ? "جاري الإرسال…" : (!hasPricedRoute ? "إرسال طلب التسعير والمراجعة" : "إرسال الطلب للمراجعة")) { Task { await submitTransfer() } }.buttonStyle(.borderedProminent).controlSize(.large).disabled(busy || submitted || (quote.isEmpty && hasPricedRoute) || method.isEmpty || (api.profile.isEmpty && !accountTermsAccepted)) }
+                    Button(submitted ? "تم إنشاء الطلب" : busy ? "جاري الإنشاء…" : "تأكيد الطلب والانتقال للدفع") { Task { await submitTransfer() } }.buttonStyle(.borderedProminent).controlSize(.large).disabled(busy || submitted || quote.isEmpty || method.isEmpty || (api.profile.isEmpty && !accountTermsAccepted)) }
                 if submitted {
                     Text("رقم الطلب: " + requestId).font(.footnote).textSelection(.enabled)
-                    Text("الطلب محفوظ للمراجعة. تأكيد القبض وإصدار الحوالة يتمان بعد اعتماد أور.").font(.footnote)
+                    Text("الطلب محفوظ وعرض السعر جاهز. إثبات أو TXID لا يعني أن الدفع تحقق.").font(.footnote)
                     if let createdOrder { NavigationLink("افتح الطلب وتابع الإيداع والوصولات") { URNativeOrderView(order: createdOrder, api: api) } }
                 }
                 if !message.isEmpty { Text(message).foregroundStyle(.red) }
@@ -923,7 +915,7 @@ private struct URNativeTransferForm: View {
         guard !busy && !submitted else { return }
         busy = true; message = ""; quote = [:]; defer { busy = false }
         do {
-            guard hasPricedRoute else { message = "هذا المسار يحتاج تسعيراً من الإدارة؛ أكمل بيانات المرسل والمستفيد وأرسل الطلب. لا تدفع قبل اعتماد السعر."; return }
+            guard hasPricedRoute else { throw URNativeError.message("المسار غير متاح بسعر معتمد حالياً") }
             var components = URLComponents(); components.path = "/api/quote"
             components.queryItems = [.init(name: "origin", value: senderCountry), .init(name: "destination", value: urText(payoutOffice, "country")), .init(name: "amount", value: urDigits(amount)), .init(name: "feeMode", value: feeMode)]
             let input = [senderCountry, receiverCountry, String(payout), urDigits(amount), feeMode]
@@ -933,17 +925,16 @@ private struct URNativeTransferForm: View {
         } catch { message = error.localizedDescription }
     }
     private func submitTransfer() async {
-        guard !busy && !submitted && (!quote.isEmpty || !hasPricedRoute) else { return }
+        guard !busy && !submitted && !quote.isEmpty && hasPricedRoute else { return }
         busy = true; message = ""; defer { busy = false }
         do {
-            guard collection > 0 else { throw URNativeError.message("اختر مكتب الإرسال في دولة المرسل") }
             guard !method.isEmpty else { throw URNativeError.message("اختر طريقة الإيداع") }
             if api.profile.isEmpty {
                 guard auth.isAuthenticated else { throw URNativeError.message("سجل الدخول بحساب التطبيق") }
                 try await api.connectAppAccount(name: senderName, phone: urPhone(senderPhone), accepted: accountTermsAccepted)
             }
             guard !senderAddress.trimmingCharacters(in: .whitespaces).isEmpty, !receiverAddress.trimmingCharacters(in: .whitespaces).isEmpty else { throw URNativeError.message("أكمل عناوين المرسل والمستفيد") }
-            let result = try await api.request("/api/customer/checkout", method: "POST", body: ["id": requestId, "feeMode": feeMode, "bankAccountId": bankAccountId, "amount": urDigits(amount), "senderName": senderName, "senderPhone": urPhone(senderPhone), "senderCountry": senderCountry, "senderAddress": senderAddress, "receiverName": receiverName, "receiverPhone": urPhone(receiverPhone), "receiverAddress": receiverAddress, "purpose": purpose, "payoutOfficeId": payout - 2_000_000, "collectionOfficeId": collection - 2_000_000, "method": method], idempotencyKey: requestId)
+            let result = try await api.request("/api/customer/checkout", method: "POST", body: ["id": requestId, "feeMode": feeMode, "bankAccountId": bankAccountId, "amount": urDigits(amount), "senderName": senderName, "senderPhone": urPhone(senderPhone), "senderCountry": senderCountry, "senderAddress": senderAddress, "receiverName": receiverName, "receiverPhone": urPhone(receiverPhone), "receiverAddress": receiverAddress, "purpose": purpose, "payoutOfficeId": payout - 2_000_000, "collectionOfficeId": 0, "method": method], idempotencyKey: requestId)
             guard result["success"] as? Bool == true, urText(result, "id") == requestId else { throw URNativeError.message("لم يؤكد الخادم حفظ الطلب؛ راجع حوالاتي قبل إعادة الإرسال") }
             submitted = true
             do {
