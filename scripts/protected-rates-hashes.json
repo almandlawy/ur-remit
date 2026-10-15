@@ -1,5 +1,5 @@
 {
-  "ios/UR/Features/Rates/Presentation/RatesView.swift": "6b02fbba3c0dbe0fbe12336456cedace46ed740f905bd91c2bd253e2c881dfd1",
+  "ios/UR/Features/Rates/Presentation/RatesView.swift": "9371f7c77c4823b6c88927c7b9d0fc4037e9769cfa35e4b0998dbe54801c6a58",
   "ios/UR/Features/Rates/Presentation/RatesViewModel.swift": "dbbef238e860322d516e9a619626e0c4f08a54a77085e41dcad5934b10ba8f61",
   "ios/UR/Features/Rates/Data/FileRatesCache.swift": "604ff6ba94a662b949f96126ffc563f659a21e1d4ed07fa3c47c23678cca97e6",
   "ios/UR/Features/Rates/Domain/RatesRepository.swift": "db5e2d3a55a8e1af78f0f6df3184230d567c4d7aa9504d5a868325afe57c51d9",

@@ -1622,18 +1622,34 @@ private struct URNativeOwnerOrderView: View {
 
 struct URRatesWorkspace<Content: View>: View {
     let content: Content
+    init(@ViewBuilder content: () -> Content) { self.content = content() }
+    var body: some View { content }
+}
+
+struct RatesPromotionsView: View {
     @State private var tomanRate: Decimal?
     @State private var renminbiRate: Decimal?
-    init(@ViewBuilder content: () -> Content) { self.content = content() }
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 7) {
+            NavigationLink { AgentJoinView() } label: {
+                ZStack {
+                    LinearGradient(colors: [Color(red: 0.82, green: 0.02, blue: 0.08), Color(red: 0.56, green: 0.00, blue: 0.06)], startPoint: .topTrailing, endPoint: .bottomLeading)
+                    HStack(spacing: 9) {
+                        Text("انضم الآن").font(.caption2.weight(.black)).padding(.horizontal, 10).padding(.vertical, 6).background(.white, in: Capsule()).foregroundStyle(Color(red: 0.68, green: 0.01, blue: 0.06))
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 1) {
+                            Text("انضم إلى شبكة وكلاء أور").font(.subheadline.weight(.black))
+                            Text("العراق وكل دول العالم").font(.caption2.weight(.semibold)).opacity(0.84)
+                        }
+                        Image(systemName: "building.2.fill").font(.title3)
+                    }.padding(.horizontal, 12)
+                }.foregroundStyle(.white).frame(maxWidth: .infinity, minHeight: 52, maxHeight: 52).clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+            }.buttonStyle(.plain).accessibilityLabel("انضم كوكيل إلى شبكة أور")
             HStack(spacing: 8) {
                 NavigationLink { AccountDepositView(product: .toman) } label: { depositStrip(.toman, rate: tomanRate) }
                 NavigationLink { AccountDepositView(product: .renminbi) } label: { depositStrip(.renminbi, rate: renminbiRate) }
-            }.padding(.horizontal, 11).padding(.bottom, 6).buttonStyle(.plain)
-            content
-        }.background(URColor.ivory).tint(URColor.royalBlue)
-            .task { await loadDepositRates() }
+            }.buttonStyle(.plain)
+        }.tint(URColor.royalBlue).task { await loadDepositRates() }
     }
 
     private func depositStrip(_ product: AccountDepositProduct, rate: Decimal?) -> some View {

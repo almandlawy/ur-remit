@@ -42,6 +42,7 @@ struct RatesView: View {
                 .frame(maxWidth: .infinity, alignment: .trailing)
                 .padding(.horizontal, 4)
                 HeroRateCard(rate: snapshot.rates.first { $0.sourceCurrency == "USD" && $0.destinationCurrency == "IQD" }, isCached: snapshot.isFromCache, fetchedAt: snapshot.fetchedAt, scale: scale)
+                RatesPromotionsView()
                 ForEach(orderedSections(snapshot.rates), id: \.title) { section in
                     RateSectionCard(
                         section: section,
