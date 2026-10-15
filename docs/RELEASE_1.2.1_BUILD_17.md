@@ -1,5 +1,14 @@
 # UR Global 1.2.1 (17)
 
+## Payment review update
+
+- The customer flow now follows sender, receiver, approved destination office, amount/fee mode, payment, and confirmation.
+- The server validates the active approved office against the declared destination country.
+- A valid route is quoted immediately; proof submission enters payment review and never confirms funds.
+- Administration can request more information, reject evidence with a visible reason, or confirm actual receipt once.
+- Confirmation freezes a unique receipt number and immutable snapshot with operator, time, amount, currency, and reference.
+- Deployed server: Sites version 163, commit `ef0fa5ac556cb0747374cbd0856e1b024cd95b6b`. Rollback: redeploy version 162.
+
 ## Implemented in this branch
 
 - Persistent customer transfer draft and idempotency identifier.

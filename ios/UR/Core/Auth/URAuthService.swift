@@ -165,6 +165,21 @@ final class URAuthService: NSObject, ObservableObject, ASWebAuthenticationPresen
         try? load().accessToken
     }
 
+    /// Returns a fresh access token for a privileged operation. A temporary
+    /// network failure never deletes the stored session.
+    func refreshedAccessToken() async throws -> String {
+        let current = try load()
+        do {
+            let next = try await refresh(current)
+            try save(next)
+            return next.accessToken
+        } catch URAuthError.requestFailed(let status) where status == 400 || status == 401 || status == 403 {
+            throw URAuthError.requestFailed(status)
+        } catch {
+            throw error
+        }
+    }
+
     // MARK: - URL Handling
 
     func handle(url: URL) {
