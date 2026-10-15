@@ -1021,7 +1021,17 @@ private struct URNativeOrderView: View {
                 Section("تفاصيل الإيداع") {
                     LabeledContent("طريقة الدفع", value: urText(paymentMethod, "name", fallback: urText(order, "method")))
                     Text("المبلغ المطلوب: " + urText(quote, "total") + " " + urText(quote, "paymentCurrency")).font(.headline).foregroundStyle(URColor.deepNavy)
-                    if urText(order, "method").hasPrefix("usdt_") {
+                    if urText(order, "method") == "superqi" {
+                        let beneficiary = urText(paymentMethod, "beneficiary", fallback: "")
+                        let account = urText(paymentMethod, "account", fallback: "")
+                        if !beneficiary.isEmpty && !account.isEmpty {
+                            LabeledContent("اسم صاحب الحساب", value: beneficiary)
+                            LabeledContent("رقم حساب SuperQi", value: account).environment(\.layoutDirection, .leftToRight).textSelection(.enabled)
+                            Button("نسخ رقم الحساب") { UIPasteboard.general.string = account }
+                            Text(urText(paymentMethod, "instructions", fallback: "حوّل المبلغ الظاهر فقط، ثم أرفق المرجع والإثبات.")).font(.footnote).foregroundStyle(.secondary)
+                            Text("الإيداع يدوي وتراجعه الإدارة. رفع الإثبات وحده لا يعني وصول المبلغ.").font(.footnote.weight(.semibold)).foregroundStyle(URColor.deepNavy)
+                        } else { Text("بيانات حساب SuperQi غير مكتملة. لا تحوّل المبلغ وراجع الدعم.").foregroundStyle(.red) }
+                    } else if urText(order, "method").hasPrefix("usdt_") {
                         Text(urText(order, "method") == "usdt_trc20" ? "شبكة TRON · TRC20" : "شبكة Ethereum · ERC20").font(.headline)
                         if depositReady {
                             Text(walletAddress).font(.system(.body, design: .monospaced)).environment(\.layoutDirection, .leftToRight).textSelection(.enabled)
