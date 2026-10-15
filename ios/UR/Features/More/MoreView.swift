@@ -899,7 +899,7 @@ private struct URNativeTransferForm: View {
                 if submitted {
                     Text("رقم الطلب: " + requestId).font(.footnote).textSelection(.enabled)
                     Text("الطلب محفوظ وعرض السعر جاهز. إثبات أو TXID لا يعني أن الدفع تحقق.").font(.footnote)
-                    if let createdOrder { NavigationLink("افتح الطلب وتابع الإيداع والوصولات") { URNativeOrderView(order: createdOrder, api: api) } }
+                    if let createdOrder { URNativeInlinePaymentCompletion(order: createdOrder, api: api) }
                     Button("بدء حوالة جديدة", action: startNewTransfer)
                 }
                 if !message.isEmpty { Text(message).foregroundStyle(.red) }
@@ -968,6 +968,97 @@ private struct URNativeTransferForm: View {
         amount = ""; senderName = ""; senderPhone = ""; senderAddress = ""; senderCountry = ""; receiverCountry = ""; receiverName = ""; receiverPhone = ""; receiverAddress = ""; purpose = ""; payout = 0; method = ""; feeMode = "added"; requestId = UUID().uuidString; quote = [:]; submitted = false; createdOrder = nil
     }
     private func startNewTransfer() { clearDraftForDifferentUser(); draftOwner = auth.email?.lowercased() ?? "anonymous" }
+}
+
+private struct URNativeInlinePaymentCompletion: View {
+    @State private var order: [String: Any]
+    @ObservedObject var api: URNativeAPI
+    @State private var methods: [[String: Any]] = []
+    @State private var reference = ""
+    @State private var accepted = false
+    @State private var selectedPhoto: PhotosPickerItem?
+    @State private var fileData: Data?
+    @State private var fileType = "image/jpeg"
+    @State private var importFile = false
+    @State private var busy = false
+    @State private var message = ""
+    init(order: [String: Any], api: URNativeAPI) { _order = State(initialValue: order); self.api = api }
+    private var quote: [String: Any] { urObject(order["quote"]) }
+    private var payload: [String: Any] { urObject(order["payload"]) }
+    private var method: [String: Any] { methods.first { urText($0, "id") == urText(order, "method") } ?? [:] }
+    private var orderStatus: String { urText(order, "status") }
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 14) {
+            Divider()
+            Text("إكمال الدفع").font(.headline.weight(.black)).foregroundStyle(URColor.deepNavy)
+            LabeledContent("الحالة", value: urStatus(orderStatus))
+            LabeledContent("المبلغ المطلوب", value: urText(quote, "total") + " " + urText(quote, "paymentCurrency"))
+            LabeledContent("طريقة الدفع", value: urText(method, "name", fallback: urText(order, "method")))
+            paymentDetails
+            if ["awaiting_payment", "needs_payment_info", "payment_rejected"].contains(orderStatus) {
+                if !urText(order, "review_reason", fallback: "").isEmpty { Text("ملاحظة الإدارة: " + urText(order, "review_reason")).foregroundStyle(.red) }
+                Toggle("راجعت المبلغ وبيانات الحساب وأوافق عليها", isOn: $accepted)
+                TextField("مرجع الإيداع / TXID", text: $reference).textInputAutocapitalization(.never).environment(\.layoutDirection, .leftToRight)
+                PhotosPicker(selection: $selectedPhoto, matching: .images) { Label("إرفاق صورة الإثبات", systemImage: "photo") }
+                Button("رفع PDF أو صورة من الملفات") { importFile = true }
+                if let fileData { Text("الإثبات جاهز: \(fileData.count / 1024) KB").font(.caption) }
+                Button(busy ? "جاري إرسال الإثبات…" : "إرسال الإثبات للمراجعة") { Task { await upload() } }
+                    .buttonStyle(.borderedProminent).disabled(busy || !accepted || reference.trimmingCharacters(in: .whitespacesAndNewlines).count < 4)
+            } else if orderStatus == "payment_review" {
+                Text("تم إرسال الإثبات. الطلب الآن بانتظار مراجعة الإدارة واعتماد وصول المبلغ.").font(.subheadline.weight(.semibold)).foregroundStyle(URColor.deepNavy)
+            }
+            if ["confirmed", "issued"].contains(orderStatus) {
+                Text("تم اعتماد وصول المبلغ.").font(.headline).foregroundStyle(.green)
+                Link("فتح وصل قبض المبلغ", destination: URL(string: "https://www.urremit.com/customer/receipts/\(urText(order, "id"))/payment")!)
+                if order["delivered_at"] != nil && !(order["delivered_at"] is NSNull) { Link("فتح وصل استلام المستفيد", destination: URL(string: "https://www.urremit.com/customer/receipts/\(urText(order, "id"))/payout")!) }
+            }
+            Button("تحديث الحالة") { Task { await reload() } }.disabled(busy)
+            if !message.isEmpty { Text(message).foregroundStyle(.red).font(.footnote) }
+        }
+        .task { await loadMethods(); await reload() }
+        .onChange(of: selectedPhoto) { _, photo in Task { await loadPhoto(photo) } }
+        .fileImporter(isPresented: $importFile, allowedContentTypes: [.pdf, .jpeg, .png]) { result in loadFile(result) }
+    }
+    @ViewBuilder private var paymentDetails: some View {
+        let id = urText(order, "method")
+        if id == "superqi" || id == "fib" || id == "zaincash" {
+            LabeledContent("اسم صاحب الحساب", value: urText(method, "beneficiary", fallback: "غير مكتمل"))
+            LabeledContent("رقم الحساب/المحفظة", value: urText(method, "account", fallback: "غير مكتمل")).environment(\.layoutDirection, .leftToRight).textSelection(.enabled)
+            Button("نسخ رقم الحساب") { UIPasteboard.general.string = urText(method, "account", fallback: "") }
+            Text(urText(method, "instructions", fallback: "راجع الدعم قبل التحويل.")).font(.footnote).foregroundStyle(.secondary)
+        } else if id == "bank" {
+            let account = urObject(quote["bankAccount"] ?? payload["bankAccount"])
+            LabeledContent("المستفيد", value: urText(account, "beneficiary", fallback: urText(method, "beneficiary")))
+            LabeledContent("البنك", value: urText(account, "bankName"))
+            LabeledContent("IBAN", value: urText(account, "iban", fallback: urText(account, "account"))).environment(\.layoutDirection, .leftToRight).textSelection(.enabled)
+            Button("نسخ IBAN") { UIPasteboard.general.string = urText(account, "iban", fallback: urText(account, "account", fallback: "")) }
+        } else if id.hasPrefix("usdt_") {
+            let deposit = urObject(quote["deposit"]), address = urText(deposit, "address", fallback: urText(method, "instructions", fallback: ""))
+            LabeledContent("الشبكة", value: id == "usdt_trc20" ? "TRON · TRC20" : "Ethereum · ERC20")
+            Text(address).font(.system(.caption, design: .monospaced)).environment(\.layoutDirection, .leftToRight).textSelection(.enabled)
+            Button("نسخ عنوان المحفظة") { UIPasteboard.general.string = address }
+        }
+        Text("لا ترسل إلى بيانات مختلفة عن الظاهرة هنا. رفع الإثبات لا يعني اعتماد وصول الأموال.").font(.footnote.weight(.semibold)).foregroundStyle(URColor.deepNavy)
+    }
+    private func loadMethods() async { do { methods = try await api.request("/api/payment-methods")["methods"] as? [[String: Any]] ?? [] } catch { message = error.localizedDescription } }
+    private func reload() async { do { let rows = try await api.request("/api/customer/checkout")["orders"] as? [[String: Any]] ?? []; if let latest = rows.first(where: { urText($0, "id") == urText(order, "id") }) { order = latest } } catch is CancellationError {} catch { message = error.localizedDescription } }
+    private func upload() async {
+        busy = true; message = ""; defer { busy = false }
+        do {
+            var evidence = reference.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let fileData {
+                let boundary = "UR-" + UUID().uuidString; var data = Data()
+                for (name, value) in [("id", urText(order, "id")), ("version", urText(order, "version"))] { data.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"\r\n\r\n\(value)\r\n".utf8)) }
+                data.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"deposit\"\r\nContent-Type: \(fileType)\r\n\r\n".utf8)); data.append(fileData); data.append(Data("\r\n--\(boundary)--\r\n".utf8))
+                let result = try await api.request("/api/customer/evidence", method: "POST", bytes: data, contentType: "multipart/form-data; boundary=" + boundary)
+                evidence += " · " + urText(result, "evidenceUrl", fallback: "")
+            }
+            _ = try await api.request("/api/customer/checkout", method: "PATCH", body: ["id": urText(order, "id"), "version": order["version"] as? Int ?? -1, "evidence": evidence, "acceptQuote": true])
+            fileData = nil; reference = ""; accepted = false; await reload()
+        } catch { message = error.localizedDescription }
+    }
+    private func loadPhoto(_ photo: PhotosPickerItem?) async { do { guard let data = try await photo?.loadTransferable(type: Data.self), let image = UIImage(data: data), let jpeg = image.jpegData(compressionQuality: 0.8), jpeg.count <= 8 * 1024 * 1024 else { throw URNativeError.message("تعذر تجهيز الصورة أو حجمها أكبر من 8MB") }; fileData = jpeg; fileType = "image/jpeg" } catch { message = error.localizedDescription } }
+    private func loadFile(_ result: Result<URL, Error>) { do { let url = try result.get(); let access = url.startAccessingSecurityScopedResource(); defer { if access { url.stopAccessingSecurityScopedResource() } }; let data = try Data(contentsOf: url); guard !data.isEmpty && data.count <= 8 * 1024 * 1024 else { throw URNativeError.message("الحد الأقصى 8MB") }; fileData = data; fileType = url.pathExtension.lowercased() == "pdf" ? "application/pdf" : url.pathExtension.lowercased() == "png" ? "image/png" : "image/jpeg" } catch { message = error.localizedDescription } }
 }
 
 private struct URNativeOrderView: View {
