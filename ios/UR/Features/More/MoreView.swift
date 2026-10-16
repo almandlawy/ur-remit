@@ -18,21 +18,25 @@ struct MoreView: View {
                     Spacer()
                     Button { adminTapCount += 1; if adminTapCount == 5 { adminTapCount = 0; showAdminLogin = true } } label: { Image(systemName: "gearshape.fill").frame(width: 44, height: 44).background(.white, in: Circle()) }.buttonStyle(.plain).accessibilityLabel("الإعدادات")
                 }.foregroundStyle(URColor.deepNavy)
-                ZStack {
-                    LinearGradient(colors: [URColor.deepNavy, URColor.royalBlue], startPoint: .topTrailing, endPoint: .bottomLeading)
-                    HStack(spacing: 12) {
-                        moreHeroIcon("إدارة الحساب", "person")
-                        Divider().overlay(.white.opacity(0.20)).frame(height: 58)
-                        moreHeroIcon("أدوات الحوالات", "doc.text")
-                        Divider().overlay(.white.opacity(0.20)).frame(height: 58)
-                        moreHeroIcon("المساعدة والدعم", "headphones")
-                        Spacer(minLength: 8)
-                        VStack(alignment: .trailing, spacing: 4) {
-                            Text("UR GLOBAL").font(.caption2.weight(.black)).tracking(1)
-                            Text("خدمات أور بين إيديك").font(.title3.weight(.black))
-                            Text("حسابك، أدواتك، ومساعدتك").font(.caption).foregroundStyle(.white.opacity(0.78))
-                        }
-                    }.foregroundStyle(.white).padding(16)
+                GeometryReader { proxy in
+                    ZStack {
+                        LinearGradient(colors: [URColor.deepNavy, URColor.royalBlue], startPoint: .topTrailing, endPoint: .bottomLeading)
+                        HStack(spacing: 8) {
+                            HStack(spacing: 7) {
+                                moreHeroIcon("الحساب", "person")
+                                moreHeroIcon("الحوالات", "doc.text")
+                                moreHeroIcon("الدعم", "headphones")
+                            }.frame(width: proxy.size.width * 0.50)
+                            Spacer(minLength: 4)
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text("UR GLOBAL").font(.caption2.weight(.black)).tracking(1)
+                                Text("خدمات أور بين إيديك").font(.headline.weight(.black)).lineLimit(2).minimumScaleFactor(0.78)
+                                Text("حسابك، أدواتك، ومساعدتك").font(.caption2).foregroundStyle(.white.opacity(0.78)).lineLimit(2)
+                            }.frame(width: proxy.size.width * 0.40, alignment: .trailing)
+                                .environment(\.layoutDirection, .rightToLeft)
+                        }.foregroundStyle(.white).padding(.horizontal, 12).frame(width: proxy.size.width, height: 132)
+                            .environment(\.layoutDirection, .leftToRight)
+                    }.frame(width: proxy.size.width, height: 132).clipped()
                 }.frame(height: 132).clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 22).stroke(URColor.premiumGold.opacity(0.28)))
                 MoreGroup(title: "حسابي") {
@@ -71,11 +75,11 @@ struct MoreView: View {
     }
 
     private func moreHeroIcon(_ title: String, _ symbol: String) -> some View {
-        VStack(spacing: 7) {
-            Image(systemName: symbol).font(.title2).foregroundStyle(URColor.premiumGold)
-                .frame(width: 46, height: 46).overlay(Circle().stroke(URColor.premiumGold, lineWidth: 1.4))
+        VStack(spacing: 6) {
+            Image(systemName: symbol).font(.headline).foregroundStyle(URColor.premiumGold)
+                .frame(width: 38, height: 38).overlay(Circle().stroke(URColor.premiumGold, lineWidth: 1.2))
             Text(title).font(.caption2.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.7)
-        }.accessibilityElement(children: .combine)
+        }.frame(maxWidth: .infinity).accessibilityElement(children: .combine)
     }
 }
 

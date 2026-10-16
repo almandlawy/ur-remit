@@ -44,24 +44,34 @@ struct HomeView: View {
     }
 
     private var header: some View {
-        ZStack {
-            Image("HomePremiumGlobe").resizable().scaledToFill()
-            LinearGradient(colors: [URColor.deepNavy.opacity(0.02), URColor.deepNavy.opacity(0.98)], startPoint: .leading, endPoint: .trailing)
-            VStack(alignment: .trailing, spacing: 9) {
-                HStack {
-                    Spacer()
-                    Text("UR GLOBAL").font(.caption.weight(.black)).tracking(1.2).foregroundStyle(.white)
+        GeometryReader { proxy in
+            ZStack {
+                Image("HomePremiumGlobe").resizable().scaledToFill()
+                    .frame(width: proxy.size.width, height: 208).clipped()
+                LinearGradient(colors: [URColor.deepNavy.opacity(0.02), URColor.deepNavy.opacity(0.98)], startPoint: .leading, endPoint: .trailing)
+                VStack(alignment: .trailing, spacing: 8) {
+                        Text("UR GLOBAL").font(.caption.weight(.black)).tracking(1.2).foregroundStyle(.white)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                        Spacer(minLength: 2)
+                        Text("حوالاتك، بخطوات أوضح")
+                            .font(.system(size: 23, weight: .black, design: .rounded)).foregroundStyle(.white)
+                            .lineLimit(2).minimumScaleFactor(0.78).multilineTextAlignment(.trailing)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                        Text("أرسل وتابع حوالتك من مكان واحد")
+                            .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.84))
+                            .lineLimit(2).minimumScaleFactor(0.82).multilineTextAlignment(.trailing)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                        NavigationLink { URNativeTransferForm() } label: {
+                            Text("حوالة جديدة").font(.subheadline.weight(.black)).foregroundStyle(URColor.deepNavy)
+                                .frame(maxWidth: .infinity, minHeight: 42)
+                                .background(LinearGradient(colors: [Color(red: 0.96, green: 0.78, blue: 0.42), URColor.premiumGold], startPoint: .top, endPoint: .bottom), in: RoundedRectangle(cornerRadius: 12))
+                        }.buttonStyle(.plain).accessibilityHint("يفتح نموذج إنشاء حوالة")
                 }
-                Spacer()
-                Text("حوالاتك، بخطوات أوضح")
-                    .font(.system(size: 25, weight: .black, design: .rounded)).foregroundStyle(.white).minimumScaleFactor(0.72)
-                Text("أرسل وتابع حوالتك من مكان واحد")
-                    .font(.subheadline.weight(.semibold)).foregroundStyle(.white.opacity(0.84))
-                NavigationLink { URNativeTransferForm() } label: {
-                    Text("حوالة جديدة").font(.headline.weight(.black)).foregroundStyle(URColor.deepNavy)
-                        .frame(width: 152, height: 46).background(LinearGradient(colors: [Color(red: 0.96, green: 0.78, blue: 0.42), URColor.premiumGold], startPoint: .top, endPoint: .bottom), in: RoundedRectangle(cornerRadius: 13))
-                }.buttonStyle(.plain).accessibilityHint("يفتح نموذج إنشاء حوالة")
-            }.padding(18).frame(maxWidth: .infinity, alignment: .trailing)
+                .frame(width: proxy.size.width * 0.54, height: 178)
+                .position(x: proxy.size.width * 0.30, y: 104)
+                .environment(\.layoutDirection, .rightToLeft)
+            }.frame(width: proxy.size.width, height: 208).clipped()
+                .environment(\.layoutDirection, .leftToRight)
         }.frame(height: 208).clipShape(RoundedRectangle(cornerRadius: 27, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 27).stroke(URColor.premiumGold.opacity(0.32)))
             .shadow(color: URColor.deepNavy.opacity(0.24), radius: 20, y: 10)

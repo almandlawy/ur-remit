@@ -59,22 +59,27 @@ private struct AgentJoinGraphicHero: View {
     let reduceMotion: Bool
     let startApplication: () -> Void
     var body: some View {
-        ZStack(alignment: .trailing) {
-            Image("AgentPremiumOffice").resizable().scaledToFill()
-            LinearGradient(colors: [URColor.deepNavy.opacity(0.05), URColor.deepNavy.opacity(0.98)], startPoint: .leading, endPoint: .trailing)
-            VStack(alignment: .trailing, spacing: 7) {
-                Text("UR GLOBAL").font(.caption.weight(.black)).tracking(1.1)
-                Text("انضم إلى شبكة وكلاء أور").font(.system(size: 25, weight: .black, design: .rounded)).minimumScaleFactor(0.74)
-                Text("قدّم طلبك وتابع حالته من التطبيق").font(.subheadline.weight(.semibold)).foregroundStyle(.white.opacity(0.84))
-                Button("قدّم طلب الانضمام", action: startApplication)
-                    .font(.headline.weight(.black)).foregroundStyle(URColor.deepNavy)
-                    .padding(.horizontal, 18).frame(height: 44)
-                    .background(LinearGradient(colors: [Color(red: 0.96, green: 0.78, blue: 0.42), URColor.premiumGold], startPoint: .top, endPoint: .bottom), in: RoundedRectangle(cornerRadius: 12))
-                NavigationLink("عندك حساب وكيل؟ تسجيل الدخول", destination: AgentPortalEntryView())
-                    .font(.caption.weight(.bold)).foregroundStyle(URColor.premiumGold).underline()
-            }.foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .trailing)
-        }
-        .frame(height: 230).clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        GeometryReader { proxy in
+            ZStack(alignment: .trailing) {
+                Image("AgentPremiumOffice").resizable().scaledToFill().frame(width: proxy.size.width, height: 230).clipped()
+                LinearGradient(colors: [URColor.deepNavy.opacity(0.05), URColor.deepNavy.opacity(0.98)], startPoint: .leading, endPoint: .trailing)
+                VStack(alignment: .trailing, spacing: 7) {
+                        Text("UR GLOBAL").font(.caption.weight(.black)).tracking(1.1)
+                        Text("انضم إلى شبكة وكلاء أور").font(.system(size: 23, weight: .black, design: .rounded)).lineLimit(2).minimumScaleFactor(0.78).multilineTextAlignment(.trailing)
+                        Text("قدّم طلبك وتابع حالته من التطبيق").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.84)).lineLimit(2).multilineTextAlignment(.trailing)
+                        Button("قدّم طلب الانضمام", action: startApplication)
+                            .font(.subheadline.weight(.black)).foregroundStyle(URColor.deepNavy)
+                            .frame(maxWidth: .infinity, minHeight: 42)
+                            .background(LinearGradient(colors: [Color(red: 0.96, green: 0.78, blue: 0.42), URColor.premiumGold], startPoint: .top, endPoint: .bottom), in: RoundedRectangle(cornerRadius: 12))
+                        NavigationLink("عندك حساب وكيل؟ تسجيل الدخول", destination: AgentPortalEntryView())
+                            .font(.caption2.weight(.bold)).foregroundStyle(URColor.premiumGold).underline().lineLimit(1).minimumScaleFactor(0.75)
+                }.foregroundStyle(.white)
+                    .frame(width: proxy.size.width * 0.56, height: 200)
+                    .position(x: proxy.size.width * 0.30, y: 115)
+                    .environment(\.layoutDirection, .rightToLeft)
+            }.frame(width: proxy.size.width, height: 230).clipped()
+                .environment(\.layoutDirection, .leftToRight)
+        }.frame(height: 230).clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 28).stroke(.white.opacity(0.32)))
         .shadow(color: URColor.deepNavy.opacity(0.22), radius: 18, y: 10)
         .accessibilityElement(children: .combine)
