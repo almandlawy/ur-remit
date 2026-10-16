@@ -25,6 +25,8 @@ struct URRemitApp: App {
                 .environment(favorites)
                 .environment(\.locale, selectedLanguage.locale)
                 .environment(\.layoutDirection, selectedLanguage.direction)
+                .onAppear { syncWidgetLanguage() }
+                .onChange(of: appLanguage) { _, _ in syncWidgetLanguage() }
                 .onOpenURL { url in
                     auth.handle(url: url)
                 }
@@ -132,6 +134,11 @@ struct URRemitApp: App {
 
     private var selectedLanguage: URLanguage {
         URLanguage(rawValue: appLanguage) ?? .arabic
+    }
+
+    private func syncWidgetLanguage() {
+        UserDefaults(suiteName: "group.com.urremit.shared")?.set(appLanguage, forKey: "widget_language")
+        WidgetCenter.shared.reloadTimelines(ofKind: "URUSD-IQD")
     }
 }
 
