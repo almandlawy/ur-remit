@@ -47,6 +47,7 @@ enum URMetaMeasurement {
     /// cannot be shut down mid-session, so it is fully inactive from the next launch.
     static func setConsent(_ granted: Bool) {
         UserDefaults.standard.set(granted, forKey: URPrivacyPreferences.metaMeasurementKey)
+        if !granted { resetAnonymousID() }
         guard isAvailableInBuild else { return }
         if granted {
             // Never send events that were queued before an earlier opt-out.
@@ -65,6 +66,15 @@ enum URMetaMeasurement {
             AppEvents.shared.clearUserData()
             AppEvents.shared.userID = nil
         }
+    }
+
+    /// File where SDK 18.x keeps its random `anon_id` (FBSDKBasicUtility, Library directory).
+    /// The SDK re-reads it on every use, so deleting it gives a fresh ID if the user opts in again.
+    static let anonymousIDFileName = "com-facebook-sdk-PersistedAnonymousID.json"
+
+    static func resetAnonymousID() {
+        guard let library = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first else { return }
+        try? FileManager.default.removeItem(at: library.appendingPathComponent(anonymousIDFileName))
     }
 
     // Runtime values persist, and SDK 18.x can let Events Manager override the Info.plist default,
