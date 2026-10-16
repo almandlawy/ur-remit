@@ -44,6 +44,18 @@ struct MoreView: View {
                     }.frame(width: proxy.size.width, height: 132).clipped()
                 }.frame(height: 132).clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 22).stroke(URColor.premiumGold.opacity(0.28)))
+                    .shadow(color: URColor.deepNavy.opacity(0.16), radius: 16, y: 8)
+                NavigationLink { BankInvoiceDepositView() } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "building.columns.fill").font(.title2).foregroundStyle(URColor.premiumGold)
+                            .frame(width: 46, height: 46).background(.white.opacity(0.10), in: Circle())
+                        VStack(alignment: .trailing, spacing: 3) {
+                            Text("إيداع فوري لحوالة بنكية").font(.headline.weight(.black))
+                            Text("ارفع الفاتورة واستخرج بيانات البنك تلقائياً").font(.caption).foregroundStyle(.white.opacity(0.78))
+                        }
+                        Spacer(); Image(systemName: "chevron.left").font(.caption.weight(.black))
+                    }.foregroundStyle(.white).padding(14).background(URColor.deepNavy, in: RoundedRectangle(cornerRadius: 18))
+                }.buttonStyle(.plain)
                 MoreGroup(title: "حسابي") {
                     NavigationLink { URNativeAccountView() } label: { MoreRow("بياناتي والحساب", "person.crop.circle.fill") }
                     Divider(); NavigationLink { URNativeNotificationView(api: URNativeAPI.customer) } label: { MoreRow("التنبيهات", "bell.badge.fill") }
@@ -1041,7 +1053,7 @@ struct URNativeTransferForm: View {
     private func startNewTransfer() { clearDraftForDifferentUser(); draftOwner = auth.email?.lowercased() ?? "anonymous" }
 }
 
-private struct URNativeInlinePaymentCompletion: View {
+struct URNativeInlinePaymentCompletion: View {
     @State private var order: [String: Any]
     @ObservedObject var api: URNativeAPI
     @State private var methods: [[String: Any]] = []
@@ -1669,15 +1681,28 @@ struct RatesPromotionsView: View {
             }.buttonStyle(.plain).accessibilityLabel("انضم كوكيل إلى شبكة أور")
             HStack(spacing: 6) {
                 Capsule().fill(URColor.premiumGold.opacity(0.45)).frame(height: 1)
-                Label("الإيداع فوري", systemImage: "bolt.fill")
+                Label("الإيداع والاستلام فوري", systemImage: "bolt.fill")
                     .font(.caption2.weight(.black))
-                    .foregroundStyle(URColor.deepNavy)
+                    .foregroundStyle(Color(red: 0.03, green: 0.43, blue: 0.28))
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(Color.green.opacity(0.10), in: Capsule())
                     .fixedSize()
                 Capsule().fill(URColor.premiumGold.opacity(0.45)).frame(height: 1)
             }.accessibilityElement(children: .combine)
             HStack(spacing: 8) {
                 NavigationLink { AccountDepositView(product: .toman) } label: { depositStrip(.toman, rate: tomanRate) }
                 NavigationLink { AccountDepositView(product: .renminbi) } label: { depositStrip(.renminbi, rate: renminbiRate) }
+            }.buttonStyle(.plain)
+            NavigationLink { BankInvoiceDepositView() } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "doc.text.viewfinder").font(.title3).foregroundStyle(URColor.premiumGold)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("إيداع فوري لحوالة بنكية").font(.subheadline.weight(.black))
+                        Text("ارفع الفاتورة · راجع بيانات المستفيد · أكمل الدفع").font(.caption2).foregroundStyle(.white.opacity(0.78))
+                    }
+                    Spacer(); Image(systemName: "chevron.left").font(.caption.weight(.black))
+                }.foregroundStyle(.white).padding(.horizontal, 13).frame(height: 58)
+                    .background(URColor.deepNavy, in: RoundedRectangle(cornerRadius: 15))
             }.buttonStyle(.plain)
         }.tint(URColor.royalBlue).task { await loadDepositRates() }
     }

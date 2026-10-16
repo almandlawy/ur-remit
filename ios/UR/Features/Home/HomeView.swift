@@ -85,7 +85,7 @@ struct HomeView: View {
             HStack {
                 if loadingRates { ProgressView().controlSize(.small) }
                 if snapshot?.isFromCache == true { statusPill("محفوظ", color: .orange) }
-                statusPill("معتمد من المالك", color: .green)
+                statusPill(stale ? "يحتاج تحديث" : "محدث الآن", color: stale ? .orange : .green)
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("سعر الدولار اليوم").font(.headline.weight(.black))
@@ -103,8 +103,8 @@ struct HomeView: View {
             }
             Text("يتم التحقق تلقائياً من المصدر كل دقيقة")
                 .font(.caption2).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .trailing)
-            Text("اعتماد المالك للأسعار الحالية: 15 أكتوبر 2026")
-                .font(.caption2.weight(.bold)).foregroundStyle(.green).frame(maxWidth: .infinity, alignment: .trailing)
+            Text(stale ? "آخر سعر معتمد ظاهر أعلاه — اسحب للتحديث قبل الاعتماد" : "الأسعار الحالية معتمدة من المالك")
+                .font(.caption2.weight(.bold)).foregroundStyle(stale ? .orange : .green).frame(maxWidth: .infinity, alignment: .trailing)
         }.padding(17).background(.white, in: RoundedRectangle(cornerRadius: 21, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 21).stroke(stale ? Color.orange.opacity(0.35) : URColor.hairline))
             .shadow(color: URColor.deepNavy.opacity(0.06), radius: 12, y: 5)
