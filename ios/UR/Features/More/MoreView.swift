@@ -8,43 +8,27 @@ struct MoreView: View {
     @State private var showAdminLogin = false
     @State private var showQRScanner = false
     @State private var scannedQR = ""
+    @AppStorage("ur.app.language") private var appLanguage = URLanguage.arabic.rawValue
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 14) {
                 HStack(spacing: 12) {
                     URBrandLogo(size: 44)
-                    VStack(alignment: .leading, spacing: 2) { Text("المزيد").font(.title2.weight(.black)); Text("حسابك وأدواتك ومعلومات أور").font(.caption).foregroundStyle(.secondary) }
+                    VStack(alignment: .leading, spacing: 2) { Text("more").font(.title2.weight(.black)); Text("more_subtitle").font(.caption).foregroundStyle(.secondary) }
                     Spacer()
+                    Menu {
+                        Picker("language", selection: $appLanguage) {
+                            ForEach(URLanguage.allCases) { language in
+                                Text(language.nativeName).tag(language.rawValue)
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "globe").frame(width: 44, height: 44).background(.white, in: Circle())
+                    }.accessibilityLabel("language")
                     Button { adminTapCount += 1; if adminTapCount == 5 { adminTapCount = 0; showAdminLogin = true } } label: { Image(systemName: "gearshape.fill").frame(width: 44, height: 44).background(.white, in: Circle()) }.buttonStyle(.plain).accessibilityLabel("الإعدادات")
                 }.foregroundStyle(URColor.deepNavy)
-                GeometryReader { proxy in
-                    ZStack {
-                        LinearGradient(colors: [URColor.deepNavy, URColor.royalBlue], startPoint: .topTrailing, endPoint: .bottomLeading)
-                        Circle().fill(URColor.premiumGold.opacity(0.10)).frame(width: 150, height: 150).offset(x: proxy.size.width * 0.39, y: 44)
-                        Circle().stroke(URColor.premiumGold.opacity(0.22), lineWidth: 1).frame(width: 92, height: 92).offset(x: -proxy.size.width * 0.41, y: -45)
-                        HStack(spacing: 8) {
-                            HStack(spacing: 7) {
-                                moreHeroIcon("الحساب", "person")
-                                moreHeroIcon("الحوالات", "doc.text")
-                                moreHeroIcon("الدعم", "headphones")
-                            }.frame(width: proxy.size.width * 0.50)
-                            Spacer(minLength: 4)
-                            VStack(alignment: .trailing, spacing: 4) {
-                                HStack(spacing: 5) {
-                                    Capsule().fill(URColor.premiumGold).frame(width: 22, height: 3)
-                                    Text("UR GLOBAL").font(.caption2.weight(.black)).tracking(1)
-                                }
-                                Text("خدمات أور بين إيديك").font(.headline.weight(.black)).lineLimit(2).minimumScaleFactor(0.78)
-                                Text("حسابك، أدواتك، ومساعدتك").font(.caption2).foregroundStyle(.white.opacity(0.78)).lineLimit(2)
-                            }.frame(width: proxy.size.width * 0.40, alignment: .trailing)
-                                .environment(\.layoutDirection, .rightToLeft)
-                        }.foregroundStyle(.white).padding(.horizontal, 12).frame(width: proxy.size.width, height: 132)
-                            .environment(\.layoutDirection, .leftToRight)
-                    }.frame(width: proxy.size.width, height: 132).clipped()
-                }.frame(height: 132).clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 22).stroke(URColor.premiumGold.opacity(0.28)))
-                    .shadow(color: URColor.deepNavy.opacity(0.16), radius: 16, y: 8)
+                moreHero
                 NavigationLink { BankInvoiceDepositView() } label: {
                     HStack(spacing: 12) {
                         Image(systemName: "building.columns.fill").font(.title2).foregroundStyle(URColor.premiumGold)
@@ -80,7 +64,7 @@ struct MoreView: View {
                 Text("UR Global  •  Version \(version)  •  Build \(build)").font(.caption2.monospaced()).foregroundStyle(.secondary).padding(.top, 4)
             }.padding(.horizontal, 14).padding(.top, 10).padding(.bottom, 14)
         }
-        .background(URColor.ivory.ignoresSafeArea()).toolbar(.hidden, for: .navigationBar).environment(\.layoutDirection, .rightToLeft)
+        .background(URColor.ivory.ignoresSafeArea()).toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showAdminLogin) {
             NavigationStack {
                 AdminEntryView()
@@ -91,7 +75,35 @@ struct MoreView: View {
         }
     }
 
-    private func moreHeroIcon(_ title: String, _ symbol: String) -> some View {
+    private var moreHero: some View {
+        ZStack {
+            LinearGradient(colors: [URColor.deepNavy, URColor.royalBlue], startPoint: .topTrailing, endPoint: .bottomLeading)
+            Circle().fill(URColor.premiumGold.opacity(0.10)).frame(width: 190, height: 190).offset(x: 150, y: 60)
+            Circle().stroke(URColor.premiumGold.opacity(0.22), lineWidth: 1).frame(width: 112, height: 112).offset(x: -145, y: -64)
+            VStack(alignment: .trailing, spacing: 13) {
+                HStack {
+                    Text("UR GLOBAL").font(.caption.weight(.black)).tracking(1.2)
+                    Spacer()
+                    URBrandLogo(size: 40)
+                }
+                VStack(alignment: .trailing, spacing: 3) {
+                    Text("more_hero_title").font(.title3.weight(.black)).lineLimit(1).minimumScaleFactor(0.76)
+                    Text("more_hero_subtitle").font(.caption).foregroundStyle(.white.opacity(0.78)).lineLimit(2)
+                }.frame(maxWidth: .infinity, alignment: .trailing)
+                HStack(spacing: 8) {
+                    moreHeroIcon("account", "person")
+                    moreHeroIcon("transfers", "doc.text")
+                    moreHeroIcon("support", "headphones")
+                }
+            }.foregroundStyle(.white).padding(17)
+        }
+        .frame(maxWidth: .infinity, minHeight: 168, maxHeight: 168)
+        .clipShape(RoundedRectangle(cornerRadius: 27, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 27).stroke(URColor.premiumGold.opacity(0.32)))
+        .shadow(color: URColor.deepNavy.opacity(0.22), radius: 18, y: 9)
+    }
+
+    private func moreHeroIcon(_ title: LocalizedStringKey, _ symbol: String) -> some View {
         VStack(spacing: 6) {
             Image(systemName: symbol).font(.headline).foregroundStyle(URColor.premiumGold)
                 .frame(width: 38, height: 38).overlay(Circle().stroke(URColor.premiumGold, lineWidth: 1.2))
@@ -101,13 +113,13 @@ struct MoreView: View {
 }
 
 private struct MoreGroup<Content: View>: View {
-    let title: String; @ViewBuilder let content: Content
+    let title: LocalizedStringKey; @ViewBuilder let content: Content
     var body: some View { VStack(alignment: .trailing, spacing: 8) { Text(title).font(.caption.weight(.bold)).foregroundStyle(.secondary).padding(.trailing, 5); VStack(spacing: 0) { content }.padding(.horizontal, 14).background(URColor.surface.opacity(0.92), in: RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(URColor.hairline)) } }
 }
 
 private struct MoreRow: View {
-    let title: String; let symbol: String
-    init(_ title: String, _ symbol: String) { self.title = title; self.symbol = symbol }
+    let title: LocalizedStringKey; let symbol: String
+    init(_ title: LocalizedStringKey, _ symbol: String) { self.title = title; self.symbol = symbol }
     var body: some View { HStack { Image(systemName: "chevron.left").font(.caption2.weight(.bold)).foregroundStyle(.secondary); Spacer(); Text(title).font(.subheadline.weight(.semibold)); Image(systemName: symbol).foregroundStyle(URColor.premiumGold).frame(width: 28) }.foregroundStyle(URColor.deepNavy).frame(height: 52) }
 }
 
@@ -1714,7 +1726,10 @@ struct RatesPromotionsView: View {
             HStack(spacing: 6) {
                 Spacer(minLength: 58)
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text(product.flag + " " + product.shortTitle).font(.caption.weight(.black)).lineLimit(1)
+                    HStack(spacing: 3) {
+                        Text(product.flag)
+                        Text(product.shortTitleKey)
+                    }.font(.caption.weight(.black)).lineLimit(1)
                     Text(rate.map { product.formatRate($0) } ?? "السعر غير متاح").font(.caption2.weight(.bold)).lineLimit(1).minimumScaleFactor(0.72)
                 }
                 Image(systemName: "chevron.left").font(.caption2.weight(.black)).foregroundStyle(URColor.premiumGold)
@@ -1742,9 +1757,11 @@ private func urFormatTomanRate(_ value: Decimal) -> String {
 private enum AccountDepositProduct: Equatable {
     case toman, renminbi
     var flag: String { self == .toman ? "🇮🇷" : "🇨🇳" }
-    var title: String { self == .toman ? "إيداع تومان بالحساب" : "إيداع رينمنبي بالحساب" }
-    var shortTitle: String { self == .toman ? "إيداع تومان" : "إيداع رينمنبي" }
-    var currencyName: String { self == .toman ? "تومان" : "رينمنبي" }
+    var title: String { self == .toman ? "إيداع تومان بالحساب" : "إيداع اليوان الصيني (الرنمينبي) بالحساب" }
+    var shortTitle: String { self == .toman ? "إيداع تومان" : "إيداع اليوان الصيني" }
+    var currencyName: String { self == .toman ? "تومان" : "يوان صيني" }
+    var titleKey: LocalizedStringKey { LocalizedStringKey(title) }
+    var shortTitleKey: LocalizedStringKey { LocalizedStringKey(shortTitle) }
     var payoutCode: String { self == .toman ? "IRT" : "CNY" }
     var country: String { self == .toman ? "الإيراني" : "الصيني" }
     var endpoint: String { self == .toman ? "/api/customer/toman-deposit" : "/api/customer/renminbi-deposit" }
@@ -1771,7 +1788,7 @@ private struct AccountDepositView: View {
         ScrollView {
             VStack(alignment: .trailing, spacing: 16) {
                 VStack(alignment: .trailing, spacing: 7) {
-                    Label(product.title, systemImage: "arrow.down.to.line.circle.fill").font(.headline.weight(.black))
+                    Label { Text(product.titleKey) } icon: { Image(systemName: "arrow.down.to.line.circle.fill") }.font(.headline.weight(.black))
                     Text("أدخل الدولار وبيانات الحساب؛ السعر يأتي من قائمة أور المعتمدة، ولا توجد عمولة خدمة.").font(.caption).foregroundStyle(.white.opacity(0.82)).lineLimit(2)
                 }.foregroundStyle(.white).frame(maxWidth: .infinity, alignment: .trailing).padding(.horizontal, 16).padding(.vertical, 10)
                     .background(LinearGradient(colors: product.colors, startPoint: .topTrailing, endPoint: .bottomLeading), in: RoundedRectangle(cornerRadius: 16))
@@ -2146,7 +2163,7 @@ private struct URNativePriceEditor: View {
     @State private var message = ""
     var body: some View {
         Form {
-            Section { Text(urText(row, "routeNameArabic")).font(.headline); Text("وحدة السعر الحالية: " + urText(row, "sourceCurrency") + " / " + urText(row, "destinationCurrency")).font(.caption); Text("حافظ على وحدة السعر المنشورة؛ مثلاً الرمبي 7.01، والدينار العراقي بالنشرة لكل 100 دولار.").font(.footnote) }
+            Section { Text(urText(row, "routeNameArabic")).font(.headline); Text("وحدة السعر الحالية: " + urText(row, "sourceCurrency") + " / " + urText(row, "destinationCurrency")).font(.caption); Text("حافظ على وحدة السعر المنشورة؛ مثلاً اليوان الصيني 7.01، والدينار العراقي بالنشرة لكل 100 دولار.").font(.footnote) }
             Section("القيم المنشورة") { TextField("شراء", text: $buy).keyboardType(.decimalPad); TextField("بيع", text: $sell).keyboardType(.decimalPad); TextField("عمولة ثابتة لكل 10,000 دولار", text: $fee).keyboardType(.decimalPad); Text("الخانة الفارغة تعني لا توجد قيمة لهذا النوع.").font(.caption) }
             Button(busy ? "جاري الحفظ…" : saved ? "تم الحفظ" : "حفظ في مصدر التطبيق") { Task { await save() } }.disabled(busy || saved)
             if !message.isEmpty { Text(message).foregroundStyle(saved ? URColor.royalBlue : .red) }
@@ -2186,7 +2203,7 @@ private struct URNativeRouteAdminView: View {
             Section("مصدر السعر ووحدته") {
                 Picker("سعر التسليم", selection: $source) { Text("اختر السعر الصحيح للدولة").tag(""); ForEach(rates.indices, id: \.self) { i in Text(urText(rates[i], "routeNameArabic") + " · " + urText(rates[i], "destinationCurrency")).tag(urText(rates[i], "id")) } }
                 Picker("السعر المنشور مقابل", selection: $basis) { Text("1 دولار").tag(1); Text("100 دولار").tag(100); Text("10,000 دولار").tag(10000) }
-                Text("مثال: الرمبي 7.01 لكل دولار؛ التومان 25,000,000 لكل 100 دولار. اختيار الوحدة يحدد الحسبة الفعلية.").font(.caption)
+                Text("مثال: اليوان الصيني 7.01 لكل دولار؛ التومان 25,000,000 لكل 100 دولار. اختيار الوحدة يحدد الحسبة الفعلية.").font(.caption)
             }
             Section("حدود الطلب بالدولار") { TextField("أقل مبلغ", text: $min).keyboardType(.decimalPad); TextField("أعلى مبلغ", text: $max).keyboardType(.decimalPad); Text("الحد العام 100,000 دولار للطلب. حدود الوكيل اليومية والشهرية تبقى مطبقة عند الإصدار.").font(.caption) }
             Toggle("راجعت الدولة والعملة ووحدة السعر والحدود", isOn: $confirmed)

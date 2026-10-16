@@ -12,6 +12,7 @@ struct URRemitApp: App {
     @State private var favorites = FavoritesStore.shared
     @State private var showSplash = true
     @AppStorage("ur.onboarding.completed") private var onboardingCompleted = false
+    @AppStorage("ur.app.language") private var appLanguage = URLanguage.arabic.rawValue
     private let container = AppContainer.live
 
     var body: some Scene {
@@ -22,6 +23,8 @@ struct URRemitApp: App {
                 }
                 .environmentObject(auth)
                 .environment(favorites)
+                .environment(\.locale, selectedLanguage.locale)
+                .environment(\.layoutDirection, selectedLanguage.direction)
                 .onOpenURL { url in
                     auth.handle(url: url)
                 }
@@ -125,6 +128,10 @@ struct URRemitApp: App {
                 }
             }
         }
+    }
+
+    private var selectedLanguage: URLanguage {
+        URLanguage(rawValue: appLanguage) ?? .arabic
     }
 }
 

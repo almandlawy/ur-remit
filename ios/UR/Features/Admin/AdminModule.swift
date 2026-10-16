@@ -780,7 +780,7 @@ final class NewsletterGenerator {
         if let rmb = rates.first(where: {
             $0.routeNameArabic.contains("الصين") || $0.routeNameArabic.contains("يوان")
         }), let buy = rmb.buy {
-            text += "🇨🇳 رمبي (RMB): \(formatNumber(buy))\n\n"
+            text += "🇨🇳 يوان صيني (رنمينبي): \(formatNumber(buy))\n\n"
         }
 
         let categories: [(String, String, String)] = [

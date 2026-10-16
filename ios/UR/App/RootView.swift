@@ -4,14 +4,14 @@ private enum URTab: String, CaseIterable, Identifiable {
     case home, offices, rates, transfers, support, more
 
     var id: Self { self }
-    var title: String {
+    var title: LocalizedStringKey {
         switch self {
-        case .home: "الرئيسية"
-        case .offices: "مراكزنا"
-        case .rates: "الأسعار"
-        case .transfers: "حوالاتي"
-        case .support: "الدعم"
-        case .more: "المزيد"
+        case .home: "home"
+        case .offices: "offices"
+        case .rates: "rates"
+        case .transfers: "transfers"
+        case .support: "support"
+        case .more: "more"
         }
     }
 

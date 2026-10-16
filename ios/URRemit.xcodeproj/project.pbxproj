@@ -33,6 +33,7 @@
 		854654D527F5521E7AFB2937 /* URTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7D97FEB1BF2F19BD085A93B /* URTheme.swift */; };
 		8F492CBE0DF02021DCC1559E /* FileRatesCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBD6D7FF0233D61CA3D001B5 /* FileRatesCache.swift */; };
 		90DD00A8CE19DCDAFD313D4D /* URWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F6A6003C031698962EEB9DAA /* URWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		983C4E09EB566F2C8C19A40C /* URLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F87BFD4DB4A67BA673BFBD2 /* URLanguage.swift */; };
 		99FCE8E4AE8A755F04910A12 /* ShareTemplates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AA2B1DAF54462542D103F83 /* ShareTemplates.swift */; };
 		A5616FC2011F291FE04E400F /* SmartNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18D225FD4208B3DBC2A725E6 /* SmartNotificationService.swift */; };
 		A5CAFEBCDB002CE7246EA620 /* DeleteAccountService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E9F7D8925194F5736A3482C /* DeleteAccountService.swift */; };
@@ -116,11 +117,13 @@
 		44458181F01A4278D6DAB85B /* RatesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatesViewModel.swift; sourceTree = "<group>"; };
 		476D9E753B47FDEEB12CC41E /* PriceAlertSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceAlertSheet.swift; sourceTree = "<group>"; };
 		49D450F64710663985E1E11C /* tr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/Localizable.strings; sourceTree = "<group>"; };
+		4F87BFD4DB4A67BA673BFBD2 /* URLanguage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLanguage.swift; sourceTree = "<group>"; };
 		5633E5A6C39F365CF8811C37 /* BankInvoiceOCRTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BankInvoiceOCRTests.swift; sourceTree = "<group>"; };
 		6623AA122B1508E97E4AE8E1 /* URAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URAuthService.swift; sourceTree = "<group>"; };
 		673C0DF216A55E9EC898CAB5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		69977AFBB6CCADE019FA80EB /* URRemitApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URRemitApp.swift; sourceTree = "<group>"; };
 		6BCD86F99796BACAD1681F3E /* URLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLiveActivity.swift; sourceTree = "<group>"; };
+		6CB103812D59CD0420B17BD0 /* ckb */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ckb; path = ckb.lproj/Localizable.strings; sourceTree = "<group>"; };
 		704D324C198B290A60B8F477 /* URComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URComponents.swift; sourceTree = "<group>"; };
 		71305E42EA2D1084CED57EF5 /* UREnhancements.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UREnhancements.swift; sourceTree = "<group>"; };
 		74CC08056F06B058D31A3953 /* PublicModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublicModels.swift; sourceTree = "<group>"; };
@@ -335,6 +338,7 @@
 				22C8CF57EE2FAC5623F682F5 /* SplashView.swift */,
 				704D324C198B290A60B8F477 /* URComponents.swift */,
 				71305E42EA2D1084CED57EF5 /* UREnhancements.swift */,
+				4F87BFD4DB4A67BA673BFBD2 /* URLanguage.swift */,
 				69977AFBB6CCADE019FA80EB /* URRemitApp.swift */,
 				906634F2DE0DA3184B968B85 /* WelcomeView.swift */,
 			);
@@ -557,6 +561,7 @@
 			knownRegions = (
 				Base,
 				ar,
+				ckb,
 				en,
 				ku,
 				tr,
@@ -647,6 +652,7 @@
 				DE35DAD0F74C7BBBAD3E6E79 /* URAuthService.swift in Sources */,
 				2AEA6DE3256625C79A161EAC /* URComponents.swift in Sources */,
 				3C7F0642675D7F1FA5C4ECFA /* UREnhancements.swift in Sources */,
+				983C4E09EB566F2C8C19A40C /* URLanguage.swift in Sources */,
 				EDC2703267573881CCD270CD /* URRemitApp.swift in Sources */,
 				854654D527F5521E7AFB2937 /* URTheme.swift in Sources */,
 				7654C7B36EDE4FF3D3005A20 /* WelcomeView.swift in Sources */,
@@ -711,6 +717,7 @@
 			isa = PBXVariantGroup;
 			children = (
 				95B4792C0B4BFB4638DF1AC0 /* ar */,
+				6CB103812D59CD0420B17BD0 /* ckb */,
 				CF235AA22A2234FB50546305 /* en */,
 				CFEAEFAF46E99093F9B05B87 /* ku */,
 				49D450F64710663985E1E11C /* tr */,
