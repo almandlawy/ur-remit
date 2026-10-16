@@ -5,16 +5,24 @@ import OSLog
 import WidgetKit
 import FacebookCore
 
-// The SDK is initialized only after a client token is configured in the built app.
-// App-event auto logging and advertiser-ID collection remain disabled pending
-// privacy review and explicit configuration approval.
+// The SDK is initialized only after a client token is configured in the built app
+// (ios/Config/Meta.local.xcconfig). App-event logging stays off unless the build sets
+// META_APP_EVENTS_ENABLED = YES, and advertiser-ID collection is always off.
 final class URMetaAppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         guard let token = Bundle.main.object(forInfoDictionaryKey: "FacebookClientToken") as? String,
-              !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+              !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !token.hasPrefix("$("),
+              token != "paste_client_token_here" else {
             return true
         }
+        let eventsEnabled = (Bundle.main.object(forInfoDictionaryKey: "URMetaAppEventsEnabled") as? String)?
+            .uppercased() == "YES"
+        // Runtime values persist across launches, so set them explicitly every time.
+        // SDK 18.x can otherwise let the Events Manager setting override the Info.plist default.
+        Settings.shared.isAutoLogAppEventsEnabled = eventsEnabled
+        Settings.shared.isAdvertiserIDCollectionEnabled = false
         ApplicationDelegate.shared.application(application, didFinishLaunchingWithOptions: launchOptions)
         return true
     }

@@ -8,7 +8,13 @@
   <key>FacebookDisplayName</key><string>UR Global</string>
   <key>FacebookAutoLogAppEventsEnabled</key><false/>
   <key>FacebookAdvertiserIDCollectionEnabled</key><false/>
-  <!-- FacebookClientToken must be supplied locally after privacy review; never commit it. -->
+  <key>FacebookClientToken</key><string>$(FACEBOOK_CLIENT_TOKEN)</string>
+  <key>URMetaAppEventsEnabled</key><string>$(META_APP_EVENTS_ENABLED)</string>
+  <key>SKAdNetworkItems</key>
+  <array>
+    <dict><key>SKAdNetworkIdentifier</key><string>v9wttpbfk9.skadnetwork</string></dict>
+    <dict><key>SKAdNetworkIdentifier</key><string>n38lu8286q.skadnetwork</string></dict>
+  </array>
   <key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
   <key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
   <key>CFBundleIconName</key><string>AppIcon</string>

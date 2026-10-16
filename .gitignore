@@ -35,3 +35,6 @@ DerivedData/
 *.before-native.bak
 *.pre_fix
 *.bak2
+
+# Meta SDK local secrets
+ios/Config/Meta.local.xcconfig

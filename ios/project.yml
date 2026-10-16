@@ -39,6 +39,9 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Resources/URRemit.entitlements
         CODE_SIGN_STYLE: Automatic
         GENERATE_INFOPLIST_FILE: false
+    configFiles:
+      Debug: Config/Meta.xcconfig
+      Release: Config/Meta.xcconfig
     dependencies:
       - package: GoogleSignIn
         product: GoogleSignInSwift
