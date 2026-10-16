@@ -38,23 +38,30 @@ enum URMetaMeasurement {
         guard isAvailableInBuild, URPrivacyPreferences.metaMeasurementConsent else { return }
         applySettings(eventsEnabled: true)
         ApplicationDelegate.shared.application(application, didFinishLaunchingWithOptions: launchOptions)
+        AppEvents.shared.flushBehavior = .auto
         initialized = true
     }
 
-    /// Applies a consent change made in the app. Opting in starts the SDK and records activation;
-    /// opting out stops automatic logging and clears data the SDK stored for this user.
+    /// Applies a consent change made in the app. Opting in starts the SDK and records activation.
+    /// Opting out stops event logging and sending at once and discards queued events; the SDK
+    /// cannot be shut down mid-session, so it is fully inactive from the next launch.
     static func setConsent(_ granted: Bool) {
         UserDefaults.standard.set(granted, forKey: URPrivacyPreferences.metaMeasurementKey)
         guard isAvailableInBuild else { return }
         if granted {
+            // Never send events that were queued before an earlier opt-out.
+            _AppEventsStateManager.shared.clearPersistedAppEventsStates()
             applySettings(eventsEnabled: true)
             if !initialized {
                 ApplicationDelegate.shared.initializeSDK()
                 initialized = true
             }
+            AppEvents.shared.flushBehavior = .auto
             AppEvents.shared.activateApp()
         } else if initialized {
             applySettings(eventsEnabled: false)
+            AppEvents.shared.flushBehavior = .explicitOnly
+            _AppEventsStateManager.shared.clearPersistedAppEventsStates()
             AppEvents.shared.clearUserData()
             AppEvents.shared.userID = nil
         }
