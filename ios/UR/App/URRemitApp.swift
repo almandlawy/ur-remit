@@ -3,27 +3,13 @@ import AuthenticationServices
 import GoogleSignInSwift
 import OSLog
 import WidgetKit
-import FacebookCore
 
-// The SDK is initialized only after a client token is configured in the built app
-// (ios/Config/Meta.local.xcconfig). App-event logging stays off unless the build sets
-// META_APP_EVENTS_ENABLED = YES, and advertiser-ID collection is always off.
+// Meta measurement starts only with a configured token, META_APP_EVENTS_ENABLED = YES,
+// and the user's opt-in. See URMetaMeasurement.
 final class URMetaAppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        guard let token = Bundle.main.object(forInfoDictionaryKey: "FacebookClientToken") as? String,
-              !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              !token.hasPrefix("$("),
-              token != "paste_client_token_here" else {
-            return true
-        }
-        let eventsEnabled = (Bundle.main.object(forInfoDictionaryKey: "URMetaAppEventsEnabled") as? String)?
-            .uppercased() == "YES"
-        // Runtime values persist across launches, so set them explicitly every time.
-        // SDK 18.x can otherwise let the Events Manager setting override the Info.plist default.
-        Settings.shared.isAutoLogAppEventsEnabled = eventsEnabled
-        Settings.shared.isAdvertiserIDCollectionEnabled = false
-        ApplicationDelegate.shared.application(application, didFinishLaunchingWithOptions: launchOptions)
+        URMetaMeasurement.configureAtLaunch(application, launchOptions: launchOptions)
         return true
     }
 }

@@ -36,3 +36,8 @@ No live campaign, payment, Apple release, or production backend has been changed
 - App Store Connect privacy labels must add the data types in the Meta SDK manifest (Device ID; other usage data for analytics/advertising; crash data).
 - ATT: the minimum setup keeps advertiser-ID collection off and shows no ATT prompt. Measurement then relies on SKAdNetwork and Meta AEM. Add ATT only if the owner approves IDFA-based measurement.
 - Meta Developers: add iOS bundle ID `com.urremit.mobile`, privacy policy URL and data-deletion instructions.
+
+## Consent control (2026-10-16)
+- More → إعدادات الخصوصية: "share usage data with UR" (on by default, gates `URNativeTelemetry`) and "Meta ad measurement" (opt-in, shown only when the build has a token and `META_APP_EVENTS_ENABLED = YES`).
+- The Meta SDK is initialized only after opt-in, so there is no Meta network traffic without consent. Opting out disables auto-logging and clears SDK user data.
+- Policy draft: `docs/privacy/PRIVACY_POLICY_REVISION_DRAFT_2026-10-16.md`. App Store labels: `docs/privacy/APP_STORE_PRIVACY_DISCLOSURES_PROPOSAL.md`.

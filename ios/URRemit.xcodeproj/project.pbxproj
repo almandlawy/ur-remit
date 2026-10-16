@@ -44,6 +44,7 @@
 		BC1D49AA513859D2303AA8D7 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 982003CA002FFAFC6640E6CA /* PrivacyInfo.xcprivacy */; };
 		C17165212B6272A332F6C2BF /* Rate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98A47F3F61803B8D2F2B7BC6 /* Rate.swift */; };
 		C1D0AE2C92F7AB8A32E53339 /* FavoritesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFA7CFA2F9BD54B831219301 /* FavoritesStore.swift */; };
+		C6FDCA8565C8A0E7CDC6CCFF /* URPrivacyConsent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D2FBA7BE5E969815947E707 /* URPrivacyConsent.swift */; };
 		C76146AB0A3917B9B6F2D977 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D68719E48D78EA257F78893B /* RootView.swift */; };
 		C8522921A79CAF04A2903799 /* DailyReminderManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2C7482F2FE8AB6DA4D9E3B3 /* DailyReminderManager.swift */; };
 		C98D81EBC1B8EA2354FDCA1B /* BankInvoiceOCRTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5633E5A6C39F365CF8811C37 /* BankInvoiceOCRTests.swift */; };
@@ -57,6 +58,7 @@
 		E2C238A7F35290C10D2445DA /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E47E15BBF2C66AF2D8F9563D /* OnboardingView.swift */; };
 		E3FD25BBFB09DC13290AFF60 /* AdminModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18743967701B8304E5C7F616 /* AdminModule.swift */; };
 		EDC2703267573881CCD270CD /* URRemitApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69977AFBB6CCADE019FA80EB /* URRemitApp.swift */; };
+		F10BF277AF69314D9E529F2C /* PrivacyConsentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CEF7A4DCBB77D0815242526 /* PrivacyConsentTests.swift */; };
 		F91B00A2373D3344CA1382DE /* URWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1C09596AC7445F9ED9ADD5 /* URWatchApp.swift */; };
 /* End PBXBuildFile section */
 
@@ -114,6 +116,7 @@
 		37EFB72B68736CCF1D021589 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		3A2577BC7168EB7A65CBB98E /* URWatchApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = URWatchApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3AA2B1DAF54462542D103F83 /* ShareTemplates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareTemplates.swift; sourceTree = "<group>"; };
+		3CEF7A4DCBB77D0815242526 /* PrivacyConsentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyConsentTests.swift; sourceTree = "<group>"; };
 		3D66284CEAF48A7B49DD4EC8 /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
 		41658526317F446C04241369 /* Meta.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Meta.xcconfig; sourceTree = "<group>"; };
 		44458181F01A4278D6DAB85B /* RatesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatesViewModel.swift; sourceTree = "<group>"; };
@@ -132,6 +135,7 @@
 		75CC30C2B2C750995617347E /* URLiveActivity.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = URLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		76A2DD1791B54C69970B13C5 /* PriceAlertManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceAlertManager.swift; sourceTree = "<group>"; };
 		86D9A82CE56351874727A791 /* CalculatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalculatorView.swift; sourceTree = "<group>"; };
+		8D2FBA7BE5E969815947E707 /* URPrivacyConsent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URPrivacyConsent.swift; sourceTree = "<group>"; };
 		8E9F7D8925194F5736A3482C /* DeleteAccountService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteAccountService.swift; sourceTree = "<group>"; };
 		8FAD1AA7882BD4509D5D9E71 /* RateCacheTests.swift.20261008-060328-783374.bak */ = {isa = PBXFileReference; path = "RateCacheTests.swift.20261008-060328-783374.bak"; sourceTree = "<group>"; };
 		906634F2DE0DA3184B968B85 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
@@ -277,10 +281,19 @@
 			path = Presentation;
 			sourceTree = "<group>";
 		};
+		70E72027DBD9FCD229D8EFA5 /* Privacy */ = {
+			isa = PBXGroup;
+			children = (
+				8D2FBA7BE5E969815947E707 /* URPrivacyConsent.swift */,
+			);
+			path = Privacy;
+			sourceTree = "<group>";
+		};
 		812B2896AB2829A39EAD4652 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
 				5633E5A6C39F365CF8811C37 /* BankInvoiceOCRTests.swift */,
+				3CEF7A4DCBB77D0815242526 /* PrivacyConsentTests.swift */,
 				A47C464A4E5B6AE18337C874 /* RateCacheTests.swift */,
 				8FAD1AA7882BD4509D5D9E71 /* RateCacheTests.swift.20261008-060328-783374.bak */,
 			);
@@ -399,6 +412,7 @@
 				83019E050D41E35459B847A0 /* Auth */,
 				0E344DD6B6C0CB3E4870551D /* DesignSystem */,
 				9C45D7CF3D45F7B1F406DF92 /* Networking */,
+				70E72027DBD9FCD229D8EFA5 /* Privacy */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -667,6 +681,7 @@
 				2AEA6DE3256625C79A161EAC /* URComponents.swift in Sources */,
 				3C7F0642675D7F1FA5C4ECFA /* UREnhancements.swift in Sources */,
 				983C4E09EB566F2C8C19A40C /* URLanguage.swift in Sources */,
+				C6FDCA8565C8A0E7CDC6CCFF /* URPrivacyConsent.swift in Sources */,
 				EDC2703267573881CCD270CD /* URRemitApp.swift in Sources */,
 				854654D527F5521E7AFB2937 /* URTheme.swift in Sources */,
 				7654C7B36EDE4FF3D3005A20 /* WelcomeView.swift in Sources */,
@@ -694,6 +709,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C98D81EBC1B8EA2354FDCA1B /* BankInvoiceOCRTests.swift in Sources */,
+				F10BF277AF69314D9E529F2C /* PrivacyConsentTests.swift in Sources */,
 				DA91AD9D8D85A442E4CF1E2C /* RateCacheTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
