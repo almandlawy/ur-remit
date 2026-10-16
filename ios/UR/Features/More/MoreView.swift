@@ -21,6 +21,8 @@ struct MoreView: View {
                 GeometryReader { proxy in
                     ZStack {
                         LinearGradient(colors: [URColor.deepNavy, URColor.royalBlue], startPoint: .topTrailing, endPoint: .bottomLeading)
+                        Circle().fill(URColor.premiumGold.opacity(0.10)).frame(width: 150, height: 150).offset(x: proxy.size.width * 0.39, y: 44)
+                        Circle().stroke(URColor.premiumGold.opacity(0.22), lineWidth: 1).frame(width: 92, height: 92).offset(x: -proxy.size.width * 0.41, y: -45)
                         HStack(spacing: 8) {
                             HStack(spacing: 7) {
                                 moreHeroIcon("الحساب", "person")
@@ -29,7 +31,10 @@ struct MoreView: View {
                             }.frame(width: proxy.size.width * 0.50)
                             Spacer(minLength: 4)
                             VStack(alignment: .trailing, spacing: 4) {
-                                Text("UR GLOBAL").font(.caption2.weight(.black)).tracking(1)
+                                HStack(spacing: 5) {
+                                    Capsule().fill(URColor.premiumGold).frame(width: 22, height: 3)
+                                    Text("UR GLOBAL").font(.caption2.weight(.black)).tracking(1)
+                                }
                                 Text("خدمات أور بين إيديك").font(.headline.weight(.black)).lineLimit(2).minimumScaleFactor(0.78)
                                 Text("حسابك، أدواتك، ومساعدتك").font(.caption2).foregroundStyle(.white.opacity(0.78)).lineLimit(2)
                             }.frame(width: proxy.size.width * 0.40, alignment: .trailing)
@@ -1662,6 +1667,14 @@ struct RatesPromotionsView: View {
                     }.padding(.horizontal, 12)
                 }.foregroundStyle(.white).frame(maxWidth: .infinity, minHeight: 52, maxHeight: 52).clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
             }.buttonStyle(.plain).accessibilityLabel("انضم كوكيل إلى شبكة أور")
+            HStack(spacing: 6) {
+                Capsule().fill(URColor.premiumGold.opacity(0.45)).frame(height: 1)
+                Label("الإيداع فوري", systemImage: "bolt.fill")
+                    .font(.caption2.weight(.black))
+                    .foregroundStyle(URColor.deepNavy)
+                    .fixedSize()
+                Capsule().fill(URColor.premiumGold.opacity(0.45)).frame(height: 1)
+            }.accessibilityElement(children: .combine)
             HStack(spacing: 8) {
                 NavigationLink { AccountDepositView(product: .toman) } label: { depositStrip(.toman, rate: tomanRate) }
                 NavigationLink { AccountDepositView(product: .renminbi) } label: { depositStrip(.renminbi, rate: renminbiRate) }
