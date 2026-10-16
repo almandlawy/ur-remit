@@ -1,20 +1,36 @@
 import SwiftUI
 
+extension Color {
+    init(light: UIColor, dark: UIColor) {
+        self.init(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark ? dark : light
+        })
+    }
+}
+
 // MARK: - URColor
 enum URColor {
     // Primary Brand
-    static let deepNavy = Color(red: 0.012, green: 0.08, blue: 0.21)
-    static let royalBlue = Color(red: 0.015, green: 0.18, blue: 0.31)
-    static let premiumGold = Color(red: 0.67, green: 0.49, blue: 0.16)
+    static let deepNavy = Color(light: UIColor(red: 0.012, green: 0.08, blue: 0.21, alpha: 1), dark: UIColor(red: 0.78, green: 0.86, blue: 0.98, alpha: 1))
+    static let royalBlue = Color(light: UIColor(red: 0.015, green: 0.18, blue: 0.31, alpha: 1), dark: UIColor(red: 0.22, green: 0.58, blue: 0.94, alpha: 1))
+    static let premiumGold = Color(light: UIColor(red: 0.67, green: 0.49, blue: 0.16, alpha: 1), dark: UIColor(red: 0.92, green: 0.72, blue: 0.32, alpha: 1))
 
     // Surfaces
-    static let ivory = Color(red: 0.993, green: 0.985, blue: 0.963)
-    static let hairline = Color(red: 0.80, green: 0.77, blue: 0.68).opacity(0.48)
+    static let ivory = Color(light: UIColor(red: 0.993, green: 0.985, blue: 0.963, alpha: 1), dark: UIColor(red: 0.035, green: 0.055, blue: 0.09, alpha: 1))
+    static let surface = Color(light: .white, dark: UIColor(red: 0.07, green: 0.10, blue: 0.16, alpha: 1))
+    static let hairline = Color(light: UIColor(red: 0.80, green: 0.77, blue: 0.68, alpha: 0.48), dark: UIColor(red: 0.35, green: 0.43, blue: 0.56, alpha: 0.55))
 
     // Semantic
     static let success = Color(red: 0.00, green: 0.50, blue: 0.27)
     static let error = Color(red: 0.78, green: 0.08, blue: 0.15)
     static let warning = Color.orange
+
+    // MARK: - Aliases (للتوافق مع الكود القديم)
+    static let gold = premiumGold
+    static let navy = deepNavy
+    static let blue = royalBlue
+    static let green = success
+    static let red = error
 }
 
 // MARK: - URTextField
@@ -71,7 +87,7 @@ struct URTextField: View {
             .padding(.horizontal, 14)
             .frame(height: 50)
             .background(
-                Color.white,
+                URColor.surface,
                 in: RoundedRectangle(cornerRadius: 12, style: .continuous)
             )
             .overlay(

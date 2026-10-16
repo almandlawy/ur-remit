@@ -16,10 +16,14 @@ final class RateCacheTests: XCTestCase {
             id: UUID(), routeNameArabic: "بغداد إلى دبي", routeNameEnglish: "Baghdad to Dubai",
             sourceCurrency: "USD", destinationCurrency: "AED", buy: Decimal(string: "3.675"), sell: nil,
             feeFixed: nil, feePercent: nil,
-            updatedAt: now, sourceTimestamp: now, version: 7, staleAfter: now.addingTimeInterval(900)
+            updatedAt: now, sourceTimestamp: now, version: 7, staleAfter: now.addingTimeInterval(900),
+            category: nil, categoryOrder: nil, icon: nil, logoUrl: nil,
+            serviceType: nil, deliverySpeed: nil, isFeatured: nil
         )
         try await cache.write([rate])
         let restored = try await cache.read()
         XCTAssertEqual(restored, [rate])
+        let cachedAt = try await cache.lastWrittenAt()
+        XCTAssertLessThan(abs(cachedAt.timeIntervalSinceNow), 5)
     }
 }

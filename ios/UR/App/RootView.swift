@@ -1,16 +1,17 @@
 import SwiftUI
 
 private enum URTab: String, CaseIterable, Identifiable {
-    case home, offices, rates, support, more
+    case home, offices, rates, transfers, support, more
 
     var id: Self { self }
-    var title: String {
+    var title: LocalizedStringKey {
         switch self {
-        case .home: "الرئيسية"
-        case .offices: "مراكزنا"
-        case .rates: "الأسعار"
-        case .support: "الدعم"
-        case .more: "المزيد"
+        case .home: "home"
+        case .offices: "offices"
+        case .rates: "rates"
+        case .transfers: "transfers"
+        case .support: "support"
+        case .more: "more"
         }
     }
 
@@ -19,6 +20,7 @@ private enum URTab: String, CaseIterable, Identifiable {
         case .home: "house.fill"
         case .offices: "mappin.circle"
         case .rates: "chart.bar.fill"
+        case .transfers: "arrow.left.arrow.right.circle.fill"
         case .support: "headphones"
         case .more: "ellipsis"
         }
@@ -26,14 +28,18 @@ private enum URTab: String, CaseIterable, Identifiable {
 }
 
 struct RootView: View {
+    @Environment(\.scenePhase) private var nativeScenePhase
     let container: AppContainer
     @State private var selection: URTab
+    @State private var homeNavigationID = UUID()
 
     init(container: AppContainer) {
         self.container = container
         let arguments = ProcessInfo.processInfo.arguments
-        let initial: URTab = arguments.contains("-showRates") ? .rates
+        let initial: URTab = arguments.contains("-showHome") ? .home
+            : arguments.contains("-showRates") ? .rates
             : arguments.contains("-showOffices") ? .offices
+            : arguments.contains("-showTransfers") ? .transfers
             : arguments.contains("-showSupport") ? .support
             : arguments.contains("-showMore") ? .more
             : .home
@@ -43,25 +49,33 @@ struct RootView: View {
     var body: some View {
         TabView(selection: $selection) {
             NavigationStack { HomeView(repository: container.ratesRepository, api: container.apiClient) }
+                .id(homeNavigationID)
                 .tag(URTab.home)
             NavigationStack { OfficesView(api: container.apiClient) }
                 .tag(URTab.offices)
-            NavigationStack { RatesView(repository: container.ratesRepository) }
+            NavigationStack { URRatesWorkspace { RatesView(repository: container.ratesRepository) } }
                 .tag(URTab.rates)
+            NavigationStack { CustomerRemittanceView() }
+                .tag(URTab.transfers)
             NavigationStack { SupportView(repository: container.ratesRepository, api: container.apiClient) }
                 .tag(URTab.support)
-            NavigationStack { MoreView(api: container.apiClient) }
+            NavigationStack { MoreView(api: container.apiClient, repository: container.ratesRepository) }
                 .tag(URTab.more)
         }
         .toolbar(.hidden, for: .tabBar)
+        .task { await URNativeTelemetry.launch() }
+        .onChange(of: nativeScenePhase) { _, phase in if phase == .active { Task { await URNativeTelemetry.send("app_open") } } }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            URBottomNavigation(selection: $selection)
+            URBottomNavigation(selection: $selection) { tab in
+                if tab == .home { homeNavigationID = UUID() }
+            }
         }
     }
 }
 
 private struct URBottomNavigation: View {
     @Binding var selection: URTab
+    let onSelect: (URTab) -> Void
     @Namespace private var animationNamespace
 
     private func color(for tab: URTab) -> Color {
@@ -72,6 +86,7 @@ private struct URBottomNavigation: View {
         HStack(spacing: 0) {
             ForEach(URTab.allCases) { tab in
                 Button {
+                    onSelect(tab)
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
                         selection = tab
                     }
@@ -117,5 +132,6 @@ private struct URBottomNavigation: View {
             Divider()
                 .background(URColor.hairline)
         }
+        .sensoryFeedback(.selection, trigger: selection)
     }
 }

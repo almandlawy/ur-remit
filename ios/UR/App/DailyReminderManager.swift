@@ -75,7 +75,7 @@ final class DailyReminderManager {
     }
 
     /// يجدول التذكير بناءً على الإعدادات الحالية
-    func reschedule() async {
+    func reschedule(requestPermission: Bool = true) async {
         let center = UNUserNotificationCenter.current()
 
         // احذف كل التذكيرات السابقة
@@ -84,7 +84,18 @@ final class DailyReminderManager {
         guard isEnabled, !weekdays.isEmpty else { return }
 
         // تحقق من الصلاحية
-        let authorized = await requestPermissionIfNeeded()
+        let settings = await center.notificationSettings()
+        let alreadyAuthorized = settings.authorizationStatus == .authorized
+            || settings.authorizationStatus == .provisional
+            || settings.authorizationStatus == .ephemeral
+        let authorized: Bool
+        if alreadyAuthorized {
+            authorized = true
+        } else if requestPermission {
+            authorized = await requestPermissionIfNeeded()
+        } else {
+            authorized = false
+        }
         guard authorized else { return }
 
         for weekday in weekdays {
@@ -116,7 +127,7 @@ final class DailyReminderManager {
         UserDefaults.standard.removeObject(forKey: weekdaysKey)
         UserDefaults.standard.removeObject(forKey: "reminder_last_reset")
 
-        await reschedule()
+        await reschedule(requestPermission: false)
     }
 
     /// يحدّث محتوى الإشعار بآخر سعر معروف (يُستدعى عند تحديث الأسعار)
@@ -125,7 +136,7 @@ final class DailyReminderManager {
             UserDefaults.standard.set("\(price)", forKey: "last_known_usd_iqd")
         }
 
-        await reschedule()
+        await reschedule(requestPermission: false)
     }
 
     /// لتصفير التنبيهات المُطلقة يومياً

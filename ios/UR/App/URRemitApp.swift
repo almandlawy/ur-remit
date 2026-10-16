@@ -1,40 +1,88 @@
 import SwiftUI
 import AuthenticationServices
+import GoogleSignInSwift
 import OSLog
+import WidgetKit
 
 @main
 struct URRemitApp: App {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "URRemit", category: "PriceAlerts")
     @StateObject private var auth = URAuthService.live
     @State private var favorites = FavoritesStore.shared
     @State private var showSplash = true
+    @AppStorage("ur.onboarding.completed") private var onboardingCompleted = false
+    @AppStorage("ur.app.language") private var appLanguage = URLanguage.arabic.rawValue
     private let container = AppContainer.live
 
     var body: some Scene {
         WindowGroup {
             ZStack {
                 Group {
-                    if auth.isAuthenticated {
-                        RootView(container: container)
-                    } else {
-                        AuthView()
-                    }
+                    RootView(container: container)
                 }
                 .environmentObject(auth)
                 .environment(favorites)
+                .environment(\.locale, selectedLanguage.locale)
+                .environment(\.layoutDirection, selectedLanguage.direction)
+                .onAppear { syncWidgetLanguage() }
+                .onChange(of: appLanguage) { _, _ in syncWidgetLanguage() }
                 .onOpenURL { url in
                     auth.handle(url: url)
                 }
                 .task {
                     let alertManager = PriceAlertManager.shared
-                    await alertManager.requestPermissionIfNeeded()
+                    await alertManager.refreshAuthorizationStatus()
                     alertManager.resetFiredIfNewDay()
-                    await DailyReminderManager.shared.reschedule()
+                    await SmartNotificationService.shared.scheduleDailySummaries()
 
                     do {
                         let snapshot = try await container.ratesRepository.loadRates()
                         let usdIqd = snapshot.rates.first {
                             $0.sourceCurrency == "USD" && $0.destinationCurrency == "IQD"
+                        }
+                        RateHistoryStore.shared.record(rates: snapshot.rates)
+                        if let usdIqd {
+                            let shared = UserDefaults(suiteName: "group.com.urremit.shared")
+                            if let buy = usdIqd.buy { shared?.set(NSDecimalNumber(decimal: buy).stringValue, forKey: "usd_iqd_buy") }
+                            if let sell = usdIqd.sell { shared?.set(NSDecimalNumber(decimal: sell).stringValue, forKey: "usd_iqd_sell") }
+                            shared?.set(usdIqd.sourceTimestamp, forKey: "usd_iqd_source_timestamp")
+
+                            let widgetGroups: [String] = [
+                                "دبي", "عُمان", "الصين", "تركيا", "التحويلات"
+                            ]
+                            let widgetRows: [[String: String]] = widgetGroups.compactMap { group in
+                                guard let rate = snapshot.rates.first(where: { rate in
+                                    let ar = rate.routeNameArabic
+                                    let en = rate.routeNameEnglish
+                                    switch group {
+                                    case "دبي": return ar.contains("دبي") || en.localizedCaseInsensitiveContains("Dubai")
+                                    case "عُمان": return ar.contains("سلطنة عمان") || en.compare("Oman", options: .caseInsensitive) == .orderedSame
+                                    case "الصين": return ar.contains("الصين") || en.localizedCaseInsensitiveContains("China")
+                                    case "تركيا": return ar.contains("تركيا") || en.localizedCaseInsensitiveContains("Türkiye") || en.compare("Turkey", options: .caseInsensitive) == .orderedSame
+                                    default: return ar.contains("الحوالات البنكية") || ar.contains("ويسترن") || ar.contains("موني") || en.localizedCaseInsensitiveContains("Transfer") || en.localizedCaseInsensitiveContains("Western") || en.localizedCaseInsensitiveContains("MoneyGram")
+                                    }
+                                }) else { return nil }
+                                let value: Decimal?
+                                let unit: String
+                                if let fee = rate.feeFixed {
+                                    value = fee
+                                    unit = "عمولة/10K"
+                                } else {
+                                    value = rate.sell ?? rate.buy
+                                    unit = "\(rate.destinationCurrency)/\(rate.sourceCurrency)"
+                                }
+                                guard let value else { return nil }
+                                return [
+                                    "name": group,
+                                    "value": NSDecimalNumber(decimal: value).stringValue,
+                                    "code": unit
+                                ]
+                            }
+                            if let data = try? JSONSerialization.data(withJSONObject: widgetRows) {
+                                shared?.set(data, forKey: "widget_featured_routes")
+                            }
+                            WidgetCenter.shared.reloadTimelines(ofKind: "URUSD-IQD")
                         }
                         await DailyReminderManager.shared.refreshContent(usdIqd: usdIqd)
 
@@ -60,19 +108,37 @@ struct URRemitApp: App {
                         .zIndex(1)
                 }
             }
+            .fullScreenCover(isPresented: Binding(
+                get: { !onboardingCompleted && !showSplash },
+                set: { if !$0 { onboardingCompleted = true } }
+            )) {
+                OnboardingView(isPresented: Binding(
+                    get: { !onboardingCompleted },
+                    set: { if !$0 { onboardingCompleted = true } }
+                ))
+            }
             .task {
                 do {
-                    try await Task.sleep(for: .seconds(1.2))
+                    try await Task.sleep(for: .milliseconds(reduceMotion ? 250 : 1_100))
                 } catch is CancellationError {
                     return
                 } catch {
                     Self.logger.error("Splash delay failed: \(error.localizedDescription, privacy: .public)")
                 }
-                withAnimation(.easeOut(duration: 0.4)) {
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) {
                     showSplash = false
                 }
             }
         }
+    }
+
+    private var selectedLanguage: URLanguage {
+        URLanguage(rawValue: appLanguage) ?? .arabic
+    }
+
+    private func syncWidgetLanguage() {
+        UserDefaults(suiteName: "group.com.urremit.shared")?.set(appLanguage, forKey: "widget_language")
+        WidgetCenter.shared.reloadTimelines(ofKind: "URUSD-IQD")
     }
 }
 
@@ -119,26 +185,11 @@ struct AuthView: View {
                                 .frame(height: 50)
                                 .cornerRadius(14)
 
-                                Button {
+                                GoogleSignInButton(viewModel: GoogleSignInButtonViewModel(scheme: .light, style: .wide, state: .normal)) {
                                     Task { await auth.signInWithGoogle() }
-                                } label: {
-                                    HStack(spacing: 10) {
-                                        Image(systemName: "g.circle.fill")
-                                            .font(.title3)
-                                            .foregroundStyle(URColor.royalBlue)
-
-                                        Text("تسجيل الدخول بواسطة Google")
-                                            .font(.subheadline.weight(.bold))
-                                            .foregroundStyle(URColor.deepNavy)
-                                    }
-                                    .frame(maxWidth: .infinity, minHeight: 50)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                            .stroke(URColor.hairline, lineWidth: 1)
-                                            .background(Color.white, in: RoundedRectangle(cornerRadius: 14))
-                                    )
                                 }
-                                .buttonStyle(.plain)
+                                .frame(maxWidth: .infinity, minHeight: 50, maxHeight: 50)
+                                .accessibilityLabel("تسجيل الدخول باستخدام Google")
                             }
 
                             HStack {

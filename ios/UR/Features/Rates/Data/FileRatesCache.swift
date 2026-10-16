@@ -3,6 +3,7 @@ import Foundation
 protocol RatesCache: Sendable {
     func read() async throws -> [Rate]
     func write(_ rates: [Rate]) async throws
+    func lastWrittenAt() async throws -> Date
 }
 
 actor FileRatesCache: RatesCache {
@@ -33,6 +34,14 @@ actor FileRatesCache: RatesCache {
         let data = try encoder.encode(rates)
         try data.write(to: fileURL, options: [.atomic, .completeFileProtection])
     }
+
+    func lastWrittenAt() throws -> Date {
+        let attributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
+        guard let date = attributes[.modificationDate] as? Date else {
+            throw CocoaError(.fileReadUnknown)
+        }
+        return date
+    }
 }
 
 struct DefaultRatesRepository: RatesRepository {
@@ -43,10 +52,11 @@ struct DefaultRatesRepository: RatesRepository {
         do {
             let rates = try await remote.rates()
             try await cache.write(rates)
-            return RatesSnapshot(rates: rates, isFromCache: false)
+            return RatesSnapshot(rates: rates, isFromCache: false, fetchedAt: Date())
         } catch {
             let cached = try await cache.read()
-            return RatesSnapshot(rates: cached, isFromCache: true)
+            let cachedAt = try await cache.lastWrittenAt()
+            return RatesSnapshot(rates: cached, isFromCache: true, fetchedAt: cachedAt)
         }
     }
 }

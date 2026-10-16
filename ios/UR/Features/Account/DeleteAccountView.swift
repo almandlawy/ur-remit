@@ -7,40 +7,47 @@ struct DeleteAccountView: View {
     @State private var confirmText = ""
     @State private var isDeleting = false
     @State private var errorMessage: String?
+    @State private var showSuccess = false
 
-    private let confirmKeyword = "حذف"
+    private let confirmKeyword = "DELETE"
 
     private var canDelete: Bool {
-        confirmText.trimmingCharacters(in: .whitespacesAndNewlines) == confirmKeyword
+        confirmText.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() == confirmKeyword
     }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 18) {
+
                 URPageTitle(
-                    title: "حذف الحساب",
+                    title: "Delete Account",
                     subtitle: "هذا الإجراء نهائي ولا يمكن التراجع عنه",
                     symbol: "trash.fill"
                 )
 
                 URCard {
                     VStack(alignment: .trailing, spacing: 12) {
-                        warningRow("سيتم حذف حسابك وكل بياناتك المرتبطة به نهائياً.", icon: "person.crop.circle.badge.xmark")
+                        warningRow("سيتم حذف حسابك وكل بياناتك المرتبطة به نهائياً.",
+                                   icon: "person.crop.circle.badge.xmark")
                         Divider()
-                        warningRow("ستفقد الوصول إلى المفضلة، التنبيهات، والتذكيرات.", icon: "star.slash.fill")
+                        warningRow("ستفقد الوصول إلى المفضلة، التنبيهات، والتذكيرات.",
+                                   icon: "star.slash.fill")
                         Divider()
-                        warningRow("لا يمكن استرجاع الحساب أو بياناته بعد الحذف.", icon: "exclamationmark.triangle.fill")
+                        warningRow("لا يمكن استرجاع الحساب أو بياناته بعد الحذف.",
+                                   icon: "exclamationmark.triangle.fill")
                     }
                 }
 
                 URCard {
                     VStack(alignment: .trailing, spacing: 12) {
-                        Text("لحذف الحساب، اكتب كلمة «\(confirmKeyword)» في الحقل أدناه:")
+                        Text("لحذف الحساب، اكتب **\(confirmKeyword)** في الحقل أدناه:")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(URColor.deepNavy)
                             .frame(maxWidth: .infinity, alignment: .trailing)
 
                         TextField(confirmKeyword, text: $confirmText)
+                            .textInputAutocapitalization(.characters)
+                            .autocorrectionDisabled()
                             .multilineTextAlignment(.center)
                             .font(.title3.weight(.black))
                             .padding(14)
@@ -49,7 +56,6 @@ struct DeleteAccountView: View {
                                 RoundedRectangle(cornerRadius: 12)
                                     .stroke(canDelete ? URColor.error : URColor.hairline, lineWidth: 1)
                             )
-                            .autocorrectionDisabled()
 
                         if let errorMessage {
                             Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
@@ -68,7 +74,7 @@ struct DeleteAccountView: View {
                     if isDeleting {
                         ProgressView().tint(.white)
                     } else {
-                        Label("حذف حسابي نهائياً", systemImage: "trash.fill")
+                        Label("Delete My Account Permanently", systemImage: "trash.fill")
                     }
                 }
                 .font(.headline.weight(.bold))
@@ -80,10 +86,11 @@ struct DeleteAccountView: View {
                 )
                 .disabled(!canDelete || isDeleting)
 
-                Button("إلغاء") { dismiss() }
+                Button("Cancel") { dismiss() }
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(URColor.royalBlue)
                     .padding(.top, 4)
+                    .disabled(isDeleting)
             }
             .padding(14)
         }
@@ -91,6 +98,10 @@ struct DeleteAccountView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
         .interactiveDismissDisabled(isDeleting)
+        .fullScreenCover(isPresented: $showSuccess) {
+            AccountDeletedView()
+                .environmentObject(auth)
+        }
     }
 
     private func warningRow(_ text: String, icon: String) -> some View {
@@ -115,6 +126,7 @@ struct DeleteAccountView: View {
 
         do {
             try await auth.deleteAccount()
+            showSuccess = true
         } catch {
             errorMessage = error.localizedDescription
         }

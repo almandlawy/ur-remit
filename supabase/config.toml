@@ -2,3 +2,9 @@ project_id = "yqvcoomjunwokyxwofvt"
 
 [functions.mobile-api]
 verify_jwt = false
+
+[functions.app-store-stats]
+verify_jwt = false
+
+[functions.admin-password-auth]
+verify_jwt = false
