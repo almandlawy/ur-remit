@@ -4,8 +4,19 @@ import GoogleSignInSwift
 import OSLog
 import WidgetKit
 
+// Meta measurement starts only with a configured token, META_APP_EVENTS_ENABLED = YES,
+// and the user's opt-in. See URMetaMeasurement.
+final class URMetaAppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        URMetaMeasurement.configureAtLaunch(application, launchOptions: launchOptions)
+        return true
+    }
+}
+
 @main
 struct URRemitApp: App {
+    @UIApplicationDelegateAdaptor(URMetaAppDelegate.self) private var metaAppDelegate
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "URRemit", category: "PriceAlerts")
     @StateObject private var auth = URAuthService.live

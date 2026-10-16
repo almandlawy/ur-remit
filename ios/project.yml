@@ -13,6 +13,9 @@ packages:
   GoogleSignIn:
     url: https://github.com/google/GoogleSignIn-iOS
     from: 9.0.0
+  FacebookSDK:
+    url: https://github.com/facebook/facebook-ios-sdk
+    exactVersion: 18.1.1
 targets:
   URRemit:
     type: application
@@ -36,9 +39,14 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Resources/URRemit.entitlements
         CODE_SIGN_STYLE: Automatic
         GENERATE_INFOPLIST_FILE: false
+    configFiles:
+      Debug: Config/Meta.xcconfig
+      Release: Config/Meta.xcconfig
     dependencies:
       - package: GoogleSignIn
         product: GoogleSignInSwift
+      - package: FacebookSDK
+        product: FacebookCore
       - target: URWidget
         embed: true
       - target: URLiveActivity

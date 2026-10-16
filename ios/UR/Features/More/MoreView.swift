@@ -55,6 +55,7 @@ struct MoreView: View {
                 MoreGroup(title: "المساعدة والمعلومات") {
                     NavigationLink { SupportView(repository: repository, api: api) } label: { MoreRow("الدعم", "headphones") }
                     Divider(); Link(destination: URL(string: "https://urremit.com/contact")!) { MoreRow("شرح الاستخدام والتواصل", "questionmark.circle.fill") }
+                    Divider(); NavigationLink { URPrivacySettingsView() } label: { MoreRow("إعدادات الخصوصية", "switch.2") }
                     Divider(); Link(destination: URL(string: "https://urremit.com/privacy")!) { MoreRow("الخصوصية", "hand.raised.fill") }
                     Divider(); Link(destination: URL(string: "https://urremit.com/terms")!) { MoreRow("الشروط", "doc.text.fill") }
                     Divider(); NavigationLink { SecurityCenterView() } label: { MoreRow("عن أور", "info.circle.fill") }
@@ -426,6 +427,7 @@ private enum URNativeError: LocalizedError {
 @MainActor
 enum URNativeTelemetry {
     static func send(_ event: String) async {
+        guard URPrivacyPreferences.usageAnalyticsEnabled else { return }
         let defaults = UserDefaults.standard
         let installation = defaults.string(forKey: "URNativeInstallation") ?? UUID().uuidString
         defaults.set(installation, forKey: "URNativeInstallation")

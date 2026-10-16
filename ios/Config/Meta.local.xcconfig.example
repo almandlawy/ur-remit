@@ -1,0 +1,4 @@
+// Copy to Meta.local.xcconfig (gitignored) and fill in locally.
+// Client token: Meta Developers > UR Global app > App settings > Advanced > Security > Client token.
+FACEBOOK_CLIENT_TOKEN = paste_client_token_here
+META_APP_EVENTS_ENABLED = NO

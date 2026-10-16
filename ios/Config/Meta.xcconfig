@@ -1,0 +1,8 @@
+// Meta SDK build settings for the URRemit app target.
+// Real values live in Meta.local.xcconfig, which is gitignored. Never commit the client token.
+// With an empty token the SDK is not initialized and no Meta network traffic is sent.
+FACEBOOK_CLIENT_TOKEN =
+// YES only after privacy review and owner approval (or for a local device test build).
+META_APP_EVENTS_ENABLED = NO
+
+#include? "Meta.local.xcconfig"
