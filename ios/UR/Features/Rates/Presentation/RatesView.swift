@@ -258,15 +258,8 @@ private struct BrandHeader: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             Image("DubaiSkyline").resizable().scaledToFit().frame(maxWidth: .infinity).offset(y: 18 * scale)
-            HStack(spacing: 8 * scale) {
-                CircleButton(symbol: "bell", scale: scale)
-                HStack(spacing: 7 * scale) {
-                    Image(systemName: "globe"); Text("العربية").fontWeight(.bold); Image(systemName: "chevron.down").font(.system(size: 10 * scale, weight: .bold))
-                }
-                .font(.system(size: 14 * scale)).foregroundStyle(Palette.navy).padding(.horizontal, 12 * scale).frame(height: 38 * scale)
-                .background(URColor.surface.opacity(0.90), in: Capsule()).overlay(Capsule().stroke(Palette.line))
-            }
-            .environment(\.layoutDirection, .leftToRight).offset(x: 4 * scale, y: 7 * scale)
+            CircleButton(symbol: "bell", scale: scale)
+                .offset(x: 4 * scale, y: 7 * scale)
             VStack(alignment: .trailing, spacing: -1) {
                 HStack(spacing: 5 * scale) {
                     VStack(alignment: .trailing, spacing: 0) {
