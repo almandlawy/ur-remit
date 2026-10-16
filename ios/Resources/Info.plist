@@ -4,6 +4,11 @@
 <dict>
   <key>CFBundleDevelopmentRegion</key><string>ar</string>
   <key>CFBundleDisplayName</key><string>UR Global</string>
+  <key>FacebookAppID</key><string>2280513229394946</string>
+  <key>FacebookDisplayName</key><string>UR Global</string>
+  <key>FacebookAutoLogAppEventsEnabled</key><false/>
+  <key>FacebookAdvertiserIDCollectionEnabled</key><false/>
+  <!-- FacebookClientToken must be supplied locally after privacy review; never commit it. -->
   <key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
   <key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
   <key>CFBundleIconName</key><string>AppIcon</string>
