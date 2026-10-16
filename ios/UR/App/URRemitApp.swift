@@ -3,9 +3,26 @@ import AuthenticationServices
 import GoogleSignInSwift
 import OSLog
 import WidgetKit
+import FacebookCore
+
+// The SDK is initialized only after a client token is configured in the built app.
+// App-event auto logging and advertiser-ID collection remain disabled pending
+// privacy review and explicit configuration approval.
+final class URMetaAppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        guard let token = Bundle.main.object(forInfoDictionaryKey: "FacebookClientToken") as? String,
+              !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return true
+        }
+        ApplicationDelegate.shared.application(application, didFinishLaunchingWithOptions: launchOptions)
+        return true
+    }
+}
 
 @main
 struct URRemitApp: App {
+    @UIApplicationDelegateAdaptor(URMetaAppDelegate.self) private var metaAppDelegate
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "URRemit", category: "PriceAlerts")
     @StateObject private var auth = URAuthService.live
